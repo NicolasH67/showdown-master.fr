@@ -28,5 +28,6 @@
   "loading": "Chargement ...",
   "errorFetchingTournaments": "Erreur lors de la récupération des tournois",
   "availableTournaments": "Liste des tournois disponibles",
-  "titlePassword": "Entrez le mot de passe"
+  "titlePassword": "Entrez le mot de passe",
+  "private": "privé"
 }

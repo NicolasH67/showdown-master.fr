@@ -45,7 +45,7 @@ const TournamentModal = ({
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   autoFocus
-                  aria-label="Mot de passe"
+                  aria-label={t("password")}
                 />
               </div>
             </form>

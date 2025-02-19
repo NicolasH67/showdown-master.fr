@@ -28,5 +28,6 @@
   "loading": "Loading ...",
   "errorFetchingTournaments": "Error fetching tournaments",
   "availableTournaments": "Available Tournaments",
-  "titlePassword": "Enter Password"
+  "titlePassword": "Enter Password",
+  "private": "private"
 }
