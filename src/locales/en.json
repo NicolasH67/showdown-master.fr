@@ -20,5 +20,13 @@
   "cancel": "Cancel",
   "playersAndReferees": "Players and Referees",
   "tournament": "Tournament",
-  "tournamentDetails": "Tournament Details"
+  "tournamentDetails": "Tournament Details",
+  "titleNameTournament": "Name of Tournament",
+  "titleStartDay": "Start Day",
+  "titleEndDay": "End Day",
+  "messageNoUpcomingTournaments": "No upcoming tournaments available",
+  "loading": "Loading ...",
+  "errorFetchingTournaments": "Error fetching tournaments",
+  "availableTournaments": "Available Tournaments",
+  "titlePassword": "Enter Password"
 }

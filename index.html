@@ -15,5 +15,9 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <script>
+      const savedLang = localStorage.getItem("language") || "en"; // Default to English if not set
+      document.documentElement.lang = savedLang;
+    </script>
   </body>
 </html>

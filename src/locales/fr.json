@@ -20,5 +20,13 @@
   "cancel": "Annuler",
   "playersAndReferees": "Joueurs et arbitres",
   "tournament": "Tournoi",
-  "tournamentDetails": "Détails du tournoi"
+  "tournamentDetails": "Détails du tournoi",
+  "titleNameTournament": "Nom du tournoi",
+  "titleStartDay": "Date de début",
+  "titleEndDay": "Date de fin",
+  "messageNoUpcomingTournaments": "Aucun tournoi à venir disponible",
+  "loading": "Chargement ...",
+  "errorFetchingTournaments": "Erreur lors de la récupération des tournois",
+  "availableTournaments": "Liste des tournois disponibles",
+  "titlePassword": "Entrez le mot de passe"
 }

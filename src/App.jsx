@@ -10,6 +10,8 @@ import { useTranslation } from "react-i18next";
 import Navbar from "./Components/Navbar/Navbar";
 import "./i18n";
 
+import Home from "./Pages/Home/Home";
+
 // Composant générique pour afficher une page avec traduction
 const Page = ({ textKey }) => {
   const { t } = useTranslation();
@@ -53,7 +55,7 @@ function App() {
     <BrowserRouter>
       <Navbar />
       <Routes>
-        <Route path="/" element={<Page textKey="home" />} />
+        <Route path="/" element={<Home />} />
         <Route path="/history" element={<Page textKey="history" />} />
         <Route
           path="/createTournament"

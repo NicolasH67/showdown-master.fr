@@ -1,0 +1,67 @@
+/* Fond semi-transparent qui couvre tout l'écran */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex !important;
+    /* Forcer l'affichage */
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+/* Conteneur de la modal */
+.modal {
+    background: white;
+    padding: 20px;
+    width: 90%;
+    max-width: 400px;
+    max-height: 250px;
+    border-radius: 10px;
+    box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    z-index: 1001;
+    /* Toujours au-dessus de l'overlay */
+    position: relative;
+    /* Ajoute cette ligne si besoin */
+
+    /* Forcer l'affichage en mode flex */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Style du champ de saisie */
+.modal input {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+/* Style des boutons */
+.modal button {
+    padding: 10px 15px;
+    margin: 5px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+/* Bouton "Soumettre" */
+.modal button[type="submit"] {
+    background: #4CAF50;
+    /* Vert */
+    color: white;
+}
+
+/* Bouton "Annuler" */
+.modal button[type="button"] {
+    background: #f44336;
+    /* Rouge */
+    color: white;
+}
