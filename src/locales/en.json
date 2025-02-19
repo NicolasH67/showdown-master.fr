@@ -1,0 +1,21 @@
+{
+  "home": "Home",
+  "history": "History",
+  "createTournament": "Create a Tournament",
+  "contact": "Contact",
+  "language": "Language",
+  "wrongPassword": "Incorrect Password",
+  "adminPlayers": "Admin Players",
+  "player": "Player",
+  "adminGroups": "Admin Groups",
+  "groups": "Groups",
+  "adminSchedule": "Admin Schedule",
+  "schedule": "Schedule",
+  "adminResult": "Admin Results",
+  "adminLogin": "Admin Login",
+  "tournamentEdit": "Edit Tournament",
+  "enterAdminPassword": "Enter Admin Password",
+  "password": "Password",
+  "submit": "Submit",
+  "cancel": "Cancel"
+}

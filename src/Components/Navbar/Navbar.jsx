@@ -1,17 +1,31 @@
 import React, { useState, useRef, useEffect } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import supabase from "../../Helpers/supabaseClient";
 
 const Navbar = () => {
+  const { t, i18n } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [password, setPassword] = useState("");
   const [adminPassword, setAdminPassword] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(
+    localStorage.getItem("isAdmin") === "true"
+  );
   const [error, setError] = useState("");
   const passwordInputRef = useRef(null);
   const [tournamentId, setTournamentId] = useState(null);
+
+  // Gérer l'état pour l'ouverture du dropdown
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  useEffect(() => {
+    const savedLanguage = localStorage.getItem("language");
+    if (savedLanguage) {
+      i18n.changeLanguage(savedLanguage);
+    }
+  }, [i18n]);
 
   const isTournamentPage = location.pathname.startsWith("/tournament");
 
@@ -21,7 +35,7 @@ const Navbar = () => {
   }, [location.pathname]);
 
   const fetchAdminPassword = async () => {
-    if (!tournamentId) return;
+    if (!tournamentId || isAdmin) return;
 
     const { data, error } = await supabase
       .from("tournament")
@@ -56,6 +70,7 @@ const Navbar = () => {
     if (password === adminPassword) {
       setIsModalOpen(false);
       setIsAdmin(true);
+      localStorage.setItem("isAdmin", "true");
       console.log("Mot de passe correct");
 
       if (location.pathname.includes("players")) {
@@ -68,7 +83,7 @@ const Navbar = () => {
         navigate(`/tournament/${tournamentId}/admin/edit`);
       }
     } else {
-      setError("Mot de passe incorrect");
+      setError(t("wrongPassword"));
     }
   };
 
@@ -78,29 +93,11 @@ const Navbar = () => {
     setError("");
   };
 
-  useEffect(() => {
-    if (isModalOpen && passwordInputRef.current) {
-      passwordInputRef.current.focus();
-    }
-  }, [isModalOpen]);
-
-  useEffect(() => {
-    const handleEscape = (e) => {
-      if (e.key === "Escape") {
-        handleModalClose();
-      }
-    };
-
-    if (isModalOpen) {
-      document.addEventListener("keydown", handleEscape);
-    } else {
-      document.removeEventListener("keydown", handleEscape);
-    }
-
-    return () => {
-      document.removeEventListener("keydown", handleEscape);
-    };
-  }, [isModalOpen]);
+  const changeLanguage = (lang) => {
+    i18n.changeLanguage(lang);
+    localStorage.setItem("language", lang);
+    setIsDropdownOpen(false); // Ferme le dropdown après un changement de langue
+  };
 
   return (
     <>
@@ -115,7 +112,7 @@ const Navbar = () => {
                     isActive ? "nav-link active" : "nav-link"
                   }
                 >
-                  Accueil
+                  {t("home")}
                 </NavLink>
               </li>
               {!isTournamentPage && (
@@ -127,7 +124,7 @@ const Navbar = () => {
                         isActive ? "nav-link active" : "nav-link"
                       }
                     >
-                      Historique
+                      {t("history")}
                     </NavLink>
                   </li>
                   <li className="nav-item">
@@ -137,7 +134,7 @@ const Navbar = () => {
                         isActive ? "nav-link active" : "nav-link"
                       }
                     >
-                      Créer un nouveau tournoi
+                      {t("createTournament")}
                     </NavLink>
                   </li>
                 </>
@@ -149,84 +146,40 @@ const Navbar = () => {
                     isActive ? "nav-link active" : "nav-link"
                   }
                 >
-                  Contact
+                  {t("contact")}
                 </NavLink>
               </li>
-
-              {isTournamentPage && tournamentId && (
-                <>
-                  <li className="nav-item">
-                    <NavLink
-                      to={`/tournament/${tournamentId}/${
-                        isAdmin ? "admin/players" : "players"
-                      }`}
-                      className={({ isActive }) =>
-                        isActive ? "nav-link active" : "nav-link"
-                      }
-                    >
-                      {isAdmin
-                        ? "Édition des Joueurs & Arbitres"
-                        : "Joueurs & Arbitres"}
-                    </NavLink>
-                  </li>
-                  <li className="nav-item">
-                    <NavLink
-                      to={`/tournament/${tournamentId}/${
-                        isAdmin ? "admin/groups" : "groups"
-                      }`}
-                      className={({ isActive }) =>
-                        isActive ? "nav-link active" : "nav-link"
-                      }
-                    >
-                      {isAdmin ? "Édition des Groupes" : "Groupes"}
-                    </NavLink>
-                  </li>
-                  <li className="nav-item">
-                    <NavLink
-                      to={`/tournament/${tournamentId}/${
-                        isAdmin ? "admin/schedule" : "schedule"
-                      }`}
-                      className={({ isActive }) =>
-                        isActive ? "nav-link active" : "nav-link"
-                      }
-                    >
-                      {isAdmin ? "Édition du Planning" : "Planning"}
-                    </NavLink>
-                  </li>
-                  {isAdmin && (
-                    <li className="nav-item">
-                      <NavLink
-                        to={`/tournament/${tournamentId}/admin/result`}
-                        className={({ isActive }) =>
-                          isActive ? "nav-link active" : "nav-link"
-                        }
-                      >
-                        Édition des résultats
-                      </NavLink>
-                    </li>
-                  )}
-                  <li className="nav-item">
-                    {!isAdmin ? (
-                      <button
-                        onClick={handleLoginClick}
-                        className="btn btn-primary"
-                      >
-                        Admin Login
-                      </button>
-                    ) : (
-                      <NavLink
-                        to={`/tournament/${tournamentId}/admin/edit`}
-                        className={({ isActive }) =>
-                          isActive ? "nav-link active" : "nav-link"
-                        }
-                      >
-                        Édition du tournoi
-                      </NavLink>
-                    )}
-                  </li>
-                </>
-              )}
             </ul>
+          </div>
+          <div className="dropdown">
+            <button
+              className="btn btn-secondary dropdown-toggle"
+              type="button"
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)} // Basculer l'état du dropdown
+              aria-expanded={isDropdownOpen}
+            >
+              🌍 {t("language")}
+            </button>
+            {isDropdownOpen && (
+              <ul className="dropdown-menu show">
+                <li>
+                  <button
+                    className="dropdown-item"
+                    onClick={() => changeLanguage("en")}
+                  >
+                    🇬🇧 English
+                  </button>
+                </li>
+                <li>
+                  <button
+                    className="dropdown-item"
+                    onClick={() => changeLanguage("fr")}
+                  >
+                    🇫🇷 Français
+                  </button>
+                </li>
+              </ul>
+            )}
           </div>
         </div>
       </nav>
@@ -234,28 +187,28 @@ const Navbar = () => {
       {isModalOpen && (
         <div className="modal-overlay">
           <div className="modal">
-            <h2>Entrez le mot de passe admin</h2>
+            <h2>{t("enterAdminPassword")}</h2>
             <form onSubmit={handlePasswordSubmit}>
               <input
                 type="password"
-                placeholder="Mot de passe"
+                placeholder={t("password")}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 ref={passwordInputRef}
-                aria-label="Mot de passe"
+                aria-label={t("password")}
                 required
                 className="form-control mb-3"
               />
               {error && <p className="text-danger">{error}</p>}
               <button type="submit" className="btn btn-primary">
-                Soumettre
+                {t("submit")}
               </button>
               <button
                 type="button"
                 onClick={handleModalClose}
                 className="btn btn-secondary ms-2"
               >
-                Annuler
+                {t("cancel")}
               </button>
             </form>
           </div>

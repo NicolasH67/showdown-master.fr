@@ -1,0 +1,21 @@
+{
+  "home": "Accueil",
+  "history": "Historique",
+  "createTournament": "Créer un tournoi",
+  "contact": "Contact",
+  "language": "Langue",
+  "wrongPassword": "Mot de passe incorrect",
+  "adminPlayers": "Joueurs Admin",
+  "player": "Joueur",
+  "adminGroups": "Groupes Admin",
+  "groups": "Groupes",
+  "adminSchedule": "Calendrier Admin",
+  "schedule": "Calendrier",
+  "adminResult": "Résultats Admin",
+  "adminLogin": "Connexion Admin",
+  "tournamentEdit": "Modifier le Tournoi",
+  "enterAdminPassword": "Entrer le mot de passe admin",
+  "password": "Mot de passe",
+  "submit": "Valider",
+  "cancel": "Annuler"
+}
