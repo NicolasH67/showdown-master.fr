@@ -19,7 +19,7 @@ export const useUpcomingTournaments = () => {
         today.setHours(0, 0, 0, 0);
 
         const filteredTournaments = data
-          .filter((tournament) => new Date(tournament.startday) >= today)
+          .filter((tournament) => new Date(tournament.endday) >= today)
           .sort((a, b) => new Date(a.startday) - new Date(b.startday));
 
         setTournaments(filteredTournaments);
