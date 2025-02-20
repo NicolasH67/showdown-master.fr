@@ -26,7 +26,7 @@ const Home = () => {
       setIsModalOpen(false);
       window.location.href = `/tournament/${selectedTournament.id}/players`;
     } else {
-      alert("Mot de passe incorrect");
+      alert(t("wrongPassword"));
     }
   };
 
@@ -41,7 +41,7 @@ const Home = () => {
 
   return (
     <div className="container mt-4">
-      <h1 className="mb-4">{t("availableTournaments")}</h1>
+      <h1 className="mb-4">{t("tournamentHistory")}</h1>
       <TournamentList
         tournaments={tournaments}
         onTournamentClick={handleTournamentClick}

@@ -29,5 +29,6 @@
   "errorFetchingTournaments": "Error fetching tournaments",
   "availableTournaments": "Available Tournaments",
   "titlePassword": "Enter Password",
-  "private": "private"
+  "private": "private",
+  "tournamentHistory": "Tournament History"
 }

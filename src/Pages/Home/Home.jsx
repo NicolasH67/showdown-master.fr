@@ -26,7 +26,7 @@ const Home = () => {
       setIsModalOpen(false);
       window.location.href = `/tournament/${selectedTournament.id}/players`;
     } else {
-      alert("Mot de passe incorrect");
+      alert(t("wrongPassword"));
     }
   };
 
