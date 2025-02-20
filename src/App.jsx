@@ -11,8 +11,8 @@ import Navbar from "./Components/Navbar/Navbar";
 import "./i18n";
 
 import Home from "./Pages/Home/Home";
+import History from "./Pages/History/History";
 
-// Composant générique pour afficher une page avec traduction
 const Page = ({ textKey }) => {
   const { t } = useTranslation();
   return (
@@ -38,9 +38,8 @@ const Page = ({ textKey }) => {
   );
 };
 
-// Composant pour gérer les pages liées au tournoi
 const TournamentPage = ({ textKey }) => {
-  const { id } = useParams(); // Récupère l'ID du tournoi depuis l'URL
+  const { id } = useParams();
   const { t } = useTranslation();
   return (
     <div>
@@ -56,7 +55,7 @@ function App() {
       <Navbar />
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/history" element={<Page textKey="history" />} />
+        <Route path="/history" element={<History />} />
         <Route
           path="/createTournament"
           element={<Page textKey="createTournament" />}
@@ -72,7 +71,6 @@ function App() {
           <Route path="groups" element={<Page textKey="groups" />} />
           <Route path="schedule" element={<Page textKey="schedule" />} />
 
-          {/* Routes admin */}
           <Route path="admin">
             <Route path="players" element={<Page textKey="adminPlayers" />} />
             <Route path="groups" element={<Page textKey="adminGroups" />} />

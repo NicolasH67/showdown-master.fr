@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import supabase from "../Helpers/supabaseClient";
 
-export const useTournaments = () => {
+export const useUpcomingTournaments = () => {
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
