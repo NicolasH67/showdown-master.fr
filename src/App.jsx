@@ -12,6 +12,7 @@ import "./i18n";
 
 import Home from "./Pages/Home/Home";
 import History from "./Pages/History/History";
+import CreateTournament from "./Pages/CreateTournament/CreateTournament";
 
 const Page = ({ textKey }) => {
   const { t } = useTranslation();
@@ -65,10 +66,7 @@ function App() {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/history" element={<History />} />
-        <Route
-          path="/createTournament"
-          element={<Page textKey="createTournament" />}
-        />
+        <Route path="/createTournament" element={<CreateTournament />} />
         <Route path="/contact" element={<Page textKey="contact" />} />
 
         {/* Routes du tournoi */}
