@@ -1,38 +1,40 @@
 import React from "react";
 import useTournamentForm from "../../Hooks/useTournamentForm";
 import InputField from "../../Components/InputField/InputField";
+import { useTranslation } from "react-i18next";
 
 const CreateTournament = () => {
   const { formData, handleChange, handleSubmit, error, loading } =
     useTournamentForm();
+  const { t, i18n } = useTranslation();
 
   return (
     <div className="container mt-5">
-      <h1 className="mb-4">Créer un nouveau tournoi</h1>
+      <h1 className="mb-4">{t("createNewTournament")}</h1>
       <form onSubmit={handleSubmit}>
         <InputField
-          label="Nom du tournoi"
+          label={t("titleNameTournament")}
           type="text"
           name="title"
           value={formData.title}
           onChange={handleChange}
         />
         <InputField
-          label="Date de début"
+          label={t("titleStartDay")}
           type="date"
           name="startday"
           value={formData.startday}
           onChange={handleChange}
         />
         <InputField
-          label="Date de fin"
+          label={t("titleEndDay")}
           type="date"
           name="endday"
           value={formData.endday}
           onChange={handleChange}
         />
         <InputField
-          label="Mot de passe"
+          label={t("password")}
           type="password"
           name="adminPassword"
           value={formData.adminPassword}
@@ -49,7 +51,7 @@ const CreateTournament = () => {
         {error && <p className="text-danger">{error}</p>}
 
         <button type="submit" className="btn btn-primary" disabled={loading}>
-          {loading ? "Création en cours..." : "Créer le tournoi"}
+          {loading ? t("creating") : t("createTournamentButton")}
         </button>
       </form>
     </div>

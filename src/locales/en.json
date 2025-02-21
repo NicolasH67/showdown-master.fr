@@ -30,5 +30,16 @@
   "availableTournaments": "Available Tournaments",
   "titlePassword": "Enter Password",
   "private": "private",
-  "tournamentHistory": "Tournament History"
+  "tournamentHistory": "Tournament History",
+  "creating": "Creating...",
+  "tournamentCreatedSuccess": "Tournament successfully created!",
+  "errorCreatingTournament": "Error creating tournament",
+  "createTournamentButton": "Create Tournament",
+  "createNewTournament": "Create a new tournament",
+  "contactUs": "Contact Us",
+  "name": "Name",
+  "contactSuccess": "Your message has been sent successfully!",
+  "contactError": "All fields are required",
+  "contactInvalidEmail": "Invalid email format",
+  "message": "Message"
 }
