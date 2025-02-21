@@ -4,13 +4,27 @@ import TournamentModal from "../../Components/TournamentModal/TournamentModal";
 import { usePastTournaments } from "../../Hooks/usePastTournament";
 import { useTranslation } from "react-i18next";
 
-const Home = () => {
+/**
+ * Home component that displays past tournaments and handles tournament password protection.
+ *
+ * @component
+ * @example
+ * return (
+ *   <History />
+ * )
+ */
+const History = () => {
   const { tournaments, loading, error } = usePastTournaments();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTournament, setSelectedTournament] = useState(null);
   const [password, setPassword] = useState("");
   const [t, i18n] = useTranslation();
 
+  /**
+   * Handles tournament click to either show password modal or navigate directly.
+   *
+   * @param {Object} tournament - The selected tournament object.
+   */
   const handleTournamentClick = (tournament) => {
     if (tournament.user_password) {
       setSelectedTournament(tournament);
@@ -20,6 +34,11 @@ const Home = () => {
     }
   };
 
+  /**
+   * Handles password form submission, verifying the entered password.
+   *
+   * @param {Event} e - The form submit event.
+   */
   const handlePasswordSubmit = (e) => {
     e.preventDefault();
     if (password === selectedTournament.user_password) {
@@ -30,6 +49,9 @@ const Home = () => {
     }
   };
 
+  /**
+   * Closes the password modal and resets state.
+   */
   const handleModalClose = () => {
     setIsModalOpen(false);
     setPassword("");
@@ -59,4 +81,4 @@ const Home = () => {
   );
 };
 
-export default Home;
+export default History;

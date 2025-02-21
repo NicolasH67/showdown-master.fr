@@ -49,6 +49,15 @@ const TournamentPage = ({ textKey }) => {
   );
 };
 
+/**
+ * Main App component that contains routing logic using react-router-dom.
+ *
+ * @component
+ * @example
+ * return (
+ *   <App />
+ * )
+ */
 function App() {
   return (
     <BrowserRouter>

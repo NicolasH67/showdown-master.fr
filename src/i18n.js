@@ -3,24 +3,87 @@ import { initReactI18next } from "react-i18next";
 import HttpApi from "i18next-http-backend";
 import LanguageDetector from "i18next-browser-languagedetector";
 
+/**
+ * i18n configuration for managing translations in the React application.
+ * Uses the backend to load language files and a language detector to automatically
+ * choose the user's preferred language.
+ *
+ * @module i18n
+ */
 i18n
-  .use(HttpApi) // Charge les fichiers JSON externes
-  .use(LanguageDetector) // Détecte la langue du navigateur/localStorage
+  /**
+   * Loads external JSON translation files via HTTP.
+   *
+   * @function
+   */
+  .use(HttpApi)
+  /**
+   * Detects the browser language or uses the language stored in localStorage.
+   *
+   * @function
+   */
+  .use(LanguageDetector)
+  /**
+   * Initializes i18n for React, enabling the integration with React through the useTranslation hook.
+   *
+   * @function
+   */
   .use(initReactI18next)
   .init({
-    supportedLngs: ["en", "fr"], // Assure-toi que les langues sont bien supportées
+    /**
+     * Supported languages in the application.
+     *
+     * @type {Array<string>}
+     */
+    supportedLngs: ["en", "fr"],
+    /**
+     * Default language to use if the user's language is not available.
+     *
+     * @type {string}
+     */
     fallbackLng: "en",
+    /**
+     * Enables debug logs during development.
+     *
+     * @type {boolean}
+     */
     debug: true,
+    /**
+     * Initial language to use if no language is detected.
+     *
+     * @type {string}
+     */
     lng: "en",
     detection: {
+      /**
+       * Determines the order in which i18next detects the user's preferred language.
+       * First, it checks localStorage, then the browser language.
+       *
+       * @type {Array<string>}
+       */
       order: ["localStorage", "navigator"],
-      caches: ["localStorage"], // Sauvegarde la langue choisie
+      /**
+       * Specifies caching mechanisms for the chosen language (here, localStorage).
+       *
+       * @type {Array<string>}
+       */
+      caches: ["localStorage"],
     },
     backend: {
-      loadPath: "../src/locales/{{lng}}.json", // Vérifie que les fichiers sont bien à cet emplacement
+      /**
+       * Path to load the JSON language files. Make sure the files are located at this path.
+       *
+       * @type {string}
+       */
+      loadPath: "../src/locales/{{lng}}.json",
     },
     interpolation: {
-      escapeValue: false, // React se charge déjà d'éviter les failles XSS
+      /**
+       * Disables escaping of interpolated values, as React handles XSS protection.
+       *
+       * @type {boolean}
+       */
+      escapeValue: false,
     },
   });
 

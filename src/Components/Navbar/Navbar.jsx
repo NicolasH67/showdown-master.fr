@@ -2,6 +2,12 @@ import React, { useState, useEffect } from "react";
 import { NavLink, useLocation, useNavigate, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
+/**
+ * Navbar component that provides navigation links and language selection.
+ *
+ * @component
+ * @returns {JSX.Element} The navigation bar with dynamic links based on the current route.
+ */
 const Navbar = () => {
   const { t, i18n } = useTranslation();
   const location = useLocation();
@@ -10,16 +16,29 @@ const Navbar = () => {
   const [isNavbarCollapsed, setIsNavbarCollapsed] = useState(true); // Etat pour gérer la navbar mobile
   const { id } = useParams();
 
+  /**
+   * Changes the application language.
+   *
+   * @param {string} lang - The selected language code (e.g., "en", "fr").
+   */
   const changeLanguage = (lang) => {
     i18n.changeLanguage(lang);
     localStorage.setItem("language", lang);
     setIsDropdownOpen(false);
   };
 
+  /**
+   * Toggles the mobile navbar state.
+   */
   const toggleNavbar = () => {
     setIsNavbarCollapsed(!isNavbarCollapsed);
   };
 
+  /**
+   * Renders the navigation links dynamically based on the current route.
+   *
+   * @returns {JSX.Element} The list of navigation links.
+   */
   const isTournamentPage = location.pathname.startsWith("/tournament");
   const isTournamentAdminPage = location.pathname.includes("/admin");
 
@@ -194,11 +213,11 @@ const Navbar = () => {
     }
   };
 
-  // Change la langue du HTML en fonction de la langue choisie
+  // Updates the HTML language attribute based on the selected language
   useEffect(() => {
-    const lang = localStorage.getItem("language") || "en"; // Valeur par défaut si non définie
+    const lang = localStorage.getItem("language") || "en";
     document.documentElement.lang = lang;
-  }, [i18n.language]); // Réexécute quand la langue change
+  }, [i18n.language]);
 
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
@@ -206,9 +225,9 @@ const Navbar = () => {
         <button
           className="navbar-toggler"
           type="button"
-          onClick={toggleNavbar} // Ajout de la gestion de l'état
+          onClick={toggleNavbar}
           aria-controls="navbarNav"
-          aria-expanded={!isNavbarCollapsed ? "true" : "false"} // Change l'état de collapse
+          aria-expanded={!isNavbarCollapsed ? "true" : "false"}
           aria-label="Toggle navigation"
         >
           <span className="navbar-toggler-icon"></span>

@@ -1,6 +1,15 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 
+/**
+ * Component that displays a list of tournaments in a table format.
+ *
+ * @component
+ * @param {Object} props - The component props.
+ * @param {Array} props.tournaments - The list of tournaments to display.
+ * @param {Function} props.onTournamentClick - Function triggered when a tournament is selected.
+ * @returns {JSX.Element} A table displaying the tournaments.
+ */
 const TournamentList = ({ tournaments, onTournamentClick }) => {
   const { t, i18n } = useTranslation();
   return (

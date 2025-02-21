@@ -1,6 +1,22 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 
+/**
+ * TournamentModal Component
+ *
+ * This component displays a modal that prompts the user to enter a password.
+ * It is typically used for accessing or managing a tournament.
+ *
+ * @component
+ * @param {Object} props - Component props
+ * @param {boolean} props.isOpen - Controls the visibility of the modal
+ * @param {string} props.password - Current password input value
+ * @param {Function} props.setPassword - Function to update the password state
+ * @param {Function} props.onSubmit - Function called when the form is submitted
+ * @param {Function} props.onClose - Function called when the modal is closed
+ *
+ * @returns {JSX.Element|null} The rendered modal component or null if `isOpen` is false
+ */
 const TournamentModal = ({
   isOpen,
   password,
