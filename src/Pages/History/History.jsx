@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import TournamentList from "../../Components/TournamentList/TournamentList";
 import TournamentModal from "../../Components/TournamentModal/TournamentModal";
-import { usePastTournaments } from "../../Hooks/usePastTournament";
+import { useTournaments } from "../../Hooks/useTournament";
 import { useTranslation } from "react-i18next";
 
 /**
@@ -14,7 +14,7 @@ import { useTranslation } from "react-i18next";
  * )
  */
 const History = () => {
-  const { tournaments, loading, error } = usePastTournaments();
+  const { tournaments, loading, error } = useTournaments(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTournament, setSelectedTournament] = useState(null);
   const [password, setPassword] = useState("");

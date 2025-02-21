@@ -2,22 +2,22 @@ import { useState, useEffect } from "react";
 import supabase from "../Helpers/supabaseClient";
 
 /**
- * Custom hook to fetch upcoming tournaments from the database.
+ * Custom hook to fetch tournaments from the database (either past or upcoming).
  *
+ * @param {boolean} isPast - If true, fetch past tournaments. If false, fetch upcoming tournaments.
  * @returns {Object} - Returns an object containing:
- *   - tournaments: Array of upcoming tournaments.
+ *   - tournaments: Array of tournaments.
  *   - loading: Boolean indicating if data is still loading.
  *   - error: Error object if an error occurred.
  */
-export const useUpcomingTournaments = () => {
+export const useTournaments = (isPast) => {
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     /**
-     * Fetches upcoming tournaments from the Supabase database.
-     * Filters tournaments that are ongoing or in the future and sorts them by start date.
+     * Fetches tournaments from the Supabase database based on whether they are past or upcoming.
      */
     const fetchTournaments = async () => {
       try {
@@ -31,7 +31,13 @@ export const useUpcomingTournaments = () => {
         today.setHours(0, 0, 0, 0);
 
         const filteredTournaments = data
-          .filter((tournament) => new Date(tournament.endday) >= today)
+          .filter((tournament) => {
+            if (isPast) {
+              return new Date(tournament.endday) <= today;
+            } else {
+              return new Date(tournament.endday) >= today;
+            }
+          })
           .sort((a, b) => new Date(a.startday) - new Date(b.startday));
 
         setTournaments(filteredTournaments);
@@ -43,7 +49,7 @@ export const useUpcomingTournaments = () => {
     };
 
     fetchTournaments();
-  }, []);
+  }, [isPast]);
 
   return { tournaments, loading, error };
 };
