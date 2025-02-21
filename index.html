@@ -19,5 +19,16 @@
       const savedLang = localStorage.getItem("language") || "en"; // Default to English if not set
       document.documentElement.lang = savedLang;
     </script>
+    <script
+      type="text/javascript"
+      src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"
+    ></script>
+    <script type="text/javascript">
+      (function () {
+        emailjs.init({
+          publicKey: "D3Xw-76k4SdMAAUAz",
+        });
+      })();
+    </script>
   </body>
 </html>
