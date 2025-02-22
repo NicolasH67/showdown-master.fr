@@ -1,6 +1,15 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 
+/**
+ * A component that renders a table of players sorted by last name, with their group type.
+ *
+ * @param {Object} props - The properties passed to the component.
+ * @param {Array} props.players - A list of player objects to be displayed in the table.
+ * @param {string} props.groupType - The name of the group (division) that the players belong to.
+ *
+ * @returns {JSX.Element} A JSX element representing a table of players with their group type.
+ */
 const PlayerTable = ({ players, groupType }) => {
   const { t, i18n } = useTranslation();
   const sortPlayers = (players) => {

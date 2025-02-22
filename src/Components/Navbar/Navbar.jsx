@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { NavLink, useLocation, useNavigate, useParams } from "react-router-dom";
+import { NavLink, useLocation, useNavigate, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
 
 /**
@@ -13,8 +13,9 @@ const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [isNavbarCollapsed, setIsNavbarCollapsed] = useState(true); // Etat pour gérer la navbar mobile
-  const { id } = useParams();
+  const [isNavbarCollapsed, setIsNavbarCollapsed] = useState(true);
+  const tournament = location.pathname.match(/\/tournament\/([^/]+)/);
+  const id = tournament ? tournament[1] : null;
 
   /**
    * Changes the application language.
@@ -39,7 +40,7 @@ const Navbar = () => {
    *
    * @returns {JSX.Element} The list of navigation links.
    */
-  const isTournamentPage = location.pathname.startsWith("/tournament");
+  const isTournamentPage = location.pathname.includes("/tournament");
   const isTournamentAdminPage = location.pathname.includes("/admin");
 
   const renderNavbarLinks = () => {

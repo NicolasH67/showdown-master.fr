@@ -3,6 +3,7 @@ import TournamentList from "../../Components/TournamentList/TournamentList";
 import TournamentModal from "../../Components/TournamentModal/TournamentModal";
 import { useTournaments } from "../../Hooks/useTournament";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
 
 /**
  * Home component that displays upcoming tournaments and handles password protection.
@@ -19,6 +20,7 @@ const Home = () => {
   const [selectedTournament, setSelectedTournament] = useState(null);
   const [password, setPassword] = useState("");
   const [t, i18n] = useTranslation();
+  const navigate = useNavigate();
 
   /**
    * Handles tournament click to either show password modal or navigate directly.
@@ -30,7 +32,7 @@ const Home = () => {
       setSelectedTournament(tournament);
       setIsModalOpen(true);
     } else {
-      window.location.href = `/tournament/${tournament.id}/players`;
+      navigate(`/tournament/${tournament.id}/players`);
     }
   };
 
@@ -43,7 +45,7 @@ const Home = () => {
     e.preventDefault();
     if (password === selectedTournament.user_password) {
       setIsModalOpen(false);
-      window.location.href = `/tournament/${selectedTournament.id}/players`;
+      navigate(`/tournament/${selectedTournament.id}/players`);
     } else {
       alert(t("wrongPassword"));
     }

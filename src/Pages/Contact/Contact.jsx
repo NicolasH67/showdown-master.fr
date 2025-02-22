@@ -4,6 +4,15 @@ import InputField from "../../Components/InputField/InputField";
 import TextAreaField from "../../Components/TextAreaField/TextAreaField";
 import { useTranslation } from "react-i18next";
 
+/**
+ * Contact Component - Displays a contact form allowing users to send messages.
+ *
+ * This component uses a custom hook `useContactForm` to handle form state and submission.
+ * It includes input fields for name, email, and message, along with form validation and feedback.
+ *
+ * @component
+ * @returns {JSX.Element} A contact form UI.
+ */
 const Contact = () => {
   const { formData, handleChange, handleSubmit, error, success } =
     useContactForm();

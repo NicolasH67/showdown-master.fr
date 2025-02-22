@@ -2,6 +2,16 @@ import { useState } from "react";
 import supabase from "../Helpers/supabaseClient";
 import { useNavigate } from "react-router-dom";
 
+/**
+ * Custom hook to manage the tournament creation form.
+ *
+ * @returns {Object}
+ * - formData: The current state of the form data.
+ * - handleChange: Function to update the state for each form field.
+ * - handleSubmit: Function to handle the form submission.
+ * - error: Error message if validation fails.
+ * - loading: Loading indicator while submitting data to the database.
+ */
 const useTournamentForm = () => {
   const [formData, setFormData] = useState({
     title: "",

@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 import supabase from "../Helpers/supabaseClient";
 
+/**
+ * Custom hook to fetch and filter players for a specific tournament.
+ *
+ * @param {string} tournamentId - The ID of the tournament to filter players by.
+ * @returns {Object}
+ * - players: The list of players associated with the given tournament.
+ * - loading: A boolean indicating if the data is still being fetched.
+ * - error: An error object if an error occurred during fetching.
+ */
 const usePlayers = (tournamentId) => {
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);

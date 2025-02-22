@@ -1,12 +1,5 @@
 import React from "react";
-import {
-  BrowserRouter,
-  Routes,
-  Route,
-  useParams,
-  NavLink,
-} from "react-router-dom";
-import { useTranslation } from "react-i18next";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Navbar from "./Components/Navbar/Navbar";
 import "./i18n";
 
@@ -15,42 +8,6 @@ import History from "./Pages/History/History";
 import CreateTournament from "./Pages/CreateTournament/CreateTournament";
 import Contact from "./Pages/Contact/Contact";
 import Players from "./Pages/Players/Players";
-
-const Page = ({ textKey }) => {
-  const { t } = useTranslation();
-  return (
-    <>
-      <h1>{t(textKey)}</h1>;
-      <NavLink
-        to="/tournament/1/players"
-        className={({ isActive }) =>
-          isActive ? "nav-link active" : "nav-link"
-        }
-      >
-        {t("player")}
-      </NavLink>
-      <NavLink
-        to="/tournament/1/admin/players"
-        className={({ isActive }) =>
-          isActive ? "nav-link active" : "nav-link"
-        }
-      >
-        {t("adminPlayers")}
-      </NavLink>
-    </>
-  );
-};
-
-const TournamentPage = ({ textKey }) => {
-  const { id } = useParams();
-  const { t } = useTranslation();
-  return (
-    <div>
-      <h1>{t(textKey)}</h1>
-      <p>{t("tournamentDetails", { id })}</p> <p>{id}</p>
-    </div>
-  );
-};
 
 /**
  * Main App component that contains routing logic using react-router-dom.
@@ -71,26 +28,62 @@ function App() {
         <Route path="/createTournament" element={<CreateTournament />} />
         <Route path="/contact" element={<Contact />} />
         <Route path="/tournament/:id/players" element={<Players />} />
-
-        {/* Routes du tournoi */}
         <Route
-          path="/tournament/:id"
-          element={<TournamentPage textKey="tournament" />}
-        >
-          <Route path="groups" element={<Page textKey="groups" />} />
-          <Route path="schedule" element={<Page textKey="schedule" />} />
-
-          <Route path="admin">
-            <Route path="players" element={<Page textKey="adminPlayers" />} />
-            <Route path="groups" element={<Page textKey="adminGroups" />} />
-            <Route path="schedule" element={<Page textKey="adminSchedule" />} />
-            <Route path="result" element={<Page textKey="adminResult" />} />
-            <Route
-              path="tournamentEdit"
-              element={<Page textKey="adminTournamentEdit" />}
-            />
-          </Route>
-        </Route>
+          path="/tournament/:id/groups"
+          element={
+            <div>
+              <h1>groups</h1>
+            </div>
+          }
+        />
+        <Route
+          path="/tournament/:id/schedule"
+          element={
+            <div>
+              <h1>schedule</h1>
+            </div>
+          }
+        />
+        <Route
+          path="/tournament/:id/admin/players"
+          element={
+            <div>
+              <h1>players admin</h1>
+            </div>
+          }
+        />
+        <Route
+          path="/tournament/:id/admin/groups"
+          element={
+            <div>
+              <h1>groups admin</h1>
+            </div>
+          }
+        />
+        <Route
+          path="/tournament/:id/admin/schedule"
+          element={
+            <div>
+              <h1>schedule admin</h1>
+            </div>
+          }
+        />
+        <Route
+          path="/tournament/:id/admin/result"
+          element={
+            <div>
+              <h1>result admin</h1>
+            </div>
+          }
+        />
+        <Route
+          path="/tournament/:id/admin/tournamentEdit"
+          element={
+            <div>
+              <h1>tournament edit admin</h1>
+            </div>
+          }
+        />
       </Routes>
     </BrowserRouter>
   );

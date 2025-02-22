@@ -3,6 +3,18 @@ import useTournamentForm from "../../Hooks/useTournamentForm";
 import InputField from "../../Components/InputField/InputField";
 import { useTranslation } from "react-i18next";
 
+/**
+ * CreateTournament component - A form for creating a new tournament.
+ *
+ * This component utilizes a custom hook `useTournamentForm` to handle form state and submission.
+ * It also uses `react-i18next` for internationalization support.
+ *
+ * @component
+ * @example
+ * return (
+ *   <CreateTournament />
+ * )
+ */
 const CreateTournament = () => {
   const { formData, handleChange, handleSubmit, error, loading } =
     useTournamentForm();

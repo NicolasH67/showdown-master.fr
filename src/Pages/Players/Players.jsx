@@ -4,6 +4,15 @@ import usePlayers from "../../Hooks/usePlayers";
 import PlayerTable from "../../Components/PlayerTable/PlayerTable";
 import { useTranslation } from "react-i18next";
 
+/**
+ * Players Component - Displays a list of players categorized by group type.
+ *
+ * This component fetches players for a specific tournament using the ID from the URL parameters.
+ * Players are categorized into different groups: men, women, team, and mixed.
+ *
+ * @component
+ * @returns {JSX.Element} The rendered Players component.
+ */
 const Players = () => {
   const { id } = useParams();
   const { players, loading, error } = usePlayers(id);
