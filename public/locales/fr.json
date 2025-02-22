@@ -25,6 +25,7 @@
   "language": "Langue",
   "loading": "Chargement ...",
   "loadingPlayer": "Chargement des joueurs ...",
+  "loadingGroups": "Chargement des groupes...",
   "men": "Homme",
   "message": "Message",
   "messageNoUpcomingTournaments": "Aucun tournoi à venir disponible",
@@ -49,5 +50,14 @@
   "tournamentEdit": "Edition du tournoi ",
   "tournamentHistory": "Historique des tournois",
   "women": "Femme",
-  "wrongPassword": "Mot de passe incorrect"
+  "wrongPassword": "Mot de passe incorrect",
+  "goal": "Buts",
+  "set": "Sets",
+  "ranking": "Place",
+  "point": "Points",
+  "messageNoPlayersInGroup": "Aucun joueur trouvé pour ce groupe",
+  "firstRound": "1er Tour",
+  "secondRound": "2e Tour",
+  "finalRound": "Tour Final",
+  "tournamentGroups": "Groupes du tournoi"
 }

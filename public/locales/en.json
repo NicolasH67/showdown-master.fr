@@ -25,6 +25,7 @@
   "language": "Language",
   "loading": "Loading ...",
   "loadingPlayers": "Loading players ...",
+  "loadingGroups": "Loading groups ...",
   "men": "Men",
   "message": "Message",
   "messageNoUpcomingTournaments": "No upcoming tournaments available",
@@ -49,5 +50,14 @@
   "tournamentEdit": "Edit Tournament",
   "tournamentHistory": "Tournament History",
   "women": "Women",
-  "wrongPassword": "Incorrect Password"
+  "wrongPassword": "Incorrect Password",
+  "goal": "Goal",
+  "set": "Set",
+  "ranking": "Ranking",
+  "point": "Point",
+  "messageNoPlayersInGroup": "No players found for this group",
+  "firstRound": "1st Round",
+  "secondRound": "2nd Round",
+  "finalRound": "Final Round",
+  "tournamentGroups": "Tournament Groups"
 }
