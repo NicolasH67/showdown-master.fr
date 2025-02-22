@@ -31,7 +31,6 @@ const TournamentModal = ({
     <div
       className="modal show fade"
       style={{ display: "block", backgroundColor: "rgba(0, 0, 0, 0.5)" }} // Fond gris
-      tabindex="-1"
       role="dialog"
       aria-labelledby="modal-title"
       aria-hidden={!isOpen}
