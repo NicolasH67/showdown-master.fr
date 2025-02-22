@@ -18,8 +18,13 @@ const Players = () => {
   const { players, loading, error } = usePlayers(id);
   const [t, i18n] = useTranslation();
 
-  if (loading) return <div>Chargement des joueurs...</div>;
-  if (error) return <div>Erreur: {error.message}</div>;
+  if (loading) return <div>{t("loadingPlayers")}</div>;
+  if (error)
+    return (
+      <div>
+        {t("error")} {error.message}
+      </div>
+    );
 
   const malePlayers = players.filter(
     (player) => player.division.group_type === "men"
