@@ -2,6 +2,13 @@ import React from "react";
 import MatchRow from "../MatchRow/MatchRow";
 import { useTranslation } from "react-i18next";
 
+/**
+ * `MatchTable` Component
+ * @component
+ * @param {Object} props - Component properties.
+ * @param {Array} props.matches - List of matches.
+ * @returns {JSX.Element} A Bootstrap-styled table displaying match details.
+ */
 const MatchTable = ({ matches }) => {
   const { t } = useTranslation();
   const formatResult = (resultArray) => {

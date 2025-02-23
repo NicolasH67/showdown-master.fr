@@ -1,5 +1,14 @@
 import React from "react";
 
+/**
+ * `MatchRow` Component
+ * @component
+ * @param {Object} props - Component properties.
+ * @param {Object} props.match - Match details.
+ * @param {number} props.index - Index of the match in the list.
+ * @param {Function} props.formatResult - Function to format match results.
+ * @returns {JSX.Element} A table row displaying a match's details.
+ */
 const MatchRow = ({ match, index, formatResult }) => {
   return (
     <tr>

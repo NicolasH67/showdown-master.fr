@@ -2,6 +2,15 @@ import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import supabase from "../Helpers/supabaseClient";
 
+/**
+ * `useMatches` Hook
+ * @function
+ * @description Fetches match data for a specific tournament and manages loading and error states.
+ * @returns {Object} - An object containing match data, loading status, and error information.
+ * @property {Array} matches - List of matches.
+ * @property {boolean} loading - Indicates if the data is still being fetched.
+ * @property {Error|null} error - Error object if an error occurs, otherwise null.
+ */
 const useMatches = () => {
   const { id } = useParams();
   const [matches, setMatches] = useState([]);
