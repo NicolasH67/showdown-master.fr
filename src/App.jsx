@@ -9,6 +9,7 @@ import CreateTournament from "./Pages/CreateTournament/CreateTournament";
 import Contact from "./Pages/Contact/Contact";
 import Players from "./Pages/Players/Players";
 import GroupsPage from "./Pages/GroupsPage/GroupsPage";
+import Schedule from "./Pages/Schedule/Schedule";
 
 /**
  * Main App component that contains routing logic using react-router-dom.
@@ -30,14 +31,7 @@ function App() {
         <Route path="/contact" element={<Contact />} />
         <Route path="/tournament/:id/players" element={<Players />} />
         <Route path="/tournament/:id/groups" element={<GroupsPage />} />
-        <Route
-          path="/tournament/:id/schedule"
-          element={
-            <div>
-              <h1>schedule</h1>
-            </div>
-          }
-        />
+        <Route path="/tournament/:id/schedule" element={<Schedule />} />
         <Route
           path="/tournament/:id/admin/players"
           element={

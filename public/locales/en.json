@@ -26,6 +26,7 @@
   "loading": "Loading ...",
   "loadingPlayers": "Loading players ...",
   "loadingGroups": "Loading groups ...",
+  "loadingMatchs": "Loading matchs ...",
   "men": "Men",
   "message": "Message",
   "messageNoUpcomingTournaments": "No upcoming tournaments available",
@@ -59,5 +60,14 @@
   "firstRound": "1st Round",
   "secondRound": "2nd Round",
   "finalRound": "Final Round",
-  "tournamentGroups": "Tournament Groups"
+  "tournamentGroups": "Tournament Groups",
+  "noResult": "No result",
+  "date": "Date",
+  "time": "Time",
+  "table": "Table",
+  "group": "Group",
+  "player1": "Player 1",
+  "player2": "Player 2",
+  "result": "Result",
+  "referees": "Referee(s)"
 }
