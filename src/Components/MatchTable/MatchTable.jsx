@@ -21,30 +21,32 @@ const MatchTable = ({ matches }) => {
   };
 
   return (
-    <table className="table table-striped">
-      <thead>
-        <tr>
-          <th>{t("date")}</th>
-          <th>{t("time")}</th>
-          <th>{t("table")}</th>
-          <th>{t("group")}</th>
-          <th>{t("player1")}</th>
-          <th>{t("player2")}</th>
-          <th>{t("result")}</th>
-          <th>{t("referees")}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {matches.map((match, index) => (
-          <MatchRow
-            key={match.id}
-            match={match}
-            index={index}
-            formatResult={formatResult}
-          />
-        ))}
-      </tbody>
-    </table>
+    <div style={{ overflowX: "auto" }}>
+      <table className="table table-striped">
+        <thead>
+          <tr>
+            <th>{t("date")}</th>
+            <th>{t("time")}</th>
+            <th>{t("table")}</th>
+            <th>{t("group")}</th>
+            <th>{t("player1")}</th>
+            <th>{t("player2")}</th>
+            <th>{t("result")}</th>
+            <th>{t("referees")}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {matches.map((match, index) => (
+            <MatchRow
+              key={match.id}
+              match={match}
+              index={index}
+              formatResult={formatResult}
+            />
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 };
 

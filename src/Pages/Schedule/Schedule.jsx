@@ -2,6 +2,8 @@ import React from "react";
 import useMatches from "../../Hooks/useMatchs";
 import MatchTable from "../../Components/MatchTable/MatchTable";
 import { useTranslation } from "react-i18next";
+import DateSelector from "../../Components/DateSelector/DateSelector";
+import { useState } from "react";
 
 /**
  * `Schedule` Component
@@ -10,7 +12,13 @@ import { useTranslation } from "react-i18next";
  */
 const Schedule = () => {
   const { matches, loading, error } = useMatches();
+  const [selectedDate, setSelectedDate] = useState(null);
   const { t } = useTranslation();
+
+  const getUniqueDates = (matches) => {
+    const dates = matches.map((match) => match.match_date);
+    return [...new Set(dates)].sort();
+  };
 
   if (loading) {
     return <div>{t("loadingMatchs")}</div>;
@@ -20,10 +28,21 @@ const Schedule = () => {
     return <div>{error.message}</div>;
   }
 
+  const uniqueDates = getUniqueDates(matches);
+
+  const filteredMatches = selectedDate
+    ? matches.filter((match) => match.match_date === selectedDate)
+    : matches;
+
   return (
     <div className="container mt-4">
       <h1 className="text-center mb-4">{t("schedule")}</h1>
-      <MatchTable matches={matches} />
+      <DateSelector
+        dates={uniqueDates}
+        selectedDate={selectedDate}
+        onSelectDate={setSelectedDate}
+      />
+      <MatchTable matches={filteredMatches} />
     </div>
   );
 };
