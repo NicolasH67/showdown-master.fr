@@ -32,5 +32,5 @@ Pour faire fonctionner l'application localement, assurez-vous d'avoir les outils
 
 1. Clonez le repository sur votre machine locale :
    ```bash
-   git clone https://github.com/VisioTechno/Showdown-Master.git
+   https://github.com/NicolasH67/showdown-master.fr.git
    ```

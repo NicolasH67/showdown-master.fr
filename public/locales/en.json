@@ -70,5 +70,6 @@
   "player2": "Player 2",
   "result": "Result",
   "referees": "Referee(s)",
-  "allDates": "All"
+  "allDates": "All",
+  "noMatchesAvailable": "No matches available"
 }

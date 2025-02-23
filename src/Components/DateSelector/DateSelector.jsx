@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useRef } from "react";
 import { useTranslation } from "react-i18next";
+import "./DateSelector.css";
 
 /**
  * `DateSelector` Component
@@ -8,38 +9,39 @@ import { useTranslation } from "react-i18next";
  * @param {Array<string>} props.dates - List of unique match dates.
  * @param {string|null} props.selectedDate - Currently selected date.
  * @param {Function} props.onSelectDate - Function to handle date selection.
- * @returns {JSX.Element} A list of buttons to filter matches by date.
+ * @returns {JSX.Element} A horizontal scrollable list to filter matches by date.
  */
 const DateSelector = ({ dates, selectedDate, onSelectDate }) => {
   const { t } = useTranslation();
+  const scrollRef = useRef(null);
 
-  if (dates.length === 1) {
+  if (dates.length <= 1) {
     return null;
   }
 
-  console.log(selectedDate === null ? "active" : "");
-
   return (
-    <div className="d-flex justify-content-center mb-3">
-      <button
-        className={`btn btn-outline-primary mx-2 ${
-          selectedDate === null ? "active" : ""
-        }`}
-        onClick={() => onSelectDate(null)}
-      >
-        {t("allDates")}
-      </button>
-      {dates.map((date) => (
+    <div className="date-scroll-container">
+      <div ref={scrollRef} className="date-scroll-view">
         <button
-          key={date}
-          className={`btn btn-outline-primary mx-2 ${
-            selectedDate === date ? "active" : ""
+          className={`btn btn-outline-primary ${
+            selectedDate === null ? "active" : ""
           }`}
-          onClick={() => onSelectDate(date)}
+          onClick={() => onSelectDate(null)}
         >
-          {date}
+          {t("allDates")}
         </button>
-      ))}
+        {dates.map((date) => (
+          <button
+            key={date}
+            className={`btn btn-outline-primary ${
+              selectedDate === date ? "active" : ""
+            }`}
+            onClick={() => onSelectDate(date)}
+          >
+            {date}
+          </button>
+        ))}
+      </div>
     </div>
   );
 };

@@ -20,6 +20,14 @@ const MatchTable = ({ matches }) => {
     return formattedResult.join("; ");
   };
 
+  if (matches.length === 0) {
+    return (
+      <div className="alert alert-warning text-center">
+        {t("noMatchesAvailable")}
+      </div>
+    );
+  }
+
   return (
     <div style={{ overflowX: "auto" }}>
       <table className="table table-striped">

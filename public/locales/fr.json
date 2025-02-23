@@ -70,5 +70,6 @@
   "player2": "Joueur 2",
   "result": "Résultat",
   "referees": "Arbitre(s)",
-  "allDates": "Tous"
+  "allDates": "Tous",
+  "noMatchesAvailable": "Aucun match disponible"
 }
