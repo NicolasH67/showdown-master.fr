@@ -30,7 +30,7 @@
   "men": "Homme",
   "message": "Message",
   "messageNoUpcomingTournaments": "Aucun tournoi à venir disponible",
-  "mixed": "Mixte",
+  "mix": "Mixte",
   "name": "Nom",
   "namePlayerTable": "Nom et Prénom",
   "password": "Mot de passe",
@@ -71,5 +71,6 @@
   "result": "Résultat",
   "referees": "Arbitre(s)",
   "allDates": "Tous",
-  "noMatchesAvailable": "Aucun match disponible"
+  "noMatchesAvailable": "Aucun match disponible",
+  "allGroups": "Tous les groupes"
 }
