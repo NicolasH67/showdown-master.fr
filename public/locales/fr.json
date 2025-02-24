@@ -80,5 +80,10 @@
   "statistics": "Statistiques",
   "totalMatches": "Total des matchs",
   "wins": "Victoires",
-  "losses": "Défaites"
+  "losses": "Défaites",
+  "setsWon": "Sets Gagnés",
+  "setsLost": "Sets Perdus",
+  "pointsScored": "Points Marqués",
+  "pointsConceded": "Points Concédés",
+  "setWinRate": "Taux de Victoire en Sets"
 }

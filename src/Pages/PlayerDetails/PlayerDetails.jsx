@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import usePlayerMatches from "../../Hooks/usePlayerMatches"; // Hook pour récupérer les matchs du joueur
 import MatchTable from "../../Components/MatchTable/MatchTable"; // Table pour afficher les matchs
+import PlayerStats from "../../Components/PlayerStats/PlayerStats";
 
 const PlayerDetails = () => {
   const { id, playerId } = useParams();
@@ -20,16 +21,7 @@ const PlayerDetails = () => {
         {player.firstname} {player.lastname}
       </h2>
 
-      <h3>{t("statistics")}</h3>
-      <p>
-        <strong>{t("totalMatches")}:</strong> {matches.length}
-      </p>
-      <p>
-        <strong>{t("wins")}:</strong> {player.wins}
-      </p>
-      <p>
-        <strong>{t("losses")}:</strong> {player.losses}
-      </p>
+      <PlayerStats />
 
       <h3>{t("matches")}</h3>
       {matches.length > 0 ? (

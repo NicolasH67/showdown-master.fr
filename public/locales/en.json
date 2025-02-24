@@ -80,5 +80,10 @@
   "statistics": "Statistics",
   "totalMatches": "Total Matches",
   "wins": "Wins",
-  "losses": "Losses"
+  "losses": "Losses",
+  "setsWon": "Sets Won",
+  "setsLost": "Sets Lost",
+  "pointsScored": "Points Scored",
+  "pointsConceded": "Points Conceded",
+  "setWinRate": "Set Win Rate"
 }
