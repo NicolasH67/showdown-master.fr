@@ -72,5 +72,13 @@
   "referees": "Arbitre(s)",
   "allDates": "Tous",
   "noMatchesAvailable": "Aucun match disponible",
-  "allGroups": "Tous les groupes"
+  "allGroups": "Tous les groupes",
+  "loadingPlayerDetails": "Chargement des informations du joueur...",
+  "playerDetails": "Détails du joueur",
+  "matches": "Matchs",
+  "noMatches": "Aucun match trouvé",
+  "statistics": "Statistiques",
+  "totalMatches": "Total des matchs",
+  "wins": "Victoires",
+  "losses": "Défaites"
 }

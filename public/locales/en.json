@@ -72,5 +72,13 @@
   "referees": "Referee(s)",
   "allDates": "All",
   "noMatchesAvailable": "No matches available",
-  "allGroups": "All Groups"
+  "allGroups": "All Groups",
+  "loadingPlayerDetails": "Loading player information...",
+  "playerDetails": "Player Details",
+  "matches": "Matches",
+  "noMatches": "No matches found",
+  "statistics": "Statistics",
+  "totalMatches": "Total Matches",
+  "wins": "Wins",
+  "losses": "Losses"
 }

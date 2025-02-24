@@ -1,5 +1,7 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useParams } from "react-router-dom";
 
 /**
  * A component that renders a table of players sorted by last name, with their group type.
@@ -11,13 +13,13 @@ import { useTranslation } from "react-i18next";
  * @returns {JSX.Element} A JSX element representing a table of players with their group type.
  */
 const PlayerTable = ({ players, groupType }) => {
-  const { t, i18n } = useTranslation();
+  const { id } = useParams();
+  const { t } = useTranslation();
+
   const sortPlayers = (players) => {
-    return players.sort((a, b) => {
-      const lastNameA = a.lastname.toLowerCase();
-      const lastNameB = b.lastname.toLowerCase();
-      return lastNameA.localeCompare(lastNameB);
-    });
+    return players.sort((a, b) =>
+      a.lastname.toLowerCase().localeCompare(b.lastname.toLowerCase())
+    );
   };
 
   return (
@@ -37,7 +39,12 @@ const PlayerTable = ({ players, groupType }) => {
                 {sortPlayers(players).map((player) => (
                   <tr key={player.id} style={{ cursor: "pointer" }}>
                     <td>
-                      {player.firstname} {player.lastname}
+                      <Link
+                        to={`/tournament/${id}/players/${player.id}`}
+                        style={{ textDecoration: "none" }}
+                      >
+                        {player.firstname} {player.lastname}
+                      </Link>
                     </td>
                     <td>{player.division.name}</td>
                   </tr>
