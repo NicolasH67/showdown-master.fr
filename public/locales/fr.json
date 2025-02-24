@@ -86,12 +86,12 @@
   "pointsScored": "Points Marqués",
   "pointsConceded": "Points Concédés",
   "setWinRate": "Taux de Victoire en Sets",
-  "arbitre": "Arbitre",
-  "listeArbitres": "Liste des arbitres",
-  "nomTableauArbitre": "Nom de l'arbitre",
+  "referee": "Arbitre",
+  "refereesList": "Liste des arbitres",
+  "nameRefereeTable": "Nom de l'arbitre",
   "club": "Club",
-  "pasDeClub": "Pas de club",
-  "detailsArbitre": "Détails de l'arbitre",
-  "matchsArbitres": "Matchs arbitrés",
-  "chargementDetailsArbitre": "Chargement des détails de l'arbitre"
+  "noClub": "Pas de Club",
+  "refereeDetails": "Détails de l'arbitre",
+  "matchesRefereed": "Matchs arbitrés",
+  "loadingRefereeDetails": "Chargement des détails de l'arbitre"
 }
