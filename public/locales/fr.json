@@ -85,5 +85,13 @@
   "setsLost": "Sets Perdus",
   "pointsScored": "Points Marqués",
   "pointsConceded": "Points Concédés",
-  "setWinRate": "Taux de Victoire en Sets"
+  "setWinRate": "Taux de Victoire en Sets",
+  "arbitre": "Arbitre",
+  "listeArbitres": "Liste des arbitres",
+  "nomTableauArbitre": "Nom de l'arbitre",
+  "club": "Club",
+  "pasDeClub": "Pas de club",
+  "detailsArbitre": "Détails de l'arbitre",
+  "matchsArbitres": "Matchs arbitrés",
+  "chargementDetailsArbitre": "Chargement des détails de l'arbitre"
 }

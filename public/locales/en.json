@@ -85,5 +85,13 @@
   "setsLost": "Sets Lost",
   "pointsScored": "Points Scored",
   "pointsConceded": "Points Conceded",
-  "setWinRate": "Set Win Rate"
+  "setWinRate": "Set Win Rate",
+  "referee": "Referee",
+  "refereesList": "Referees List",
+  "nameRefereeTable": "Referee Name",
+  "club": "Club",
+  "noClub": "No Club",
+  "refereeDetails": "Referee Details",
+  "matchesRefereed": "Matches Refereed",
+  "loadingRefereeDetails": "Loading Referee Details"
 }
