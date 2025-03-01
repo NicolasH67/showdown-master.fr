@@ -93,5 +93,7 @@
   "noClub": "No Club",
   "refereeDetails": "Referee Details",
   "matchesRefereed": "Matches Refereed",
-  "loadingRefereeDetails": "Loading Referee Details"
+  "loadingRefereeDetails": "Loading Referee Details",
+  "logout": "Admin Loguut",
+  "login": "Admin Login"
 }

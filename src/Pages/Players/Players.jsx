@@ -77,7 +77,6 @@ const Players = () => {
         onSelectGroup={setSelectedGroup}
       />
       <PlayerTable players={filteredPlayers} groupType={t(selectedGroup)} />
-      <h1>{t("referee")}</h1>
       <RefereeTable referees={referees} />
     </div>
   );

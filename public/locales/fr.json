@@ -93,5 +93,7 @@
   "noClub": "Pas de Club",
   "refereeDetails": "Détails de l'arbitre",
   "matchesRefereed": "Matchs arbitrés",
-  "loadingRefereeDetails": "Chargement des détails de l'arbitre"
+  "loadingRefereeDetails": "Chargement des détails de l'arbitre",
+  "logout": "Déconnexion Admin",
+  "login": "Connexion Admin"
 }

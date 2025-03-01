@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import Button from "../Button/Button";
 import TournamentModal from "../TournamentModal/TournamentModal";
 import { useAdminPassword } from "../../Hooks/useAdminPassword";
+import { useTranslation } from "react-i18next";
 
 const AdminLogin = () => {
   const location = useLocation();
@@ -13,6 +14,7 @@ const AdminLogin = () => {
   const [password, setPassword] = useState("");
   const storedPassword = useAdminPassword();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   useEffect(() => {
     const adminStatus = localStorage.getItem("isAdmin");
@@ -30,7 +32,7 @@ const AdminLogin = () => {
       setPassword("");
       navigate(`/tournament/${id}/admin/players`);
     } else {
-      alert("Mot de passe incorrect");
+      alert(t("wrongPassword"));
     }
   };
 
@@ -43,10 +45,10 @@ const AdminLogin = () => {
   return (
     <div>
       {isAdmin ? (
-        <Button label="Déconnexion Admin" onClick={handleLogout} active />
+        <Button label={t("logout")} onClick={handleLogout} active />
       ) : (
         <Button
-          label="Connexion Admin"
+          label={t("login")}
           onClick={() => setIsModalOpen(true)}
           active
         />
@@ -58,7 +60,7 @@ const AdminLogin = () => {
         onSubmit={handleLogin}
         onClose={() => {
           setIsModalOpen(false);
-          setPassword(""); // Réinitialisation du champ après fermeture
+          setPassword("");
         }}
       />
     </div>
