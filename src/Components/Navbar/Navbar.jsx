@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { NavLink, useLocation, useNavigate, useParams } from "react-router";
 import { useTranslation } from "react-i18next";
+import AdminLogin from "../AdminLogin/AdminLogin";
 
 /**
  * Navbar component that provides navigation links and language selection.
@@ -108,6 +109,7 @@ const Navbar = () => {
                 {t("tournamentEdit")}
               </NavLink>
             </li>
+            <AdminLogin />
           </>
         );
       } else {
@@ -163,6 +165,7 @@ const Navbar = () => {
                 {t("schedule")}
               </NavLink>
             </li>
+            <AdminLogin />
           </>
         );
       }
@@ -214,7 +217,6 @@ const Navbar = () => {
     }
   };
 
-  // Updates the HTML language attribute based on the selected language
   useEffect(() => {
     const lang = localStorage.getItem("language") || "en";
     document.documentElement.lang = lang;

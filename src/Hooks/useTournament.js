@@ -23,7 +23,7 @@ export const useTournaments = (isPast) => {
       try {
         let { data, error } = await supabase
           .from("tournament")
-          .select("id, title, startday, endday, user_password");
+          .select("id, title, startday, endday, user_password, admin_password");
 
         if (error) throw error;
 

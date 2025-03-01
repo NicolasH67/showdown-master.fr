@@ -22,6 +22,17 @@ const Home = () => {
   const [t, i18n] = useTranslation();
   const navigate = useNavigate();
 
+  const handleLogout = () => {
+    localStorage.removeItem("isAdmin");
+  };
+
+  /**
+   * Executes handleLogout on page load.
+   */
+  useEffect(() => {
+    handleLogout();
+  }, []);
+
   /**
    * Handles tournament click to either show password modal or navigate directly.
    *
