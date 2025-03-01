@@ -3,6 +3,7 @@ import useContactForm from "../../Hooks/useContactForm";
 import InputField from "../../Components/InputField/InputField";
 import TextAreaField from "../../Components/TextAreaField/TextAreaField";
 import { useTranslation } from "react-i18next";
+import { useEffect } from "react";
 
 /**
  * Contact Component - Displays a contact form allowing users to send messages.
@@ -17,6 +18,17 @@ const Contact = () => {
   const { formData, handleChange, handleSubmit, error, success } =
     useContactForm();
   const { t, i18n } = useTranslation();
+
+  const handleLogout = () => {
+    localStorage.removeItem("isAdmin");
+  };
+
+  /**
+   * Executes handleLogout on page load.
+   */
+  useEffect(() => {
+    handleLogout();
+  }, []);
 
   return (
     <div className="container mt-5">
