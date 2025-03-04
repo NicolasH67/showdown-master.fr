@@ -33,6 +33,8 @@ const MatchRow = ({ match, index, formatResult }) => {
       <td>{formatResult(match.result)}</td>
       <td>
         {match.referee_1?.firstname} {match.referee_1?.lastname}
+        <br />
+        {match.referee_2?.firstname} {match.referee_2?.lastname}
       </td>
     </tr>
   );
