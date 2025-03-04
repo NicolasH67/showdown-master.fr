@@ -31,10 +31,20 @@ const MatchRow = ({ match, index, formatResult }) => {
         {match.player2.firstname} {match.player2.lastname}
       </td>
       <td>{formatResult(match.result)}</td>
-      <td>
+      <td style={{ textAlign: "center" }}>
         {match.referee_1?.firstname} {match.referee_1?.lastname}
-        <br />
-        {match.referee_2?.firstname} {match.referee_2?.lastname}
+        {match.referee_2 && (
+          <>
+            <div
+              style={{
+                borderTop: "2px solid black",
+                width: "100%",
+                margin: "5px 0",
+              }}
+            />
+            {match.referee_2?.firstname} {match.referee_2?.lastname}
+          </>
+        )}
       </td>
     </tr>
   );
