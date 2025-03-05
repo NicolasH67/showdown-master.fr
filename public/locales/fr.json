@@ -95,5 +95,22 @@
   "matchesRefereed": "Matchs arbitrés",
   "loadingRefereeDetails": "Chargement des détails de l'arbitre",
   "logout": "Déconnexion Admin",
-  "login": "Connexion Admin"
+  "login": "Connexion Admin",
+  "createPlayer": "Créer un Joueur",
+  "createReferee": "Créer un Arbitre",
+  "createClubs": "Créer un Club",
+  "clubAdded": "Le club a été ajouté avec succès !",
+  "playerAdded": "Le joueur a été ajouté avec succès !",
+  "refereeAdded": "L'arbitre a été ajouté avec succès !",
+  "addClub": "Ajouter un Club",
+  "addPlayer": "Ajouter un Joueur",
+  "addReferee": "Ajouter un Arbitre",
+  "clubName": "Nom du club :",
+  "abbreviation": "Abréviation :",
+  "firstname": "Prénom",
+  "lastname": "Nom",
+  "selectClub": "Sélectionner un club",
+  "select_club": "Sélectionner un club",
+  "firstGroup": "Premier groupe",
+  "selectGroup": "Sélectionner un groupe"
 }
