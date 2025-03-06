@@ -112,5 +112,11 @@
   "selectClub": "Sélectionner un club",
   "select_club": "Sélectionner un club",
   "firstGroup": "Premier groupe",
-  "selectGroup": "Sélectionner un groupe"
+  "selectGroup": "Sélectionner un groupe",
+  "nameGroup": "Nom du Groupe",
+  "roundType": "Type de tour",
+  "groupType": "Type de groupe",
+  "highestPosition": "Position la plus élevée (facultatif):",
+  "createGroup": "Créer le groupe",
+  "createNewGroup": "Créer un nouveau groupe pour le tournoi"
 }

@@ -1,19 +1,19 @@
+import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { useState } from "react";
-import useGroupsData from "../../Hooks/useGroupsData";
+import GroupForm from "../../Components/GroupForm/GroupForm";
 import RoundSelector from "../../Components/RoundSelector/RoundSelector";
 import GroupsSection from "../../Components/GroupsSection/GroupsSection";
+import useGroupsData from "../../Hooks/useGroupsData";
 import { useTranslation } from "react-i18next";
 
-const GroupsPage = () => {
-  const { id } = useParams();
-  const { groups, players, loading, error } = useGroupsData(id);
-  const [selectedRound, setSelectedRound] = useState("1st round");
+const GroupsEdit = () => {
   const { t } = useTranslation();
+  const { id } = useParams();
+  const [selectedRound, setSelectedRound] = useState(
+    localStorage.getItem("lastRound") || "1st round"
+  );
 
-  if (loading)
-    return <div className="text-center mt-3">{t("loadingGroups")}</div>;
-  if (error) return <div className="alert alert-danger">{error.message}</div>;
+  const { groups, players, setGroups } = useGroupsData(id);
 
   const filteredGroups = groups.filter(
     (group) => group.round_type === selectedRound
@@ -21,7 +21,8 @@ const GroupsPage = () => {
 
   return (
     <div className="container mt-4">
-      <h1 className="text-center">{t("tournamentGroups")}</h1>
+      <h1>{t("createNewGroup")}</h1>
+      <GroupForm tournamentId={id} setGroups={setGroups} />
       <RoundSelector
         selectedRound={selectedRound}
         setSelectedRound={setSelectedRound}
@@ -37,4 +38,4 @@ const GroupsPage = () => {
   );
 };
 
-export default GroupsPage;
+export default GroupsEdit;

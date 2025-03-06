@@ -112,5 +112,11 @@
   "lastname": "Lastname",
   "selectClub": "Select a club",
   "firstGroup": "First Group",
-  "selectGroup": "Select a Group"
+  "selectGroup": "Select a Group",
+  "nameGroup": "Group Name",
+  "roundType": "Round Type",
+  "groupType": "Group Type",
+  "highestPosition": "Highest Position (optional)",
+  "createGroup": "Create Group",
+  "createNewGroup": "Create a New Group for the Tournament"
 }
