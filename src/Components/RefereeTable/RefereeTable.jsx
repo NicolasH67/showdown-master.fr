@@ -30,8 +30,8 @@ const RefereeTable = ({ referees }) => {
             <table className="table table-bordered table-hover">
               <thead>
                 <tr>
-                  <th>{t("nameRefereeTable")}</th>
-                  <th>{t("club")}</th>
+                  <th style={{ width: "50%" }}>{t("nameRefereeTable")}</th>
+                  <th style={{ width: "50%" }}>{t("from")}</th>
                 </tr>
               </thead>
               <tbody>

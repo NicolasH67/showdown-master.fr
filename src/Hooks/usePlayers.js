@@ -25,7 +25,7 @@ const usePlayers = (tournamentId) => {
       try {
         let { data, error } = await supabase.from("player").select(`
           id, firstname, lastname, tournament_id, 
-          group:group_id (id, name, group_type)
+          group:group_id (id, name, group_type), club:club_id (id, name, abbreviation)
         `);
 
         if (error) throw error;

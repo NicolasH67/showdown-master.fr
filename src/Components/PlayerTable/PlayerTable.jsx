@@ -31,8 +31,8 @@ const PlayerTable = ({ players, groupType }) => {
             <table className="table table-bordered table-hover">
               <thead>
                 <tr>
-                  <th>{t("namePlayerTable")}</th>
-                  <th>{t("groups")}</th>
+                  <th style={{ width: "50%" }}>{t("namePlayerTable")}</th>
+                  <th style={{ width: "50%" }}>{t("from")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -46,7 +46,7 @@ const PlayerTable = ({ players, groupType }) => {
                         {player.firstname} {player.lastname}
                       </Link>
                     </td>
-                    <td>{player.group.name}</td>
+                    <td>{player.club.name}</td>
                   </tr>
                 ))}
               </tbody>

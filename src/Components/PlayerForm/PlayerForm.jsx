@@ -58,14 +58,14 @@ const PlayerForm = ({ tournamentId, clubs, groups }) => {
         />
       </div>
       <div className="mb-3">
-        <label className="form-label">{t("club")}:</label>
+        <label className="form-label">{t("from")}:</label>
         <select
           className="form-select"
           value={clubId}
           onChange={(e) => setClubId(e.target.value)}
           required
         >
-          <option value="">{t("selectClub")}</option>
+          <option value="">{t("from")}</option>
           {clubs.map((club) => (
             <option key={club.id} value={club.id}>
               {club.name}
