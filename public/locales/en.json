@@ -39,7 +39,7 @@
   "private": "private",
   "schedule": "Schedule",
   "submit": "Submit",
-  "team": "team",
+  "team": "Team",
   "titleEndDay": "End Day",
   "titleNameTournament": "Name of Tournament",
   "titlePassword": "Enter Password",
@@ -118,5 +118,7 @@
   "groupType": "Group Type",
   "highestPosition": "Highest Position (optional)",
   "createGroup": "Create Group",
-  "createNewGroup": "Create a New Group for the Tournament"
+  "createNewGroup": "Create a New Group for the Tournament",
+  "playerCount": "Number of Players",
+  "action": "Action"
 }

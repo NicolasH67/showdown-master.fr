@@ -9,7 +9,7 @@ import { useTranslation } from "react-i18next";
 
 const PlayersEdit = () => {
   const { id } = useParams();
-  const { divisions, clubs, loading, error } = useTournamentData(id);
+  const { groups, clubs, loading, error } = useTournamentData(id);
   const [formType, setFormType] = useState("player");
   const { t } = useTranslation();
 
@@ -38,7 +38,7 @@ const PlayersEdit = () => {
 
       {formType === "club" && <ClubForm tournamentId={id} />}
       {formType === "player" && (
-        <PlayerForm tournamentId={id} clubs={clubs} divisions={divisions} />
+        <PlayerForm tournamentId={id} clubs={clubs} groups={groups} />
       )}
       {formType === "referee" && (
         <RefereeForm tournamentId={id} clubs={clubs} />

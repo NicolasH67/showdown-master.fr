@@ -52,8 +52,8 @@ const useRefereeMatches = (refereeId, tournamentId) => {
 
       // Trier les matchs par date et heure
       filteredMatches.sort((a, b) => {
-        const dateA = new Date(`${a.match_date}T${a.match_time}`);
-        const dateB = new Date(`${b.match_date}T${b.match_time}`);
+        const dateA = new Date(`${a.match_day}T${a.match_time}`);
+        const dateB = new Date(`${b.match_day}T${b.match_time}`);
         return dateA - dateB;
       });
 

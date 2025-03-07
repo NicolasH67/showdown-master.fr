@@ -118,5 +118,7 @@
   "groupType": "Type de groupe",
   "highestPosition": "Position la plus élevée (facultatif):",
   "createGroup": "Créer le groupe",
-  "createNewGroup": "Créer un nouveau groupe pour le tournoi"
+  "createNewGroup": "Créer un nouveau groupe pour le tournoi",
+  "playerCount": "Nombre de joueurs",
+  "action": "Action"
 }

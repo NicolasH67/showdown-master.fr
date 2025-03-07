@@ -28,20 +28,20 @@ const useGroupsData = () => {
 
     const fetchGroups = async () => {
       try {
-        let { data: divisionsData, error: divisionsError } = await supabase
-          .from("division")
+        let { data: groupsData, error: groupsError } = await supabase
+          .from("group")
           .select("id, name, round_type, group_type, tournament_id");
 
-        if (divisionsError) {
-          throw divisionsError;
+        if (groupsError) {
+          throw groupsError;
         }
 
         const parsedTournamentId = parseInt(id, 10);
-        const filteredDivisions = divisionsData.filter(
-          (division) => division.tournament_id === parsedTournamentId
+        const filteredGroups = groupsData.filter(
+          (group) => group.tournament_id === parsedTournamentId
         );
 
-        setGroups(filteredDivisions);
+        setGroups(filteredGroups);
       } catch (error) {
         console.error("Erreur lors de la récupération des données :", error);
         setError(error);
@@ -55,6 +55,7 @@ const useGroupsData = () => {
 
   return {
     groups,
+    setGroups,
     players,
     loading: loading || playersLoading,
     error: error || playersError,

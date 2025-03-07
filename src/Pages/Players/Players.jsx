@@ -41,16 +41,16 @@ const Players = () => {
     );
 
   const malePlayers = players.filter(
-    (player) => player.division.group_type === "men"
+    (player) => player.group.group_type === "men"
   );
   const femalePlayers = players.filter(
-    (player) => player.division.group_type === "women"
+    (player) => player.group.group_type === "women"
   );
   const teamPlayers = players.filter(
-    (player) => player.division.group_type === "team"
+    (player) => player.group.group_type === "team"
   );
   const mixPlayers = players.filter(
-    (player) => player.division.group_type === "mix"
+    (player) => player.group.group_type === "mix"
   );
 
   const getAvailableGroups = () => {
@@ -65,7 +65,7 @@ const Players = () => {
   const availableGroups = getAvailableGroups();
 
   const filteredPlayers = selectedGroup
-    ? players.filter((player) => player.division.group_type === selectedGroup)
+    ? players.filter((player) => player.group.group_type === selectedGroup)
     : players;
 
   return (

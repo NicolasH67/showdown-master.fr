@@ -9,9 +9,7 @@ const GroupsSection = ({ groups, players }) => {
             {group.name} - {group.group_type}
           </h3>
           <GroupTable
-            players={players.filter(
-              (player) => player.division.id === group.id
-            )}
+            players={players.filter((player) => player.group.id === group.id)}
           />
         </div>
       ))}

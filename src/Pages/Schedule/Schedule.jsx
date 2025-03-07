@@ -15,7 +15,7 @@ const Schedule = () => {
   const { t } = useTranslation();
 
   const getUniqueDates = (matches) => {
-    const dates = matches.map((match) => match.match_date);
+    const dates = matches.map((match) => match.match_day);
     return [...new Set(dates)].sort();
   };
 
@@ -41,7 +41,7 @@ const Schedule = () => {
   }
 
   const filteredMatches = selectedDate
-    ? matches.filter((match) => match.match_date === selectedDate)
+    ? matches.filter((match) => match.match_day === selectedDate)
     : matches;
 
   return (

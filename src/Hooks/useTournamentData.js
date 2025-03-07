@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import supabase from "../Helpers/supabaseClient";
 
 const useTournamentData = (tournamentId) => {
-  const [divisions, setDivisions] = useState([]);
+  const [groups, setGroups] = useState([]);
   const [clubs, setClubs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -12,23 +12,23 @@ const useTournamentData = (tournamentId) => {
       setLoading(true);
       try {
         const [
-          { data: divisionData, error: divisionError },
+          { data: groupData, error: groupError },
           { data: clubData, error: clubError },
         ] = await Promise.all([
           supabase
-            .from("division")
+            .from("group")
             .select("id, name, tournament_id, round_type, group_type"),
           supabase.from("club").select("id, name, tournament_id"),
         ]);
 
-        if (divisionError) throw divisionError;
+        if (groupError) throw groupError;
         if (clubError) throw clubError;
 
-        setDivisions(
-          divisionData.filter(
-            (division) =>
-              division.tournament_id === Number(tournamentId) &&
-              division.round_type === "1st round"
+        setGroups(
+          groupData.filter(
+            (group) =>
+              group.tournament_id === Number(tournamentId) &&
+              group.round_type === "1st round"
           )
         );
         setClubs(
@@ -44,7 +44,7 @@ const useTournamentData = (tournamentId) => {
     if (tournamentId) fetchData();
   }, [tournamentId]);
 
-  return { divisions, clubs, loading, error };
+  return { groups, clubs, loading, error };
 };
 
 export default useTournamentData;

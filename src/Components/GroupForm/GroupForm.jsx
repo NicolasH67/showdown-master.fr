@@ -18,7 +18,7 @@ const GroupForm = ({ tournamentId, setGroups }) => {
     if (!groupName) return;
 
     try {
-      const { data, error } = await supabase.from("division").insert([
+      const { error } = await supabase.from("group").insert([
         {
           name: groupName,
           round_type: roundType,
@@ -31,16 +31,22 @@ const GroupForm = ({ tournamentId, setGroups }) => {
       ]);
 
       if (error) throw error;
+
+      // Récupérer les groupes après l'insertion
+      const { data: newGroups, error: fetchError } = await supabase
+        .from("group")
+        .select("id, name, round_type, tournament_id, group_type")
+        .eq("tournament_id", tournamentId);
+
+      if (fetchError) throw fetchError;
+
+      setGroups(newGroups); // Mettre à jour l'état global des groupes
+
+      // Réinitialiser le formulaire
       setGroupName("");
       setHighestPosition("");
       setRoundType(localStorage.getItem("lastRoundType") || "1st round");
       setGroupType(localStorage.getItem("lastGroupType") || "mix");
-
-      const { data: newGroups } = await supabase
-        .from("division")
-        .select("id, name, round_type, tournament_id, group_type")
-        .eq("tournament_id", tournamentId);
-      setGroups(newGroups);
     } catch (error) {
       console.error("Erreur lors de la création du groupe :", error);
     }
@@ -52,7 +58,7 @@ const GroupForm = ({ tournamentId, setGroups }) => {
       className="container p-3 border rounded shadow-sm bg-light w-100"
     >
       <div className="row g-2 align-items-end">
-        <div className="col">
+        <div className="col-12 col-md">
           <label className="form-label">{t("nameGroup")}:</label>
           <input
             type="text"
@@ -63,7 +69,7 @@ const GroupForm = ({ tournamentId, setGroups }) => {
           />
         </div>
 
-        <div className="col">
+        <div className="col-12 col-md">
           <label className="form-label">{t("roundType")}:</label>
           <select
             className="form-select"
@@ -79,7 +85,7 @@ const GroupForm = ({ tournamentId, setGroups }) => {
           </select>
         </div>
 
-        <div className="col">
+        <div className="col-12 col-md">
           <label className="form-label">{t("groupType")}:</label>
           <select
             className="form-select"
@@ -96,7 +102,7 @@ const GroupForm = ({ tournamentId, setGroups }) => {
           </select>
         </div>
 
-        <div className="col">
+        <div className="col-12 col-md">
           <label className="form-label">{t("highestPosition")}</label>
           <input
             type="number"
@@ -106,8 +112,8 @@ const GroupForm = ({ tournamentId, setGroups }) => {
           />
         </div>
 
-        <div className="col-auto">
-          <button type="submit" className="btn btn-primary">
+        <div className="col-12 col-md-auto d-flex justify-content-md-end">
+          <button type="submit" className="btn btn-primary w-100 w-md-auto">
             {t("createGroup")}
           </button>
         </div>

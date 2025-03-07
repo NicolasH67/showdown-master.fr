@@ -27,8 +27,8 @@ const useMatches = () => {
             id,
             player1:player1_id(id, firstname, lastname),
             player2:player2_id(id, firstname, lastname),
-            division:division_id(name),
-            match_date,
+            group:group_id(name),
+            match_day,
             match_time,
             table_number,
             referee_1:referee1_id(id, firstname, lastname),
@@ -41,8 +41,8 @@ const useMatches = () => {
         if (error) throw error;
 
         data.sort((a, b) => {
-          const dateA = new Date(`${a.match_date}T${a.match_time}`);
-          const dateB = new Date(`${b.match_date}T${b.match_time}`);
+          const dateA = new Date(`${a.match_day}T${a.match_time}`);
+          const dateB = new Date(`${b.match_day}T${b.match_time}`);
           return dateA - dateB || a.table_number - b.table_number;
         });
 

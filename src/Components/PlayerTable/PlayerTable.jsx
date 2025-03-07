@@ -8,7 +8,7 @@ import { useParams } from "react-router-dom";
  *
  * @param {Object} props - The properties passed to the component.
  * @param {Array} props.players - A list of player objects to be displayed in the table.
- * @param {string} props.groupType - The name of the group (division) that the players belong to.
+ * @param {string} props.groupType - The name of the group that the players belong to.
  *
  * @returns {JSX.Element} A JSX element representing a table of players with their group type.
  */
@@ -46,7 +46,7 @@ const PlayerTable = ({ players, groupType }) => {
                         {player.firstname} {player.lastname}
                       </Link>
                     </td>
-                    <td>{player.division.name}</td>
+                    <td>{player.group.name}</td>
                   </tr>
                 ))}
               </tbody>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import GroupForm from "../../Components/GroupForm/GroupForm";
 import RoundSelector from "../../Components/RoundSelector/RoundSelector";
-import GroupsSection from "../../Components/GroupsSection/GroupsSection";
+import GroupTableEdit from "../../Components/GroupTableEdit/GroupTableEdit"; // Nouveau composant
 import useGroupsData from "../../Hooks/useGroupsData";
 import { useTranslation } from "react-i18next";
 
@@ -19,6 +19,14 @@ const GroupsEdit = () => {
     (group) => group.round_type === selectedRound
   );
 
+  // Fonction pour supprimer un groupe
+  const handleDeleteGroup = (groupId) => {
+    // Filtrer les groupes pour retirer celui qui est supprimé
+    setGroups((prevGroups) =>
+      prevGroups.filter((group) => group.id !== groupId)
+    );
+  };
+
   return (
     <div className="container mt-4">
       <h1>{t("createNewGroup")}</h1>
@@ -28,7 +36,18 @@ const GroupsEdit = () => {
         setSelectedRound={setSelectedRound}
       />
       {filteredGroups.length > 0 ? (
-        <GroupsSection groups={filteredGroups} players={players} />
+        <GroupTableEdit
+          groups={filteredGroups}
+          players={players}
+          onEdit={(updatedGroup) => {
+            setGroups((prevGroups) =>
+              prevGroups.map((group) =>
+                group.id === updatedGroup.id ? updatedGroup : group
+              )
+            );
+          }}
+          onDelete={handleDeleteGroup} // Passez la fonction de suppression ici
+        />
       ) : (
         <div className="alert alert-warning text-center">
           Aucun groupe trouvé pour ce tour.

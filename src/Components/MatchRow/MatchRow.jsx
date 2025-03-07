@@ -12,9 +12,9 @@ import React from "react";
 const MatchRow = ({ match, index, formatResult }) => {
   return (
     <tr>
-      <td>{match.match_date}</td>
+      <td>{match.match_day}</td>
       <td>
-        {new Date(`${match.match_date}T${match.match_time}`).toLocaleTimeString(
+        {new Date(`${match.match_day}T${match.match_time}`).toLocaleTimeString(
           [],
           {
             hour: "2-digit",
@@ -23,7 +23,7 @@ const MatchRow = ({ match, index, formatResult }) => {
         )}
       </td>
       <td>{match.table_number}</td>
-      <td>{match.division.name}</td>
+      <td>{match.group.name}</td>
       <td>
         {match.player1.firstname} {match.player1.lastname}
       </td>

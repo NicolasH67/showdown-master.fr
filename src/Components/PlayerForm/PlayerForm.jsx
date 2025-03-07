@@ -2,10 +2,10 @@ import { useState } from "react";
 import supabase from "../../Helpers/supabaseClient";
 import { useTranslation } from "react-i18next";
 
-const PlayerForm = ({ tournamentId, clubs, divisions }) => {
+const PlayerForm = ({ tournamentId, clubs, groups }) => {
   const [firstname, setFirstname] = useState("");
   const [lastname, setLastname] = useState("");
-  const [divisionId, setDivisionId] = useState("");
+  const [groupId, setGroupId] = useState("");
   const [clubId, setClubId] = useState("");
   const [message, setMessage] = useState(null);
   const { t } = useTranslation();
@@ -17,7 +17,7 @@ const PlayerForm = ({ tournamentId, clubs, divisions }) => {
         {
           firstname,
           lastname,
-          division_id: divisionId,
+          group_id: groupId,
           club_id: clubId,
           tournament_id: tournamentId,
         },
@@ -26,7 +26,7 @@ const PlayerForm = ({ tournamentId, clubs, divisions }) => {
       setMessage(t("playerAdded"));
       setFirstname("");
       setLastname("");
-      setDivisionId("");
+      setGroupId("");
       setClubId("");
     } catch (error) {
       setMessage(error.message);
@@ -77,14 +77,14 @@ const PlayerForm = ({ tournamentId, clubs, divisions }) => {
         <label className="form-label">{t("firstGroup")}:</label>
         <select
           className="form-select"
-          value={divisionId}
-          onChange={(e) => setDivisionId(e.target.value)}
+          value={groupId}
+          onChange={(e) => setGroupId(e.target.value)}
           required
         >
           <option value="">{t("selectGroup")}</option>
-          {divisions.map((division) => (
-            <option key={division.id} value={division.id}>
-              {division.name} - {division.group_type}
+          {groups.map((group) => (
+            <option key={group.id} value={group.id}>
+              {group.name} - {group.group_type}
             </option>
           ))}
         </select>
