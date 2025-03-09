@@ -10,6 +10,7 @@ import RefereeTable from "../../Components/RefereeTable/RefereeTable";
 import PlayerTableEdit from "../../Components/PlayerTableEdit/PlayerTableEdit";
 import supabase from "../../Helpers/supabaseClient";
 import ClubsTableEdit from "../../Components/ClubsTableEdit/ClubsTableEdit";
+import RefereeTableEdit from "../../Components/RefereeTableEdit/RefereeTableEdit";
 
 const PlayersEdit = () => {
   const { id } = useParams();
@@ -27,6 +28,51 @@ const PlayersEdit = () => {
   const { t } = useTranslation();
 
   const groupType = "default";
+
+  const onDeleteReferee = async (refereeId) => {
+    try {
+      const { error } = await supabase
+        .from("referee")
+        .delete()
+        .eq("id", refereeId);
+
+      if (error) {
+        console.error(
+          "Erreur lors de la suppression de l'arbitre :",
+          error.message
+        );
+      } else {
+        console.log("Arbitre supprimé avec succès, ID :", refereeId);
+      }
+    } catch (err) {
+      console.error("Erreur inattendue :", err);
+    }
+  };
+
+  const onEditReferee = async (refereeId, updatedData) => {
+    console.log(refereeId, updatedData);
+    try {
+      const { error } = await supabase
+        .from("referee")
+        .update(updatedData)
+        .eq("id", refereeId);
+
+      if (error) {
+        console.error(
+          "Erreur lors de la modification de l'arbitre :",
+          error.message
+        );
+      } else {
+        console.log(
+          "Arbitre modifié avec succès, ID :",
+          refereeId,
+          updatedData
+        );
+      }
+    } catch (err) {
+      console.error("Erreur inattendue :", err);
+    }
+  };
 
   const onDeletePlayer = async (playerId) => {
     try {
@@ -171,7 +217,12 @@ const PlayersEdit = () => {
 
         {formType === "referee" && (
           <div>
-            <RefereeTable referees={referees} />
+            <RefereeTableEdit
+              referees={referees}
+              onDelete={onDeleteReferee}
+              onEdit={onEditReferee}
+              clubs={clubs}
+            />
           </div>
         )}
       </div>
