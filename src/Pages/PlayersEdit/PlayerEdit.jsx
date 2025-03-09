@@ -9,6 +9,7 @@ import { useTranslation } from "react-i18next";
 import RefereeTable from "../../Components/RefereeTable/RefereeTable";
 import PlayerTableEdit from "../../Components/PlayerTableEdit/PlayerTableEdit";
 import supabase from "../../Helpers/supabaseClient";
+import ClubsTableEdit from "../../Components/ClubsTableEdit/ClubsTableEdit";
 
 const PlayersEdit = () => {
   const { id } = useParams();
@@ -22,12 +23,12 @@ const PlayersEdit = () => {
   } = useTournamentData(id);
 
   const [formType, setFormType] = useState("player");
-  const [playersList, setPlayersList] = useState(players); // Ajout de l'état playersList
+  const [playersList, setPlayersList] = useState(players); // Correct state usage
   const { t } = useTranslation();
 
   const groupType = "default";
 
-  const onDelete = async (playerId) => {
+  const onDeletePlayer = async (playerId) => {
     try {
       const { error } = await supabase
         .from("player")
@@ -50,7 +51,7 @@ const PlayersEdit = () => {
     }
   };
 
-  const onEdit = async (playerId, updatedData) => {
+  const onEditPlayer = async (playerId, updatedData) => {
     console.log(playerId, updatedData);
     try {
       const { error } = await supabase
@@ -70,6 +71,41 @@ const PlayersEdit = () => {
             player.id === playerId ? { ...player, ...updatedData } : player
           )
         );
+      }
+    } catch (err) {
+      console.error("Erreur inattendue :", err);
+    }
+  };
+
+  const onDeleteClub = async (clubId) => {
+    try {
+      const { error } = await supabase.from("club").delete().eq("id", clubId);
+
+      if (error) {
+        console.error("Erreur lors de la suppression du club :", error.message);
+      } else {
+        console.log("Club supprimé avec succès, ID :", clubId);
+      }
+    } catch (err) {
+      console.error("Erreur inattendue :", err);
+    }
+  };
+
+  const onEditClub = async (clubId, updatedData) => {
+    console.log(clubId, updatedData);
+    try {
+      const { error } = await supabase
+        .from("club")
+        .update(updatedData)
+        .eq("id", clubId);
+
+      if (error) {
+        console.error(
+          "Erreur lors de la modification du club :",
+          error.message
+        );
+      } else {
+        console.log("Club modifié avec succès, ID :", clubId, updatedData);
       }
     } catch (err) {
       console.error("Erreur inattendue :", err);
@@ -111,13 +147,11 @@ const PlayersEdit = () => {
         {formType === "club" && (
           <div>
             <h3>{t("clubsList")}</h3>
-            <ul>
-              {clubs.map((club) => (
-                <li key={club.id}>
-                  {club.name} ({club.abbreviation})
-                </li>
-              ))}
-            </ul>
+            <ClubsTableEdit
+              clubs={clubs}
+              onDelete={onDeleteClub}
+              onEdit={onEditClub}
+            />
           </div>
         )}
 
@@ -126,11 +160,11 @@ const PlayersEdit = () => {
             <h3>{t("titlePlayersList")}</h3>
             <PlayerTableEdit
               clubs={clubs}
-              players={players} // Passer playersList au lieu de players
+              players={players} // Corrected state usage here
               groupType={groupType}
               groups={groups}
-              onDelete={onDelete}
-              onEdit={onEdit}
+              onDelete={onDeletePlayer}
+              onEdit={onEditPlayer}
             />
           </div>
         )}
