@@ -21,12 +21,6 @@ const PlayerTableEdit = ({
   const [club, setClub] = useState(""); // Etat pour le club
   const [group, setGroup] = useState("");
 
-  const sortPlayers = (players) => {
-    return players.sort((a, b) =>
-      a.lastname.toLowerCase().localeCompare(b.lastname.toLowerCase())
-    );
-  };
-
   const handleShowModal = (player) => {
     setSelectedPlayer(player);
     setFirstname(player.firstname || "");
@@ -83,7 +77,7 @@ const PlayerTableEdit = ({
               </tr>
             </thead>
             <tbody>
-              {sortPlayers(players).map((player) => (
+              {players.map((player) => (
                 <tr key={player.id}>
                   <td>
                     <Link
