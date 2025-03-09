@@ -126,5 +126,6 @@
   "editPlayer": "Modifier le joueur",
   "delete": "Supprimer",
   "saveChanges": "Enregistrer",
-  "clubsList": "Liste des Provenance"
+  "clubsList": "Liste des Provenance",
+  "noClubsAvailable": "Pas de Provenance disponible"
 }

@@ -20,7 +20,6 @@ const PlayerTableEdit = ({
   const [lastname, setLastname] = useState("");
   const [club, setClub] = useState(""); // Etat pour le club
   const [group, setGroup] = useState("");
-  console.log(groups);
 
   const sortPlayers = (players) => {
     return players.sort((a, b) =>

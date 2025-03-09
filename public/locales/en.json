@@ -126,5 +126,6 @@
   "editPlayer": "Edit Player",
   "delete": "Delete",
   "saveChanges": "Save",
-  "clubsList": "List of Provenance"
+  "clubsList": "List of Provenance",
+  "noClubsAvailable": "No Provenance Available"
 }

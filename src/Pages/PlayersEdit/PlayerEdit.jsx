@@ -50,7 +50,6 @@ const PlayersEdit = () => {
   };
 
   const onEditReferee = async (refereeId, updatedData) => {
-    console.log(refereeId, updatedData);
     try {
       const { error } = await supabase
         .from("referee")
@@ -98,7 +97,6 @@ const PlayersEdit = () => {
   };
 
   const onEditPlayer = async (playerId, updatedData) => {
-    console.log(playerId, updatedData);
     try {
       const { error } = await supabase
         .from("player")
@@ -138,7 +136,6 @@ const PlayersEdit = () => {
   };
 
   const onEditClub = async (clubId, updatedData) => {
-    console.log(clubId, updatedData);
     try {
       const { error } = await supabase
         .from("club")
