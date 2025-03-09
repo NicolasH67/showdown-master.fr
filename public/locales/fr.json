@@ -121,5 +121,9 @@
   "createNewGroup": "Créer un nouveau groupe pour le tournoi",
   "playerCount": "Nombre de joueurs",
   "action": "Action",
-  "from": "Provenance"
+  "from": "Provenance",
+  "edit": "Edit",
+  "editPlayer": "Modifier le joueur",
+  "delete": "Supprimer",
+  "saveChanges": "Enregistrer"
 }

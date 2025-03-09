@@ -4,6 +4,8 @@ import supabase from "../Helpers/supabaseClient";
 const useTournamentData = (tournamentId) => {
   const [groups, setGroups] = useState([]);
   const [clubs, setClubs] = useState([]);
+  const [players, setPlayers] = useState([]);
+  const [referees, setReferees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -14,15 +16,29 @@ const useTournamentData = (tournamentId) => {
         const [
           { data: groupData, error: groupError },
           { data: clubData, error: clubError },
+          { data: playerData, error: playerError },
+          { data: refereeData, error: refereeError },
         ] = await Promise.all([
           supabase
             .from("group")
             .select("id, name, tournament_id, round_type, group_type"),
-          supabase.from("club").select("id, name, tournament_id"),
+          supabase.from("club").select("id, name, tournament_id, abbreviation"),
+          supabase
+            .from("player")
+            .select(
+              "id, firstname, lastname, club:club_id (id, name, abbreviation), tournament_id, group:group_id (id, name, group_type)"
+            ),
+          supabase
+            .from("referee")
+            .select(
+              "id, firstname, lastname, club:club_id (id, name, abbreviation), tournament_id"
+            ),
         ]);
 
         if (groupError) throw groupError;
         if (clubError) throw clubError;
+        if (playerError) throw playerError;
+        if (refereeError) throw refereeError;
 
         setGroups(
           groupData.filter(
@@ -34,6 +50,16 @@ const useTournamentData = (tournamentId) => {
         setClubs(
           clubData.filter((club) => club.tournament_id === Number(tournamentId))
         );
+        setPlayers(
+          playerData.filter(
+            (player) => player.tournament_id === Number(tournamentId)
+          )
+        );
+        setReferees(
+          refereeData.filter(
+            (referee) => referee.tournament_id === Number(tournamentId)
+          )
+        );
       } catch (err) {
         setError(err.message);
       } finally {
@@ -44,7 +70,7 @@ const useTournamentData = (tournamentId) => {
     if (tournamentId) fetchData();
   }, [tournamentId]);
 
-  return { groups, clubs, loading, error };
+  return { groups, clubs, players, referees, loading, error };
 };
 
 export default useTournamentData;

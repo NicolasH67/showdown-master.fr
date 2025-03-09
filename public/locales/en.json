@@ -121,5 +121,9 @@
   "createNewGroup": "Create a New Group for the Tournament",
   "playerCount": "Number of Players",
   "action": "Action",
-  "from": "From"
+  "from": "From",
+  "edit": "Edit",
+  "editPlayer": "Edit Player",
+  "delete": "Delete",
+  "saveChanges": "Save"
 }
