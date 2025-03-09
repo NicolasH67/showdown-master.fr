@@ -4,8 +4,8 @@ import { useTranslation } from "react-i18next";
 
 const GroupTableEdit = ({ groups, players, onEdit, onDelete }) => {
   const { t } = useTranslation();
-  const [showModal, setShowModal] = useState(false); // Contrôle de la modal
-  const [currentGroup, setCurrentGroup] = useState(null); // Group actuel à modifier
+  const [showModal, setShowModal] = useState(false);
+  const [currentGroup, setCurrentGroup] = useState(null);
   const [groupName, setGroupName] = useState("");
   const [roundType, setRoundType] = useState("");
   const [groupType, setGroupType] = useState("");
@@ -67,9 +67,8 @@ const GroupTableEdit = ({ groups, players, onEdit, onDelete }) => {
       if (error) {
         console.error("Erreur lors de la suppression du groupe :", error);
       } else {
-        // Mise à jour de l'état dans le parent pour enlever le groupe supprimé
         onDelete(currentGroup.id);
-        setShowModal(false); // Ferme la modal après suppression
+        setShowModal(false);
       }
     } catch (error) {
       console.error("Erreur lors de la suppression du groupe :", error);

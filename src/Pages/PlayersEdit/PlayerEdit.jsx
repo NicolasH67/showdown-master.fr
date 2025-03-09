@@ -6,11 +6,10 @@ import RefereeForm from "../../Components/RefereeForm/RefereeForm";
 import ClubForm from "../../Components/ClubForm/ClubForm";
 import Button from "../../Components/Button/Button";
 import { useTranslation } from "react-i18next";
-import RefereeTable from "../../Components/RefereeTable/RefereeTable";
 import PlayerTableEdit from "../../Components/PlayerTableEdit/PlayerTableEdit";
-import supabase from "../../Helpers/supabaseClient";
 import ClubsTableEdit from "../../Components/ClubsTableEdit/ClubsTableEdit";
 import RefereeTableEdit from "../../Components/RefereeTableEdit/RefereeTableEdit";
+import useEntityActions from "../../Hooks/useEntityActions";
 
 const PlayersEdit = () => {
   const { id } = useParams();
@@ -20,143 +19,25 @@ const PlayersEdit = () => {
     players = [],
     referees = [],
     loading,
-    error,
+    error: tournamentError,
   } = useTournamentData(id);
 
   const [formType, setFormType] = useState("player");
-  const [playersList, setPlayersList] = useState(players); // Correct state usage
   const { t } = useTranslation();
+  const { onDelete, onEdit, error, successMessage } = useEntityActions();
 
   const groupType = "default";
 
-  const onDeleteReferee = async (refereeId) => {
-    try {
-      const { error } = await supabase
-        .from("referee")
-        .delete()
-        .eq("id", refereeId);
-
-      if (error) {
-        console.error(
-          "Erreur lors de la suppression de l'arbitre :",
-          error.message
-        );
-      } else {
-        console.log("Arbitre supprimé avec succès, ID :", refereeId);
-      }
-    } catch (err) {
-      console.error("Erreur inattendue :", err);
-    }
-  };
-
-  const onEditReferee = async (refereeId, updatedData) => {
-    try {
-      const { error } = await supabase
-        .from("referee")
-        .update(updatedData)
-        .eq("id", refereeId);
-
-      if (error) {
-        console.error(
-          "Erreur lors de la modification de l'arbitre :",
-          error.message
-        );
-      } else {
-        console.log(
-          "Arbitre modifié avec succès, ID :",
-          refereeId,
-          updatedData
-        );
-      }
-    } catch (err) {
-      console.error("Erreur inattendue :", err);
-    }
-  };
-
-  const onDeletePlayer = async (playerId) => {
-    try {
-      const { error } = await supabase
-        .from("player")
-        .delete()
-        .eq("id", playerId);
-
-      if (error) {
-        console.error(
-          "Erreur lors de la suppression du joueur :",
-          error.message
-        );
-      } else {
-        console.log("Joueur supprimé avec succès, ID :", playerId);
-        setPlayersList((prevPlayers) =>
-          prevPlayers.filter((player) => player.id !== playerId)
-        );
-      }
-    } catch (err) {
-      console.error("Erreur inattendue :", err);
-    }
-  };
-
-  const onEditPlayer = async (playerId, updatedData) => {
-    try {
-      const { error } = await supabase
-        .from("player")
-        .update(updatedData)
-        .eq("id", playerId);
-
-      if (error) {
-        console.error(
-          "Erreur lors de la modification du joueur :",
-          error.message
-        );
-      } else {
-        console.log("Joueur modifié avec succès, ID :", playerId, updatedData);
-        setPlayersList((prevPlayers) =>
-          prevPlayers.map((player) =>
-            player.id === playerId ? { ...player, ...updatedData } : player
-          )
-        );
-      }
-    } catch (err) {
-      console.error("Erreur inattendue :", err);
-    }
-  };
-
-  const onDeleteClub = async (clubId) => {
-    try {
-      const { error } = await supabase.from("club").delete().eq("id", clubId);
-
-      if (error) {
-        console.error("Erreur lors de la suppression du club :", error.message);
-      } else {
-        console.log("Club supprimé avec succès, ID :", clubId);
-      }
-    } catch (err) {
-      console.error("Erreur inattendue :", err);
-    }
-  };
-
-  const onEditClub = async (clubId, updatedData) => {
-    try {
-      const { error } = await supabase
-        .from("club")
-        .update(updatedData)
-        .eq("id", clubId);
-
-      if (error) {
-        console.error(
-          "Erreur lors de la modification du club :",
-          error.message
-        );
-      } else {
-        console.log("Club modifié avec succès, ID :", clubId, updatedData);
-      }
-    } catch (err) {
-      console.error("Erreur inattendue :", err);
-    }
-  };
-
   if (loading) return <p>{t("loading")}</p>;
-  if (error) return <p>{error}</p>;
+  if (tournamentError) return <p>{tournamentError}</p>; // Affiche l'erreur du tournoi
+
+  const handleDelete = (entity, entityId) => {
+    onDelete(entity, entityId);
+  };
+
+  const handleEdit = (entity, entityId, updatedData) => {
+    onEdit(entity, entityId, updatedData);
+  };
 
   return (
     <div className="container mt-5">
@@ -192,8 +73,10 @@ const PlayersEdit = () => {
             <h3>{t("clubsList")}</h3>
             <ClubsTableEdit
               clubs={clubs}
-              onDelete={onDeleteClub}
-              onEdit={onEditClub}
+              onDelete={(clubId) => handleDelete("club", clubId)} // Réutilisation de la fonction générique
+              onEdit={(clubId, updatedData) =>
+                handleEdit("club", clubId, updatedData)
+              } // Réutilisation de la fonction générique
             />
           </div>
         )}
@@ -206,8 +89,10 @@ const PlayersEdit = () => {
               players={players} // Corrected state usage here
               groupType={groupType}
               groups={groups}
-              onDelete={onDeletePlayer}
-              onEdit={onEditPlayer}
+              onDelete={(playerId) => handleDelete("player", playerId)} // Réutilisation de la fonction générique
+              onEdit={(playerId, updatedData) =>
+                handleEdit("player", playerId, updatedData)
+              } // Réutilisation de la fonction générique
             />
           </div>
         )}
@@ -216,13 +101,21 @@ const PlayersEdit = () => {
           <div>
             <RefereeTableEdit
               referees={referees}
-              onDelete={onDeleteReferee}
-              onEdit={onEditReferee}
+              onDelete={(refereeId) => handleDelete("referee", refereeId)} // Réutilisation de la fonction générique
+              onEdit={(refereeId, updatedData) =>
+                handleEdit("referee", refereeId, updatedData)
+              } // Réutilisation de la fonction générique
               clubs={clubs}
             />
           </div>
         )}
       </div>
+
+      {/* Affichage des messages de succès et d'erreur */}
+      {successMessage && (
+        <div className="alert alert-success">{successMessage}</div>
+      )}
+      {error && <div className="alert alert-danger">{error}</div>}
     </div>
   );
 };
