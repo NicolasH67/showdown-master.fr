@@ -22,9 +22,7 @@ const GroupForm = ({ tournamentId, setGroups }) => {
         {
           name: groupName,
           round_type: roundType,
-          highest_position: highestPosition
-            ? parseInt(highestPosition, 10)
-            : null,
+          highest_position: highestPosition,
           group_type: groupType,
           tournament_id: tournamentId,
         },
@@ -32,17 +30,17 @@ const GroupForm = ({ tournamentId, setGroups }) => {
 
       if (error) throw error;
 
-      // Récupérer les groupes après l'insertion
       const { data: newGroups, error: fetchError } = await supabase
         .from("group")
-        .select("id, name, round_type, tournament_id, group_type")
+        .select(
+          "id, name, round_type, tournament_id, group_type, group_former, highest_position"
+        )
         .eq("tournament_id", tournamentId);
 
       if (fetchError) throw fetchError;
 
-      setGroups(newGroups); // Mettre à jour l'état global des groupes
+      setGroups(newGroups);
 
-      // Réinitialiser le formulaire
       setGroupName("");
       setHighestPosition("");
       setRoundType(localStorage.getItem("lastRoundType") || "1st round");

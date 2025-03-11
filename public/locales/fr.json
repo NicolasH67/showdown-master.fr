@@ -127,5 +127,13 @@
   "delete": "Supprimer",
   "saveChanges": "Enregistrer",
   "clubsList": "Liste des Provenance",
-  "noClubsAvailable": "Pas de Provenance disponible"
+  "noClubsAvailable": "Pas de Provenance disponible",
+  "groupFormer": "Groupe formé à partir des positions",
+  "groupFormerError": "Erreur lors du parsing de group_former :",
+  "groupUpdateError": "Erreur lors de la mise à jour du groupe :",
+  "confireDeleteGroupe": "Voulez-vous vraiment supprimer le groupe",
+  "deleteGroupError": "Erreur lors de la suppression du groupe :",
+  "addPosition": "Ajouter une position",
+  "deleteGroup": "Supprimer le Groupe",
+  "noGroupsFound": "Aucun groupe trouvé pour ce tour."
 }

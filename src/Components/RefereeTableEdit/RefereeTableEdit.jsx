@@ -12,12 +12,6 @@ const RefereeTableEdit = ({ referees, onDelete, onEdit, clubs }) => {
   const [lastname, setLastname] = useState("");
   const [club, setClub] = useState("");
 
-  const sortReferees = (referees) => {
-    return referees.sort((a, b) =>
-      a.lastname.toLowerCase().localeCompare(b.lastname.toLowerCase())
-    );
-  };
-
   const handleShowModal = (referee) => {
     setSelectedReferee(referee);
     setFirstname(referee.firstname || "");
@@ -33,7 +27,6 @@ const RefereeTableEdit = ({ referees, onDelete, onEdit, clubs }) => {
 
   const handleEdit = () => {
     if (!selectedReferee || !selectedReferee.id) {
-      console.error("Aucun arbitre sélectionné ou ID invalide !");
       return;
     }
 

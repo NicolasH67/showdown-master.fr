@@ -14,10 +14,8 @@ import useEntityActions from "../../Hooks/useEntityActions";
 const PlayersEdit = () => {
   const { id } = useParams();
 
-  // ✅ Correction du refreshTrigger
   const [refreshTrigger, setRefreshTrigger] = useState(false);
 
-  // ✅ On passe bien refreshTrigger à useTournamentData
   const {
     groups,
     clubs,
@@ -36,7 +34,6 @@ const PlayersEdit = () => {
   if (loading) return <p>{t("loading")}</p>;
   if (tournamentError) return <p>{tournamentError}</p>; // Affiche l'erreur du tournoi
 
-  // ✅ Correction de setRefreshTrigger
   const handleDelete = async (entity, entityId) => {
     await onDelete(entity, entityId);
     setRefreshTrigger((prev) => !prev); // Force un re-render
@@ -78,14 +75,14 @@ const PlayersEdit = () => {
           tournamentId={id}
           clubs={clubs}
           groups={groups}
-          onAddSuccess={() => setRefreshTrigger((prev) => !prev)} // ✅ Rafraîchir après ajout
+          onAddSuccess={() => setRefreshTrigger((prev) => !prev)}
         />
       )}
       {formType === "referee" && (
         <RefereeForm
           tournamentId={id}
           clubs={clubs}
-          onAddSuccess={() => setRefreshTrigger((prev) => !prev)} // ✅ Rafraîchir après ajout
+          onAddSuccess={() => setRefreshTrigger((prev) => !prev)}
         />
       )}
 
@@ -133,7 +130,6 @@ const PlayersEdit = () => {
         )}
       </div>
 
-      {/* Affichage des messages de succès et d'erreur */}
       {successMessage && (
         <div className="alert alert-success">{successMessage}</div>
       )}

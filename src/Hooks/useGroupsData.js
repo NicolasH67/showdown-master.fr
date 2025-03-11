@@ -30,7 +30,9 @@ const useGroupsData = () => {
       try {
         let { data: groupsData, error: groupsError } = await supabase
           .from("group")
-          .select("id, name, round_type, group_type, tournament_id");
+          .select(
+            "id, name, round_type, group_type, tournament_id, group_former, highest_position"
+          );
 
         if (groupsError) {
           throw groupsError;

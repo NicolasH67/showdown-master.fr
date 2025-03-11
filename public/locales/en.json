@@ -117,6 +117,7 @@
   "roundType": "Round Type",
   "groupType": "Group Type",
   "highestPosition": "Highest Position (optional)",
+  "highestPositionNonOptional": "Highest Position (optional)",
   "createGroup": "Create Group",
   "createNewGroup": "Create a New Group for the Tournament",
   "playerCount": "Number of Players",
@@ -127,5 +128,13 @@
   "delete": "Delete",
   "saveChanges": "Save",
   "clubsList": "List of Provenance",
-  "noClubsAvailable": "No Provenance Available"
+  "noClubsAvailable": "No Provenance Available",
+  "groupFormer": "Group formed from positions",
+  "groupFormerError": "Error while parsing group_former:",
+  "groupUpdateError": "Error while updating the group:",
+  "confireDeleteGroupe": "Are you sure you want to delete the group?",
+  "deleteGroupError": "Error while deleting the group:",
+  "addPosition": "Add a position",
+  "deleteGroup": "Delete Group",
+  "noGroupsFound": "No groups found for this round."
 }

@@ -37,7 +37,6 @@ const PlayerTableEdit = ({
 
   const handleEdit = () => {
     if (!selectedPlayer || !selectedPlayer.id) {
-      console.error("Aucun joueur sélectionné ou ID invalide !");
       return;
     }
 
@@ -48,8 +47,6 @@ const PlayerTableEdit = ({
       group_id: group,
     };
 
-    console.log("Données envoyées :", selectedPlayer.id, updatedData);
-
     onEdit(selectedPlayer.id, updatedData);
     handleCloseModal();
   };
@@ -59,7 +56,7 @@ const PlayerTableEdit = ({
       onDelete(selectedPlayer.id);
       handleCloseModal();
     } else {
-      console.error("Aucun joueur sélectionné pour suppression !");
+      return;
     }
   };
 

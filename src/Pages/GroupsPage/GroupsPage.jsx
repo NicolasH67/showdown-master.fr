@@ -30,7 +30,7 @@ const GroupsPage = () => {
         <GroupsSection groups={filteredGroups} players={players} />
       ) : (
         <div className="alert alert-warning text-center">
-          Aucun groupe trouvé pour ce tour.
+          {t("noGroupsFound")}
         </div>
       )}
     </div>

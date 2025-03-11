@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import supabase from "../../Helpers/supabaseClient";
 import { useTranslation } from "react-i18next";
+import { X, Plus, Trash2 } from "lucide-react";
 
-const GroupTableEdit = ({ groups, players, onEdit, onDelete }) => {
+const GroupTableEdit = ({ groups, players, onEdit, onDelete, allGroups }) => {
   const { t } = useTranslation();
   const [showModal, setShowModal] = useState(false);
   const [currentGroup, setCurrentGroup] = useState(null);
@@ -10,18 +11,32 @@ const GroupTableEdit = ({ groups, players, onEdit, onDelete }) => {
   const [roundType, setRoundType] = useState("");
   const [groupType, setGroupType] = useState("");
   const [highestPosition, setHighestPosition] = useState("");
+  const [groupFormer, setGroupFormer] = useState([]);
 
-  // Fonction pour afficher la modal avec les valeurs du groupe à modifier
+  const sortedGroups = [...groups].sort((a, b) => a.id - b.id);
+
   const handleEditClick = (group) => {
     setCurrentGroup(group);
     setGroupName(group.name);
     setRoundType(group.round_type);
     setGroupType(group.group_type);
     setHighestPosition(group.highest_position || "");
+
+    let parsedGroupFormer = [];
+    if (group.group_former) {
+      try {
+        parsedGroupFormer = Array.isArray(group.group_former)
+          ? group.group_former
+          : JSON.parse(group.group_former);
+      } catch (error) {
+        console.error(t("groupFormerError"), error);
+        parsedGroupFormer = [];
+      }
+    }
+    setGroupFormer(parsedGroupFormer);
     setShowModal(true);
   };
 
-  // Fonction pour soumettre la modification
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -31,43 +46,53 @@ const GroupTableEdit = ({ groups, players, onEdit, onDelete }) => {
         round_type: roundType,
         group_type: groupType,
         highest_position:
-          highestPosition === "" || highestPosition === null
-            ? null
-            : Number(highestPosition),
+          highestPosition === "" ? null : Number(highestPosition),
+        group_former:
+          roundType === "2nd round" || roundType === "final round"
+            ? groupFormer.length > 0
+              ? JSON.stringify(groupFormer)
+              : null
+            : null,
       };
 
-      // Mise à jour du groupe dans la base de données
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from("group")
         .update(updatedGroup)
         .eq("id", currentGroup.id);
 
       if (error) {
-        console.error("Erreur lors de la mise à jour du groupe :", error);
+        console.error(t("groupUpdateError"), error);
       } else {
         onEdit({ ...currentGroup, ...updatedGroup });
         setShowModal(false);
       }
     } catch (error) {
-      console.error("Erreur lors de la mise à jour du groupe :", error);
+      console.error(t("groupUpdateError"), error);
     }
   };
 
-  // Fonction pour supprimer le groupe
   const handleDelete = async () => {
+    if (!currentGroup) return;
+
+    const confirmDelete = window.confirm(
+      `${t("confireDeleteGroupe")} ${currentGroup.name} ?`
+    );
+    if (!confirmDelete) return;
+
     try {
       const { error } = await supabase
         .from("group")
         .delete()
         .eq("id", currentGroup.id);
+
       if (error) {
-        console.error("Erreur lors de la suppression du groupe :", error);
+        console.error(t("deleteGroupError"), error);
       } else {
         onDelete(currentGroup.id);
         setShowModal(false);
       }
     } catch (error) {
-      console.error("Erreur lors de la suppression du groupe :", error);
+      console.error(t("deleteGroupError"), error);
     }
   };
 
@@ -82,11 +107,16 @@ const GroupTableEdit = ({ groups, players, onEdit, onDelete }) => {
               <th>{t("roundType")}</th>
               <th>{t("groupType")}</th>
               <th>{t("highestPosition")}</th>
+              {sortedGroups.some(
+                (group) =>
+                  group.round_type === "2nd round" ||
+                  group.round_type === "final round"
+              ) && <th>{t("groupFormer")}</th>}
               <th>{t("action")}</th>
             </tr>
           </thead>
           <tbody>
-            {groups.map((group) => {
+            {sortedGroups.map((group) => {
               const playerCount = players.filter(
                 (player) => player.group.id === group.id
               ).length;
@@ -98,12 +128,42 @@ const GroupTableEdit = ({ groups, players, onEdit, onDelete }) => {
                   <td>{group.round_type}</td>
                   <td>{group.group_type}</td>
                   <td>{group.highest_position || "N/A"}</td>
+                  {(group.round_type === "2nd round" ||
+                    group.round_type === "final round") && (
+                    <td>
+                      {groups.length > 0 && group.group_former
+                        ? (() => {
+                            try {
+                              const parsedGroupFormer = Array.isArray(
+                                group.group_former
+                              )
+                                ? group.group_former
+                                : JSON.parse(group.group_former);
+
+                              return parsedGroupFormer
+                                .map(([position, groupId]) => {
+                                  const foundGroup = allGroups.find(
+                                    (g) => g.id === Number(groupId)
+                                  );
+                                  return foundGroup
+                                    ? `${foundGroup.name}(${position})`
+                                    : `Groupe inconnu (${position})`;
+                                })
+                                .join(", ");
+                            } catch (error) {
+                              console.error(t("groupFormerError"), error);
+                              return t("groupFormerError");
+                            }
+                          })()
+                        : "N/A"}
+                    </td>
+                  )}
                   <td>
                     <button
                       className="btn btn-warning btn-sm"
                       onClick={() => handleEditClick(group)}
                     >
-                      Edit
+                      {t("edit")}
                     </button>
                   </td>
                 </tr>
@@ -130,7 +190,7 @@ const GroupTableEdit = ({ groups, players, onEdit, onDelete }) => {
                 <form onSubmit={handleSubmit}>
                   <div className="mb-3">
                     <label htmlFor="groupName" className="form-label">
-                      Nom du Groupe
+                      {t("nameGroup")}
                     </label>
                     <input
                       type="text"
@@ -143,7 +203,7 @@ const GroupTableEdit = ({ groups, players, onEdit, onDelete }) => {
                   </div>
                   <div className="mb-3">
                     <label htmlFor="roundType" className="form-label">
-                      Type de Round
+                      {t("roundType")}
                     </label>
                     <select
                       id="roundType"
@@ -159,7 +219,7 @@ const GroupTableEdit = ({ groups, players, onEdit, onDelete }) => {
                   </div>
                   <div className="mb-3">
                     <label htmlFor="groupType" className="form-label">
-                      Type de Groupe
+                      {t("roundType")}
                     </label>
                     <select
                       id="groupType"
@@ -176,32 +236,92 @@ const GroupTableEdit = ({ groups, players, onEdit, onDelete }) => {
                   </div>
                   <div className="mb-3">
                     <label htmlFor="highestPosition" className="form-label">
-                      Highest Position
+                      {t("highestPositionNonOptional")}
                     </label>
                     <input
                       type="number"
                       className="form-control"
                       id="highestPosition"
-                      value={highestPosition ?? ""}
-                      onChange={(e) =>
-                        setHighestPosition(
-                          e.target.value === "" ? null : Number(e.target.value)
-                        )
-                      }
+                      value={highestPosition}
+                      onChange={(e) => setHighestPosition(e.target.value)}
                     />
                   </div>
+
+                  {(roundType === "2nd round" ||
+                    roundType === "final round") && (
+                    <div className="mb-3">
+                      <label className="form-label">Ancien Groupe</label>
+                      {groupFormer.map((entry, index) => (
+                        <div
+                          key={index}
+                          className="d-flex align-items-center mb-2"
+                        >
+                          <input
+                            type="number"
+                            className="form-control me-2"
+                            placeholder="Position"
+                            value={entry[0]}
+                            onChange={(e) => {
+                              const newEntries = [...groupFormer];
+                              newEntries[index][0] = Number(e.target.value);
+                              setGroupFormer(newEntries);
+                            }}
+                          />
+                          <select
+                            className="form-select me-2"
+                            value={entry[1]}
+                            onChange={(e) => {
+                              const newEntries = [...groupFormer];
+                              newEntries[index][1] = Number(e.target.value);
+                              setGroupFormer(newEntries);
+                            }}
+                          >
+                            <option value="">Sélectionner un groupe</option>
+                            {allGroups.map((group) => (
+                              <option key={group.id} value={group.id}>
+                                {group.name}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            className="btn btn-danger"
+                            onClick={() => {
+                              setGroupFormer(
+                                groupFormer.filter((_, i) => i !== index)
+                              );
+                            }}
+                          >
+                            <X size={20} color="white" />
+                          </button>
+                          ;
+                        </div>
+                      ))}
+                      <br />
+                      <button
+                        type="button"
+                        className="btn btn-secondary mt-2 d-flex align-items-center"
+                        onClick={() =>
+                          setGroupFormer([...groupFormer, [1, ""]])
+                        }
+                      >
+                        <Plus size={20} className="me-2" /> {t("addPosition")}
+                      </button>
+                    </div>
+                  )}
+
                   <button type="submit" className="btn btn-primary">
-                    Sauvegarder
+                    {t("saveChanges")}
+                  </button>
+                  <br />
+                  <button
+                    type="button"
+                    className="btn btn-danger d-flex align-items-center"
+                    onClick={handleDelete}
+                  >
+                    <Trash2 size={20} className="me-2" /> {t("deleteGroup")}
                   </button>
                 </form>
-
-                {/* Bouton Supprimer dans la modal */}
-                <button
-                  className="btn btn-danger mt-3"
-                  onClick={handleDelete} // Supprime le groupe
-                >
-                  Supprimer le groupe
-                </button>
               </div>
             </div>
           </div>

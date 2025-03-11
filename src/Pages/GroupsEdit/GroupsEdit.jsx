@@ -19,9 +19,7 @@ const GroupsEdit = () => {
     (group) => group.round_type === selectedRound
   );
 
-  // Fonction pour supprimer un groupe
   const handleDeleteGroup = (groupId) => {
-    // Filtrer les groupes pour retirer celui qui est supprimé
     setGroups((prevGroups) =>
       prevGroups.filter((group) => group.id !== groupId)
     );
@@ -46,11 +44,12 @@ const GroupsEdit = () => {
               )
             );
           }}
-          onDelete={handleDeleteGroup} // Passez la fonction de suppression ici
+          onDelete={handleDeleteGroup}
+          allGroups={groups}
         />
       ) : (
         <div className="alert alert-warning text-center">
-          Aucun groupe trouvé pour ce tour.
+          {t("noGroupsFound")}
         </div>
       )}
     </div>
