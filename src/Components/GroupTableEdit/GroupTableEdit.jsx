@@ -27,29 +27,25 @@ const GroupTableEdit = ({ groups, players, onEdit, onDelete }) => {
 
     try {
       const updatedGroup = {
-        ...currentGroup,
         name: groupName,
         round_type: roundType,
         group_type: groupType,
-        highest_position: highestPosition,
+        highest_position:
+          highestPosition === "" || highestPosition === null
+            ? null
+            : Number(highestPosition),
       };
 
       // Mise à jour du groupe dans la base de données
       const { data, error } = await supabase
         .from("group")
-        .update({
-          name: updatedGroup.name,
-          round_type: updatedGroup.round_type,
-          group_type: updatedGroup.group_type,
-          highest_position: updatedGroup.highest_position,
-        })
-        .eq("id", updatedGroup.id);
+        .update(updatedGroup)
+        .eq("id", currentGroup.id);
 
       if (error) {
         console.error("Erreur lors de la mise à jour du groupe :", error);
       } else {
-        // Mise à jour de l'état dans le parent
-        onEdit(updatedGroup);
+        onEdit({ ...currentGroup, ...updatedGroup });
         setShowModal(false);
       }
     } catch (error) {
@@ -186,8 +182,12 @@ const GroupTableEdit = ({ groups, players, onEdit, onDelete }) => {
                       type="number"
                       className="form-control"
                       id="highestPosition"
-                      value={highestPosition}
-                      onChange={(e) => setHighestPosition(e.target.value)}
+                      value={highestPosition ?? ""}
+                      onChange={(e) =>
+                        setHighestPosition(
+                          e.target.value === "" ? null : Number(e.target.value)
+                        )
+                      }
                     />
                   </div>
                   <button type="submit" className="btn btn-primary">
