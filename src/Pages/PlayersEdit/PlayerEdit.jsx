@@ -13,14 +13,19 @@ import useEntityActions from "../../Hooks/useEntityActions";
 
 const PlayersEdit = () => {
   const { id } = useParams();
+
+  // ✅ Correction du refreshTrigger
+  const [refreshTrigger, setRefreshTrigger] = useState(false);
+
+  // ✅ On passe bien refreshTrigger à useTournamentData
   const {
-    groups = [],
-    clubs = [],
-    players = [],
-    referees = [],
+    groups,
+    clubs,
+    players,
+    referees,
     loading,
     error: tournamentError,
-  } = useTournamentData(id);
+  } = useTournamentData(id, refreshTrigger);
 
   const [formType, setFormType] = useState("player");
   const { t } = useTranslation();
@@ -31,12 +36,15 @@ const PlayersEdit = () => {
   if (loading) return <p>{t("loading")}</p>;
   if (tournamentError) return <p>{tournamentError}</p>; // Affiche l'erreur du tournoi
 
-  const handleDelete = (entity, entityId) => {
-    onDelete(entity, entityId);
+  // ✅ Correction de setRefreshTrigger
+  const handleDelete = async (entity, entityId) => {
+    await onDelete(entity, entityId);
+    setRefreshTrigger((prev) => !prev); // Force un re-render
   };
 
-  const handleEdit = (entity, entityId, updatedData) => {
-    onEdit(entity, entityId, updatedData);
+  const handleEdit = async (entity, entityId, updatedData) => {
+    await onEdit(entity, entityId, updatedData);
+    setRefreshTrigger((prev) => !prev); // Force un re-render
   };
 
   return (
@@ -59,12 +67,26 @@ const PlayersEdit = () => {
         />
       </div>
 
-      {formType === "club" && <ClubForm tournamentId={id} />}
+      {formType === "club" && (
+        <ClubForm
+          tournamentId={id}
+          onAddSuccess={() => setRefreshTrigger((prev) => !prev)}
+        />
+      )}
       {formType === "player" && (
-        <PlayerForm tournamentId={id} clubs={clubs} groups={groups} />
+        <PlayerForm
+          tournamentId={id}
+          clubs={clubs}
+          groups={groups}
+          onAddSuccess={() => setRefreshTrigger((prev) => !prev)} // ✅ Rafraîchir après ajout
+        />
       )}
       {formType === "referee" && (
-        <RefereeForm tournamentId={id} clubs={clubs} />
+        <RefereeForm
+          tournamentId={id}
+          clubs={clubs}
+          onAddSuccess={() => setRefreshTrigger((prev) => !prev)} // ✅ Rafraîchir après ajout
+        />
       )}
 
       <div className="mt-4">
@@ -73,10 +95,10 @@ const PlayersEdit = () => {
             <h3>{t("clubsList")}</h3>
             <ClubsTableEdit
               clubs={clubs}
-              onDelete={(clubId) => handleDelete("club", clubId)} // Réutilisation de la fonction générique
+              onDelete={(clubId) => handleDelete("club", clubId)}
               onEdit={(clubId, updatedData) =>
                 handleEdit("club", clubId, updatedData)
-              } // Réutilisation de la fonction générique
+              }
             />
           </div>
         )}
@@ -86,13 +108,13 @@ const PlayersEdit = () => {
             <h3>{t("titlePlayersList")}</h3>
             <PlayerTableEdit
               clubs={clubs}
-              players={players} // Corrected state usage here
+              players={players}
               groupType={groupType}
               groups={groups}
-              onDelete={(playerId) => handleDelete("player", playerId)} // Réutilisation de la fonction générique
+              onDelete={(playerId) => handleDelete("player", playerId)}
               onEdit={(playerId, updatedData) =>
                 handleEdit("player", playerId, updatedData)
-              } // Réutilisation de la fonction générique
+              }
             />
           </div>
         )}
@@ -101,10 +123,10 @@ const PlayersEdit = () => {
           <div>
             <RefereeTableEdit
               referees={referees}
-              onDelete={(refereeId) => handleDelete("referee", refereeId)} // Réutilisation de la fonction générique
+              onDelete={(refereeId) => handleDelete("referee", refereeId)}
               onEdit={(refereeId, updatedData) =>
                 handleEdit("referee", refereeId, updatedData)
-              } // Réutilisation de la fonction générique
+              }
               clubs={clubs}
             />
           </div>

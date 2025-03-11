@@ -2,7 +2,7 @@ import { useState } from "react";
 import supabase from "../../Helpers/supabaseClient";
 import { useTranslation } from "react-i18next";
 
-const ClubForm = ({ tournamentId }) => {
+const ClubForm = ({ tournamentId, onAddSuccess }) => {
   const [name, setName] = useState("");
   const [abbreviation, setAbbreviation] = useState("");
   const [message, setMessage] = useState(null);
@@ -15,9 +15,14 @@ const ClubForm = ({ tournamentId }) => {
         .from("club")
         .insert([{ name, abbreviation, tournament_id: tournamentId }]);
       if (error) throw error;
+
       setMessage(t("clubAdded"));
       setName("");
       setAbbreviation("");
+
+      if (onAddSuccess) {
+        onAddSuccess(); // ✅ Rafraîchir après un ajout réussi
+      }
     } catch (error) {
       setMessage(error.message);
     }

@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
 import supabase from "../Helpers/supabaseClient";
+import { useState, useEffect } from "react";
 
-const useTournamentData = (tournamentId) => {
+const useTournamentData = (tournamentId, refreshTrigger) => {
   const [groups, setGroups] = useState([]);
   const [clubs, setClubs] = useState([]);
   const [players, setPlayers] = useState([]);
@@ -68,7 +68,7 @@ const useTournamentData = (tournamentId) => {
     };
 
     if (tournamentId) fetchData();
-  }, [tournamentId]);
+  }, [tournamentId, refreshTrigger]); // Ajout de refreshTrigger comme dépendance
 
   return { groups, clubs, players, referees, loading, error };
 };

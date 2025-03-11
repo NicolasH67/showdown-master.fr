@@ -2,7 +2,7 @@ import { useState } from "react";
 import supabase from "../../Helpers/supabaseClient";
 import { useTranslation } from "react-i18next";
 
-const RefereeForm = ({ tournamentId, clubs }) => {
+const RefereeForm = ({ tournamentId, clubs, onAddSuccess }) => {
   const [firstname, setFirstname] = useState("");
   const [lastname, setLastname] = useState("");
   const [clubId, setClubId] = useState("");
@@ -18,10 +18,15 @@ const RefereeForm = ({ tournamentId, clubs }) => {
           { firstname, lastname, club_id: clubId, tournament_id: tournamentId },
         ]);
       if (error) throw error;
+
       setMessage(t("refereeAdded"));
       setFirstname("");
       setLastname("");
       setClubId("");
+
+      if (onAddSuccess) {
+        onAddSuccess(); // ✅ Rafraîchir après un ajout réussi
+      }
     } catch (error) {
       setMessage(error.message);
     }
