@@ -45,8 +45,6 @@ const PlayerForm = ({ tournamentId, clubs, groups, onAddSuccess }) => {
     );
   };
 
-  console.log(sortClubs);
-
   return (
     <form onSubmit={handleSubmit} className="card p-4 shadow-sm">
       <h2 className="mb-3">{t("addPlayer")}</h2>

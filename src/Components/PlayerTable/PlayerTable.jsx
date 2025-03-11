@@ -46,7 +46,9 @@ const PlayerTable = ({ players, groupType }) => {
                         {player.firstname} {player.lastname}
                       </Link>
                     </td>
-                    <td>{player.club.name}</td>
+                    <td>
+                      {player.club.name} - {player.club.abbreviation}
+                    </td>
                   </tr>
                 ))}
               </tbody>

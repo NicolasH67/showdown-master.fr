@@ -69,7 +69,7 @@ const RefereeTableEdit = ({ referees, onDelete, onEdit, clubs }) => {
               </tr>
             </thead>
             <tbody>
-              {sortReferees(referees).map((referee) => (
+              {referees.map((referee) => (
                 <tr key={referee.id}>
                   <td>
                     <Link

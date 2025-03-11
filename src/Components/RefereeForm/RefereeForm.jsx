@@ -32,6 +32,12 @@ const RefereeForm = ({ tournamentId, clubs, onAddSuccess }) => {
     }
   };
 
+  const sortClubs = (clubs) => {
+    return [...clubs].sort((a, b) =>
+      a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+    );
+  };
+
   return (
     <form onSubmit={handleSubmit} className="card p-4 shadow-sm">
       <h2 className="mb-3">{t("addReferee")}</h2>
@@ -59,13 +65,13 @@ const RefereeForm = ({ tournamentId, clubs, onAddSuccess }) => {
       <div className="mb-3">
         <label className="form-label">{t("from")}:</label>
         <select
-          className="form-select"
+          className="form-select w-100"
           value={clubId}
           onChange={(e) => setClubId(e.target.value)}
           required
         >
           <option value="">{t("from")}</option>
-          {clubs.map((club) => (
+          {sortClubs(clubs).map((club) => (
             <option key={club.id} value={club.id}>
               {club.name}
             </option>
