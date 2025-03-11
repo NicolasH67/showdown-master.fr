@@ -32,14 +32,20 @@ const PlayerForm = ({ tournamentId, clubs, groups, onAddSuccess }) => {
       setClubId("");
 
       if (onAddSuccess) {
-        onAddSuccess(); // ✅ Rafraîchir après un ajout réussi
+        onAddSuccess();
       }
     } catch (error) {
       setMessage(error.message);
     }
   };
 
-  console.log(clubs[0].name);
+  const sortClubs = (clubs) => {
+    return [...clubs].sort((a, b) =>
+      a.name.toLowerCase().localeCompare(b.name.toLowerCase())
+    );
+  };
+
+  console.log(sortClubs);
 
   return (
     <form onSubmit={handleSubmit} className="card p-4 shadow-sm">
@@ -74,7 +80,7 @@ const PlayerForm = ({ tournamentId, clubs, groups, onAddSuccess }) => {
           required
         >
           <option value="">{t("from")}</option>
-          {clubs.map((club) => (
+          {sortClubs(clubs).map((club) => (
             <option key={club.id} value={club.id}>
               {club.name}
             </option>
