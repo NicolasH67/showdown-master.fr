@@ -1,0 +1,11 @@
+.form-select {
+    display: block;
+    width: auto;
+    /* Ajuste automatiquement la taille */
+    min-width: 200px;
+    /* Ajuste selon tes besoins */
+    max-width: 100%;
+    /* Pour éviter de dépasser */
+    white-space: nowrap;
+    overflow: visible;
+}

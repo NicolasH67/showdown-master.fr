@@ -1,6 +1,7 @@
 import { useState } from "react";
 import supabase from "../../Helpers/supabaseClient";
 import { useTranslation } from "react-i18next";
+import "./PlayerForm.css";
 
 const PlayerForm = ({ tournamentId, clubs, groups, onAddSuccess }) => {
   const [firstname, setFirstname] = useState("");
@@ -38,6 +39,8 @@ const PlayerForm = ({ tournamentId, clubs, groups, onAddSuccess }) => {
     }
   };
 
+  console.log(clubs[0].name);
+
   return (
     <form onSubmit={handleSubmit} className="card p-4 shadow-sm">
       <h2 className="mb-3">{t("addPlayer")}</h2>
@@ -65,7 +68,7 @@ const PlayerForm = ({ tournamentId, clubs, groups, onAddSuccess }) => {
       <div className="mb-3">
         <label className="form-label">{t("from")}:</label>
         <select
-          className="form-select"
+          className="form-select w-100"
           value={clubId}
           onChange={(e) => setClubId(e.target.value)}
           required
