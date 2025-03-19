@@ -14,6 +14,7 @@ import PlayerDetails from "./Pages/PlayerDetails/PlayerDetails";
 import RefereeDetails from "./Pages/RefereeDetails/RefereeDetails";
 import PlayersEdit from "./Pages/PlayersEdit/PlayerEdit";
 import GroupsEdit from "./Pages/GroupsEdit/GroupsEdit";
+import ScheduleEdit from "./Pages/ScheduleEdit/ScheduleEdit";
 
 /**
  * Main App component that contains routing logic using react-router-dom.
@@ -48,11 +49,7 @@ function App() {
         <Route path="/tournament/:id/admin/groups" element={<GroupsEdit />} />
         <Route
           path="/tournament/:id/admin/schedule"
-          element={
-            <div>
-              <h1>schedule admin</h1>
-            </div>
-          }
+          element={<ScheduleEdit />}
         />
         <Route
           path="/tournament/:id/admin/result"

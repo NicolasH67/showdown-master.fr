@@ -135,5 +135,11 @@
   "deleteGroupError": "Erreur lors de la suppression du groupe :",
   "addPosition": "Ajouter une position",
   "deleteGroup": "Supprimer le Groupe",
-  "noGroupsFound": "Aucun groupe trouvé pour ce tour."
+  "noGroupsFound": "Aucun groupe trouvé pour ce tour.",
+  "matchesSavedSuccess": "Les matchs ont été enregistrés avec succès !",
+  "matchesIncompleteData": "Un match contient des données incomplètes.",
+  "tournamentNotFound": "Le tournoi n'existe pas.",
+  "matchesNoValidToSave": "Aucun match valide à enregistrer.",
+  "matchesGenerate": "Générer des matchs",
+  "matchesGenerated": "Matchs générés :"
 }
