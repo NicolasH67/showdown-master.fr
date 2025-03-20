@@ -149,6 +149,7 @@ const ScheduleEdit = () => {
         generatedMatches={generatedMatches}
         updateGeneratedMatch={updateGeneratedMatch}
         saveMatches={saveMatches}
+        allGroups={groups}
       />
     </div>
   );

@@ -6,10 +6,12 @@ const GroupList = ({
   groups,
   players,
   clubs,
+  group_former,
   generateMatches,
   generatedMatches,
   updateGeneratedMatch,
   saveMatches,
+  allGroups,
 }) => {
   const { t } = useTranslation();
   return (
@@ -41,6 +43,42 @@ const GroupList = ({
                           </td>
                         </tr>
                       ))
+                    ) : group.group_former ? (
+                      (() => {
+                        try {
+                          const parsedGroupFormer = Array.isArray(
+                            group.group_former
+                          )
+                            ? group.group_former
+                            : JSON.parse(group.group_former);
+                          return parsedGroupFormer.map(
+                            ([position, groupId], index) => {
+                              const foundGroup = allGroups?.find(
+                                (g) => g.id === Number(groupId)
+                              );
+                              return (
+                                <tr key={`former-${index}`}>
+                                  <td>{index + 1}</td>
+                                  <td>
+                                    {foundGroup
+                                      ? `${foundGroup.name}(${position})`
+                                      : `Groupe inconnu (${position})`}
+                                  </td>
+                                </tr>
+                              );
+                            }
+                          );
+                        } catch (error) {
+                          console.error(t("groupFormerError"), error);
+                          return (
+                            <tr>
+                              <td colSpan="2" className="text-center">
+                                {t("groupFormerError")}
+                              </td>
+                            </tr>
+                          );
+                        }
+                      })()
                     ) : (
                       <tr>
                         <td colSpan="2" className="text-center text-muted">
