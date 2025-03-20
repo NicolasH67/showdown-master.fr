@@ -22,7 +22,8 @@ const GroupForm = ({ tournamentId, setGroups }) => {
         {
           name: groupName,
           round_type: roundType,
-          highest_position: highestPosition,
+          highest_position:
+            highestPosition === "" ? null : parseInt(highestPosition, 10),
           group_type: groupType,
           tournament_id: tournamentId,
         },

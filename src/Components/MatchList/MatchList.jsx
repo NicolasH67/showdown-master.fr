@@ -8,7 +8,7 @@ const MatchList = ({
   updateGeneratedMatch,
   saveMatches,
 }) => {
-  const { t } = useTranslation;
+  const { t } = useTranslation();
   return (
     <div className="mt-3">
       <h4 className="text-primary">{t("matchesGenerated")}</h4>

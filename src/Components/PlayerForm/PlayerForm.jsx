@@ -56,6 +56,7 @@ const PlayerForm = ({ tournamentId, clubs, groups, onAddSuccess }) => {
           className="form-control"
           value={firstname}
           onChange={(e) => setFirstname(e.target.value)}
+          autoFocus
           required
         />
       </div>
