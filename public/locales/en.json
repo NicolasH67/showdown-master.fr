@@ -142,5 +142,11 @@
   "tournamentNotFound": "The tournament does not exist.",
   "matchesNoValidToSave": "No valid matches to save.",
   "matchesGenerate": "Generate matches",
-  "matchesGenerated": "Matches generated:"
+  "matchesGenerated": "Matches generated:",
+  "passwordAdmin": "Admin password",
+  "passwordUser": "User password",
+  "passwordReferee": "Electronic referee password",
+  "numberOfTable": "Number of tables",
+  "matchDuration": "Match duration (minutes)",
+  "location": "Location"
 }

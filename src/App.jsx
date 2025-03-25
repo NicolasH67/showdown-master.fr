@@ -15,6 +15,7 @@ import RefereeDetails from "./Pages/RefereeDetails/RefereeDetails";
 import PlayersEdit from "./Pages/PlayersEdit/PlayerEdit";
 import GroupsEdit from "./Pages/GroupsEdit/GroupsEdit";
 import ScheduleEdit from "./Pages/ScheduleEdit/ScheduleEdit";
+import AdminEditPage from "./Pages/AdminEditPage/AdminEditPage";
 
 /**
  * Main App component that contains routing logic using react-router-dom.
@@ -61,11 +62,7 @@ function App() {
         />
         <Route
           path="/tournament/:id/admin/tournamentEdit"
-          element={
-            <div>
-              <h1>tournament edit admin</h1>
-            </div>
-          }
+          element={<AdminEditPage />}
         />
       </Routes>
     </BrowserRouter>

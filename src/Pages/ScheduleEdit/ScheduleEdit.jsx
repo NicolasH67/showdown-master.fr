@@ -20,21 +20,52 @@ const ScheduleEdit = () => {
    */
   const generateMatches = (groupId) => {
     const groupPlayers = players[groupId] || [];
-    if (groupPlayers.length < 2) return alert("Il faut au moins 2 joueurs.");
+    const group = groups.find((g) => g.id === groupId);
+    const fakeGroupPlayer = group.group_former;
 
-    const matchOrderForGroup = matchOrder["Match Order"][groupPlayers.length];
-    if (!matchOrderForGroup) return alert("Aucun ordre de match défini.");
+    if (groupPlayers.length < 2 && (fakeGroupPlayer == [] || null)) {
+      console.log(groupPlayers);
+      console.log(fakeGroupPlayer);
+      alert("Il faut au moins 2 joueurs.");
+    }
 
-    setGeneratedMatches((prev) => ({
-      ...prev,
-      [groupId]: matchOrderForGroup.map((matchStr) => {
-        const [p1, p2] = matchStr.split("-").map(Number);
-        return {
-          player1_id: groupPlayers[p1 - 1]?.id,
-          player2_id: groupPlayers[p2 - 1]?.id,
-        };
-      }),
-    }));
+    if (groupPlayers.length > 2) {
+      const matchOrderForGroup = matchOrder["Match Order"][groupPlayers.length];
+      if (!matchOrderForGroup) return alert("Aucun ordre de match défini.");
+
+      setGeneratedMatches((prev) => ({
+        ...prev,
+        [groupId]: matchOrderForGroup.map((matchStr) => {
+          const [p1, p2] = matchStr.split("-").map(Number);
+          return {
+            player1_id: groupPlayers[p1 - 1]?.id,
+            player2_id: groupPlayers[p2 - 1]?.id,
+          };
+        }),
+      }));
+    } else {
+      try {
+        const parsedGroupFormer = Array.isArray(group.group_former)
+          ? group.group_former
+          : JSON.parse(group.group_former);
+        const matchOrderForGroup =
+          matchOrder["Match Order"][parsedGroupFormer.length];
+        if (!matchOrderForGroup) return alert("Aucun ordre de match défini.");
+
+        setGeneratedMatches((prev) => ({
+          ...prev,
+          [groupId]: matchOrderForGroup.map((matchStr) => {
+            const [p1, p2] = matchStr.split("-").map(Number);
+            return {
+              player1_id: groupPlayers[p1 - 1]?.id,
+              player2_id: groupPlayers[p2 - 1]?.id,
+            };
+          }),
+        }));
+      } catch (error) {
+        console.log(error);
+      }
+    }
   };
 
   /**

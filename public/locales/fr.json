@@ -141,5 +141,11 @@
   "tournamentNotFound": "Le tournoi n'existe pas.",
   "matchesNoValidToSave": "Aucun match valide à enregistrer.",
   "matchesGenerate": "Générer des matchs",
-  "matchesGenerated": "Matchs générés :"
+  "matchesGenerated": "Matchs générés :",
+  "passwordAdmin": "Mot de passe admin",
+  "passwordUser": "Mot de passe utilisateur",
+  "passwordReferee": "Mot de passe arbitre électronique",
+  "numberOfTable": "Numbre de table",
+  "matchDuration": "Durée des matchs (minutes)",
+  "location": "Lieu"
 }
