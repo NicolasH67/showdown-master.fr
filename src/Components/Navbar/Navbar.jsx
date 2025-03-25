@@ -101,6 +101,16 @@ const Navbar = () => {
             </li>
             <li className="nav-item">
               <NavLink
+                to={`/tournament/${id}/admin/result`}
+                className={({ isActive }) =>
+                  isActive ? "nav-link active" : "nav-link"
+                }
+              >
+                {t("adminResult")}
+              </NavLink>
+            </li>
+            <li className="nav-item">
+              <NavLink
                 to={`/tournament/${id}/admin/tournamentEdit`}
                 className={({ isActive }) =>
                   isActive ? "nav-link active" : "nav-link"
