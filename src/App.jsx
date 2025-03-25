@@ -16,6 +16,7 @@ import PlayersEdit from "./Pages/PlayersEdit/PlayerEdit";
 import GroupsEdit from "./Pages/GroupsEdit/GroupsEdit";
 import ScheduleEdit from "./Pages/ScheduleEdit/ScheduleEdit";
 import AdminEditPage from "./Pages/AdminEditPage/AdminEditPage";
+import ResultEdit from "./Pages/ResultEdit/ResultEdit";
 
 /**
  * Main App component that contains routing logic using react-router-dom.
@@ -52,14 +53,7 @@ function App() {
           path="/tournament/:id/admin/schedule"
           element={<ScheduleEdit />}
         />
-        <Route
-          path="/tournament/:id/admin/result"
-          element={
-            <div>
-              <h1>result admin</h1>
-            </div>
-          }
-        />
+        <Route path="/tournament/:id/admin/result" element={<ResultEdit />} />
         <Route
           path="/tournament/:id/admin/tournamentEdit"
           element={<AdminEditPage />}
