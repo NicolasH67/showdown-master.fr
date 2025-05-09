@@ -10,6 +10,9 @@ const MatchRowResult = ({ match, index, referees, onMatchChange, onSave }) => {
     player2: Array(5).fill(""),
   });
   const [loading, setLoading] = useState(false);
+  const hasResults =
+    localResults.player1.some((val) => val.trim() !== "") ||
+    localResults.player2.some((val) => val.trim() !== "");
 
   useEffect(() => {
     const p1 = [],
@@ -44,7 +47,11 @@ const MatchRowResult = ({ match, index, referees, onMatchChange, onSave }) => {
     try {
       const { data, error, status } = await supabase
         .from("match")
-        .update({ result: cleanedResults })
+        .update({
+          result: cleanedResults,
+          referee1_id: match.referee1_id,
+          referee2_id: match.referee2_id,
+        })
         .eq("id", match.id)
         .select("*") // <— ajoutez select pour récupérer la ligne
         .maybeSingle(); // <— optionnel, pour obtenir directement un objet
@@ -59,7 +66,9 @@ const MatchRowResult = ({ match, index, referees, onMatchChange, onSave }) => {
       }
 
       onSave(data);
-      setIsEditing(false);
+      if (hasResults) {
+        setIsEditing(false);
+      }
     } catch (err) {
       console.error("Saving error:", err);
       alert("Erreur lors de l'enregistrement : " + (err.message || err));
@@ -173,6 +182,7 @@ const MatchRowResult = ({ match, index, referees, onMatchChange, onSave }) => {
           <div className="col-md-4">
             <label className="form-label">Arbitres</label>
             <select
+              disabled={!isEditing}
               className="form-select form-select-sm mb-2"
               value={match.referee1_id || ""}
               onChange={(e) =>
@@ -191,6 +201,7 @@ const MatchRowResult = ({ match, index, referees, onMatchChange, onSave }) => {
               ))}
             </select>
             <select
+              disabled={!isEditing}
               className="form-select form-select-sm"
               value={match.referee2_id || ""}
               onChange={(e) =>
@@ -214,7 +225,7 @@ const MatchRowResult = ({ match, index, referees, onMatchChange, onSave }) => {
               <button
                 onClick={handleSave}
                 disabled={loading}
-                className="btn btn-primary"
+                className={`btn ${hasResults ? "btn-success" : "btn-primary"}`}
               >
                 {loading ? "Enregistrement..." : "Enregistrer"}
               </button>

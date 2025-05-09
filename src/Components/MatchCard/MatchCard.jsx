@@ -30,8 +30,11 @@ const MatchCard = ({ match }) => {
     fontSize: isLargeScreen ? "20px" : "12px",
   };
 
-  const namePlayerStyle = {
+  const namePlayerStyleTop = {
     marginBottom: isLargeScreen ? "50px" : "30px",
+    fontSize: isLargeScreen ? "20px" : "12px",
+  };
+  const namePlayerStyleButtom = {
     fontSize: isLargeScreen ? "20px" : "12px",
   };
 
@@ -96,10 +99,10 @@ const MatchCard = ({ match }) => {
       </div>
       <div className="card-body d-flex justify-content-between">
         <div>
-          <div style={namePlayerStyle}>
+          <div style={namePlayerStyleTop}>
             {match.player1.firstname} {match.player1.lastname}
           </div>
-          <div>
+          <div style={namePlayerStyleButtom}>
             {match.player2.firstname} {match.player2.lastname}
           </div>
         </div>
