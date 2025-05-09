@@ -11,21 +11,20 @@ const PlayerTableEdit = ({
   groups,
   clubs,
 }) => {
-  // Ajout de clubs dans les props
   const { id } = useParams();
   const { t } = useTranslation();
   const [showModal, setShowModal] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [firstname, setFirstname] = useState("");
   const [lastname, setLastname] = useState("");
-  const [club, setClub] = useState(""); // Etat pour le club
+  const [club, setClub] = useState("");
   const [group, setGroup] = useState("");
 
   const handleShowModal = (player) => {
     setSelectedPlayer(player);
     setFirstname(player.firstname || "");
     setLastname(player.lastname || "");
-    setClub(player.club?.id || ""); // Initialisation du club avec son ID
+    setClub(player.club?.id || "");
     setGroup(player.group?.id || "");
     setShowModal(true);
   };
@@ -60,9 +59,13 @@ const PlayerTableEdit = ({
     }
   };
 
+  const sortedPlayers = [...players].sort((a, b) => a.id - b.id);
+
+  console.log(sortedPlayers);
+
   return (
     <>
-      {players.length > 0 && (
+      {sortedPlayers.length > 0 && (
         <div className="container mt-4">
           <table className="table table-bordered table-hover">
             <thead>
@@ -74,7 +77,7 @@ const PlayerTableEdit = ({
               </tr>
             </thead>
             <tbody>
-              {players.map((player) => (
+              {sortedPlayers.map((player) => (
                 <tr key={player.id}>
                   <td>
                     <Link

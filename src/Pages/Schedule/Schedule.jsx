@@ -1,15 +1,9 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import useMatches from "../../Hooks/useMatchs";
-import MatchTable from "../../Components/MatchTable/MatchTable";
+import MatchCard from "../../Components/MatchCard/MatchCard";
 import { useTranslation } from "react-i18next";
 import DateSelector from "../../Components/DateSelector/DateSelector";
-import { useState, useEffect } from "react";
 
-/**
- * `Schedule` Component
- * @component
- * @returns {JSX.Element} A page displaying the match schedule.
- */
 const Schedule = () => {
   const { matches, loading, error } = useMatches();
   const { t } = useTranslation();
@@ -32,6 +26,12 @@ const Schedule = () => {
     }
   }, [isFirstLoad, uniqueDates, today]);
 
+  useEffect(() => {
+    console.log("Matches:", matches);
+    console.log("Unique Dates:", uniqueDates);
+    console.log("Selected Date:", selectedDate);
+  }, [matches, uniqueDates, selectedDate]);
+
   if (loading) {
     return <div>{t("loadingMatchs")}</div>;
   }
@@ -44,6 +44,8 @@ const Schedule = () => {
     ? matches.filter((match) => match.match_day === selectedDate)
     : matches;
 
+  console.log("Filtered Matches:", filteredMatches);
+
   return (
     <div className="container mt-4">
       <h1 className="text-center mb-4">{t("schedule")}</h1>
@@ -52,7 +54,13 @@ const Schedule = () => {
         selectedDate={selectedDate}
         onSelectDate={setSelectedDate}
       />
-      <MatchTable matches={filteredMatches} />
+      {filteredMatches.length > 0 ? (
+        filteredMatches.map((match) => (
+          <MatchCard key={match.id} match={match} />
+        ))
+      ) : (
+        <div>{t("noMatchesAvailable")}</div>
+      )}
     </div>
   );
 };

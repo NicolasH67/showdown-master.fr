@@ -14,18 +14,20 @@ const ScheduleEdit = () => {
   const [generatedMatches, setGeneratedMatches] = useState({});
   const [selectedRound, setSelectedRound] = useState("1st round");
 
-  /**
-   * Generates matches for a specific group based on the players in that group.
-   * @param {string} groupId - The ID of the group for which to generate matches.
-   */
+  // Trier les joueurs par leur identifiant dans chaque groupe
+  const sortedPlayers = Object.fromEntries(
+    Object.entries(players).map(([groupId, groupPlayers]) => [
+      groupId,
+      [...groupPlayers].sort((a, b) => a.id - b.id),
+    ])
+  );
+
   const generateMatches = (groupId) => {
-    const groupPlayers = players[groupId] || [];
+    const groupPlayers = sortedPlayers[groupId] || [];
     const group = groups.find((g) => g.id === groupId);
     const fakeGroupPlayer = group.group_former;
 
     if (groupPlayers.length < 2 && (fakeGroupPlayer == [] || null)) {
-      console.log(groupPlayers);
-      console.log(fakeGroupPlayer);
       alert("Il faut au moins 2 joueurs.");
     }
 
@@ -68,13 +70,6 @@ const ScheduleEdit = () => {
     }
   };
 
-  /**
-   * Updates a specific match in the generated matches.
-   * @param {string} groupId - The ID of the group containing the match.
-   * @param {number} matchIndex - The index of the match to update.
-   * @param {string} field - The field of the match to update.
-   * @param {any} value - The new value for the specified field.
-   */
   const updateGeneratedMatch = (groupId, matchIndex, field, value) => {
     setGeneratedMatches((prev) => {
       const updatedMatches = { ...prev };
@@ -95,10 +90,6 @@ const ScheduleEdit = () => {
     });
   };
 
-  /**
-   * Saves the generated matches for a specific group to the database.
-   * @param {string} groupId - The ID of the group whose matches are to be saved.
-   */
   const saveMatches = async (groupId) => {
     try {
       const matches = generatedMatches[groupId];
@@ -174,7 +165,7 @@ const ScheduleEdit = () => {
       />
       <GroupList
         groups={filteredSortedGroups}
-        players={players}
+        players={sortedPlayers}
         clubs={clubs}
         generateMatches={generateMatches}
         generatedMatches={generatedMatches}

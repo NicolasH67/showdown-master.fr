@@ -279,7 +279,7 @@ const GroupTableEdit = ({ groups, players, onEdit, onDelete, allGroups }) => {
                             <option value="">Sélectionner un groupe</option>
                             {allGroups.map((group) => (
                               <option key={group.id} value={group.id}>
-                                {group.name}
+                                {group.name} - {group.group_type}
                               </option>
                             ))}
                           </select>

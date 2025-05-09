@@ -31,8 +31,6 @@ const useMatchesResult = (tournamentId) => {
           .eq("tournament_id", tournamentId);
         if (matchError) throw matchError;
 
-        console.log(matchData);
-
         matchData.sort((a, b) => {
           const dateA = new Date(`${a.match_date}T${a.match_time}`);
           const dateB = new Date(`${b.match_date}T${b.match_time}`);

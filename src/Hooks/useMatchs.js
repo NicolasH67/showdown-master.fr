@@ -27,7 +27,7 @@ const useMatches = () => {
             id,
             player1:player1_id(id, firstname, lastname),
             player2:player2_id(id, firstname, lastname),
-            group:group_id(name),
+            group:group_id(name, group_type),
             match_day,
             match_time,
             table_number,
