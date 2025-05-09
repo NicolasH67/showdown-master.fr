@@ -2,7 +2,7 @@ import React from "react";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import useRefereeMatches from "../../Hooks/useRefereeMatches"; // Hook pour récupérer les matchs de l'arbitre
-import MatchTable from "../../Components/MatchTable/MatchTable"; // Table pour afficher les matchs
+import MatchCard from "../../Components/MatchCard/MatchCard";
 
 const RefereeDetails = () => {
   const { id, refereeId } = useParams();
@@ -25,10 +25,10 @@ const RefereeDetails = () => {
       </h2>
 
       <h3 className="mt-4">{t("matchesRefereed")}</h3>
-      {matches?.length > 0 ? (
-        <MatchTable matches={matches} />
+      {matches.length > 0 ? (
+        matches.map((match) => <MatchCard key={match.id} match={match} />)
       ) : (
-        <p>{t("noMatches")}</p>
+        <div>{t("noMatchesAvailable")}</div>
       )}
     </div>
   );

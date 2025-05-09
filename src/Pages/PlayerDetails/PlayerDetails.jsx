@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import usePlayerMatches from "../../Hooks/usePlayerMatches"; // Hook pour récupérer les matchs du joueur
 import MatchTable from "../../Components/MatchTable/MatchTable"; // Table pour afficher les matchs
 import PlayerStats from "../../Components/PlayerStats/PlayerStats";
+import MatchCard from "../../Components/MatchCard/MatchCard";
 
 const PlayerDetails = () => {
   const { id, playerId } = useParams();
@@ -25,9 +26,9 @@ const PlayerDetails = () => {
 
       <h3>{t("matches")}</h3>
       {matches.length > 0 ? (
-        <MatchTable matches={matches} />
+        matches.map((match) => <MatchCard key={match.id} match={match} />)
       ) : (
-        <p>{t("noMatches")}</p>
+        <div>{t("noMatchesAvailable")}</div>
       )}
     </div>
   );
