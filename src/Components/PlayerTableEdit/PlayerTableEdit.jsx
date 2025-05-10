@@ -90,7 +90,7 @@ const PlayerTableEdit = ({
                   <td>{player.club?.name || "N/A"}</td>
                   <td>
                     {player.group
-                      ? `${player.group.name} - ${player.group.group_type}`
+                      ? `${player.group.name} - ${t(player.group.group_type)}`
                       : "N/A"}
                   </td>
                   <td>
@@ -165,7 +165,7 @@ const PlayerTableEdit = ({
                     >
                       {groups.map((g) => (
                         <option key={g.id} value={g.id}>
-                          {g.name} - {g.group_type}
+                          {g.name} - {t(g.group_type)}
                         </option>
                       ))}
                     </select>

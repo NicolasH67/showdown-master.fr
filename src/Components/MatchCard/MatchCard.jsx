@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 
 const MatchCard = ({ match }) => {
+  const { t } = useTranslation();
   const matchDateTime = new Date(`${match.match_day}T${match.match_time}`);
   const formattedTime = matchDateTime.toLocaleTimeString([], {
     hour: "2-digit",
@@ -20,7 +22,6 @@ const MatchCard = ({ match }) => {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Style des cases conditionnellement en fonction de la taille de l'écran
   const scoreBoxStyle = {
     width: isLargeScreen ? "50px" : "25px",
     height: isLargeScreen ? "50px" : "25px",
@@ -95,7 +96,9 @@ const MatchCard = ({ match }) => {
         <div>
           {match.group.name} - {match.group.group_type}
         </div>
-        <div>Table {match.table_number}</div>
+        <div>
+          {t("table")} {match.table_number}
+        </div>
       </div>
       <div className="card-body d-flex justify-content-between">
         <div>

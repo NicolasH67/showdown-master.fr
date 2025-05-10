@@ -36,7 +36,6 @@ export default function useClub(tournamentId) {
       }
     };
 
-    // Ne lancer la requête que si on a un tournamentId
     if (tournamentId) {
       fetchClubs();
     } else {

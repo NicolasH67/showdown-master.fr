@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import supabase from "../Helpers/supabaseClient";
 import { useNavigate } from "react-router-dom";
 
@@ -23,6 +24,8 @@ const useTournamentForm = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { t } = useTranslation();
+  if (!t) throw new Error("Translation function 't' is not available");
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -34,17 +37,17 @@ const useTournamentForm = () => {
     const { title, startday, endday, adminPassword, email } = formData;
 
     if (!title || !startday || !endday || !adminPassword || !email) {
-      setError("Tous les champs sont requis.");
+      setError(t("allFieldsRequired"));
       return;
     }
 
     if (new Date(startday) > new Date(endday)) {
-      setError("La date de début doit être avant la date de fin.");
+      setError(t("errorStartDateBeforeEndDate"));
       return;
     }
 
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setError("L'email est invalide.");
+      setError(t("invalidEmail"));
       return;
     }
 
@@ -67,7 +70,7 @@ const useTournamentForm = () => {
       if (error) throw error;
       navigate("/");
     } catch (error) {
-      setError("Une erreur est survenue lors de la création du tournoi.");
+      setError(t("errorCreatingTournament"));
     } finally {
       setLoading(false);
     }

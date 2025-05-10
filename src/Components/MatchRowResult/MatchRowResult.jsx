@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
 import supabase from "../../Helpers/supabaseClient";
+import { useTranslation } from "react-i18next";
 
 const MatchRowResult = ({ match, index, referees, onMatchChange, onSave }) => {
+  const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(
     !match.result || match.result.length === 0
   );
@@ -57,7 +59,7 @@ const MatchRowResult = ({ match, index, referees, onMatchChange, onSave }) => {
         .maybeSingle(); // <— optionnel, pour obtenir directement un objet
 
       if (error) {
-        console.error("Supabase error status", status, "—", error);
+        console.error(status, "—", error);
         throw new Error(error.message);
       }
 
@@ -70,8 +72,7 @@ const MatchRowResult = ({ match, index, referees, onMatchChange, onSave }) => {
         setIsEditing(false);
       }
     } catch (err) {
-      console.error("Saving error:", err);
-      alert("Erreur lors de l'enregistrement : " + (err.message || err));
+      alert(err.message || err);
     } finally {
       setLoading(false);
     }
@@ -81,8 +82,10 @@ const MatchRowResult = ({ match, index, referees, onMatchChange, onSave }) => {
     <div className="card mb-3">
       <div className="card-header d-flex justify-content-between align-items-center">
         <div>
-          <strong>Match #{index + 1}</strong> — G${match.group.name} | Table{" "}
-          {match.table_number}
+          <strong>
+            {t("matches")} #{index + 1}
+          </strong>{" "}
+          — G${match.group.name} | {t("table")} {match.table_number}
         </div>
         <div>
           <span className="me-3">
@@ -95,7 +98,6 @@ const MatchRowResult = ({ match, index, referees, onMatchChange, onSave }) => {
       </div>
       <div className="card-body">
         <div className="row g-3">
-          {/* Player 1 block */}
           <div className="col-md-6">
             <h6>
               {match.player1.firstname} {match.player1.lastname}
@@ -107,7 +109,8 @@ const MatchRowResult = ({ match, index, referees, onMatchChange, onSave }) => {
                   className="text-center fw-bold me-2"
                   style={{ width: "60px" }}
                 >
-                  Set {idx + 1}
+                  {t("set")}
+                  <br /> {idx + 1}
                 </div>
               ))}
             </div>
@@ -148,7 +151,8 @@ const MatchRowResult = ({ match, index, referees, onMatchChange, onSave }) => {
                   className="text-center fw-bold me-2"
                   style={{ width: "60px" }}
                 >
-                  Set {idx + 1}
+                  {t("set")}
+                  <br /> {idx + 1}
                 </div>
               ))}
             </div>
@@ -180,7 +184,7 @@ const MatchRowResult = ({ match, index, referees, onMatchChange, onSave }) => {
         </div>
         <div className="row mt-3">
           <div className="col-md-4">
-            <label className="form-label">Arbitres</label>
+            <label className="form-label">{t("referee")}</label>
             <select
               disabled={!isEditing}
               className="form-select form-select-sm mb-2"
@@ -193,7 +197,7 @@ const MatchRowResult = ({ match, index, referees, onMatchChange, onSave }) => {
                 )
               }
             >
-              <option value="">Aucun</option>
+              <option value="">{t("none")}</option>
               {referees.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.firstname} {r.lastname}
@@ -212,7 +216,7 @@ const MatchRowResult = ({ match, index, referees, onMatchChange, onSave }) => {
                 )
               }
             >
-              <option value="">Aucun</option>
+              <option value="">{t("none")}</option>
               {referees.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.firstname} {r.lastname}
@@ -227,14 +231,14 @@ const MatchRowResult = ({ match, index, referees, onMatchChange, onSave }) => {
                 disabled={loading}
                 className={`btn ${hasResults ? "btn-success" : "btn-primary"}`}
               >
-                {loading ? "Enregistrement..." : "Enregistrer"}
+                {loading ? t("saving") : t("saveChanges")}
               </button>
             ) : (
               <button
                 onClick={() => setIsEditing(true)}
                 className="btn btn-outline-secondary"
               >
-                Modifier les résultats
+                {t("editResults")}
               </button>
             )}
           </div>

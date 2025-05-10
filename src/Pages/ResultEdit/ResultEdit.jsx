@@ -2,8 +2,10 @@ import React from "react";
 import { useParams } from "react-router-dom";
 import useMatchesResult from "../../Hooks/useMatchResult";
 import MatchRowResult from "../../Components/MatchRowResult/MatchRowResult";
+import { useTranslation } from "react-i18next";
 
 const ResultEdit = () => {
+  const { t } = useTranslation();
   const { id } = useParams();
   const { matches, referees, loading, error, handleMatchChange, handleSave } =
     useMatchesResult(id);
@@ -22,18 +24,16 @@ const ResultEdit = () => {
   });
 
   if (loading) {
-    return <div>Chargement des matchs...</div>;
+    return <div>{t("loadingMatchs")}</div>;
   }
 
   if (error) {
-    return (
-      <div>Erreur lors de la récupération des matchs : {error.message}</div>
-    );
+    return <div>{error.message}</div>;
   }
 
   return (
     <div className="container">
-      <h1>Planning des matchs</h1>
+      <h1>{t("schedule")}</h1>
       <div className="row g-3">
         {sortedMatches.map((match, index) => (
           <div key={match.id} className="col-12">

@@ -22,7 +22,7 @@ const GroupList = ({
             <div className="card shadow-sm">
               <div className="card-body">
                 <h5 className="card-title text-primary text-center">
-                  {group.name} - {group.group_type}
+                  {group.name} - {t(group.group_type)}
                 </h5>
 
                 <table className="table">

@@ -10,7 +10,9 @@ const ProvenanceDetails = () => {
   const { club, matches, loading, error } = useClubMatches(provenanceId, id);
 
   if (loading)
-    return <div className="text-center mt-3">{t("loadingClubDetails")}</div>;
+    return (
+      <div className="text-center mt-3">{t("loadingProvenanceDetails")}</div>
+    );
 
   if (error) return <div className="alert alert-danger">{error?.message}</div>;
 

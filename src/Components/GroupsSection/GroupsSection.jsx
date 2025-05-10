@@ -1,12 +1,14 @@
 import GroupTable from "../GroupTable/GroupTable";
+import { useTranslation } from "react-i18next";
 
 const GroupsSection = ({ groups, players }) => {
+  const { t } = useTranslation();
   return (
     <section>
       {groups.map((group) => (
         <div key={group.id} className="mb-4">
           <h3 className="text-center">
-            {group.name} - {group.group_type}
+            {group.name} - {t(group.group_type)}
           </h3>
           <GroupTable
             players={players.filter((player) => player.group.id === group.id)}

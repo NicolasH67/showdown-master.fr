@@ -44,25 +44,17 @@ const useContactForm = () => {
       return;
     }
 
-    // Utiliser EmailJS pour envoyer l'email
-    emailjs
-      .send(
-        serviceId, // Ton ID de service EmailJS
-        templateId, // Ton ID de modèle d'email
-        formData, // Les données que tu veux envoyer (nom, email, message)
-        userId
-      )
-      .then(
-        (result) => {
-          console.log("Message envoyé:", result.text);
-          setSuccess(t("contactSuccess"));
-          setFormData({ name: "", email: "", message: "" });
-        },
-        (error) => {
-          console.error("Erreur lors de l'envoi de l'email:", error.text);
-          setError(t("contactError"));
-        }
-      );
+    emailjs.send(serviceId, templateId, formData, userId).then(
+      (result) => {
+        console.log("Message envoyé:", result.text);
+        setSuccess(t("contactSuccess"));
+        setFormData({ name: "", email: "", message: "" });
+      },
+      (error) => {
+        console.error("Erreur lors de l'envoi de l'email:", error.text);
+        setError(t("contactError"));
+      }
+    );
   };
 
   return { formData, handleChange, handleSubmit, error, success };

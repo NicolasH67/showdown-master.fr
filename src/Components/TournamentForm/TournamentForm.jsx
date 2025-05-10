@@ -17,16 +17,11 @@ const TournamentForm = ({
 
   const deleteTournament = async (e) => {
     e.preventDefault();
-    const confirmation = window.prompt(
-      "Pour confirmer la suppression définitive du tournoi, veuillez taper 'SUPPRIMER' en majuscules :"
-    );
-    if (confirmation === "SUPPRIMER") {
+    const confirmation = window.prompt(t("confirmDeleteTournamentPrompt"));
+    if (confirmation === "DELETE") {
       const { error } = await supabase.from("tournament").delete().eq("id", id);
       if (error) {
-        console.error(
-          "Erreur lors de la suppression du tournoi:",
-          error.message
-        );
+        console.error(error.message);
       } else {
         console.log("Le tournoi a été supprimé");
         window.location.href = "/";
@@ -38,7 +33,7 @@ const TournamentForm = ({
 
   return (
     <div className="container mt-5">
-      <h1>Gestion du tournoi</h1>
+      <h1>{t("tournamentManagement")}</h1>
       {error && <div className="alert alert-danger">{error}</div>}
       {successMessage && (
         <div className="alert alert-success">{successMessage}</div>

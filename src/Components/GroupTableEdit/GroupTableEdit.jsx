@@ -125,8 +125,8 @@ const GroupTableEdit = ({ groups, players, onEdit, onDelete, allGroups }) => {
                 <tr key={group.id}>
                   <td>{group.name}</td>
                   <td>{playerCount}</td>
-                  <td>{group.round_type}</td>
-                  <td>{group.group_type}</td>
+                  <td>{t(group.round_type)}</td>
+                  <td>{t(group.group_type)}</td>
                   <td>{group.highest_position || "N/A"}</td>
                   {(group.round_type === "2nd round" ||
                     group.round_type === "final round") && (
@@ -179,7 +179,7 @@ const GroupTableEdit = ({ groups, players, onEdit, onDelete, allGroups }) => {
           <div className="modal-dialog">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Modifier le groupe</h5>
+                <h5 className="modal-title">{t("editGroup")}</h5>
                 <button
                   type="button"
                   className="btn-close"
@@ -212,9 +212,9 @@ const GroupTableEdit = ({ groups, players, onEdit, onDelete, allGroups }) => {
                       onChange={(e) => setRoundType(e.target.value)}
                       required
                     >
-                      <option value="1st round">1st round</option>
-                      <option value="2nd round">2nd round</option>
-                      <option value="final round">Final round</option>
+                      <option value="1st round">{t("1st round")}</option>
+                      <option value="2nd round">{t("2nd round")}</option>
+                      <option value="final round">{t("final round")}</option>
                     </select>
                   </div>
                   <div className="mb-3">
@@ -228,10 +228,10 @@ const GroupTableEdit = ({ groups, players, onEdit, onDelete, allGroups }) => {
                       onChange={(e) => setGroupType(e.target.value)}
                       required
                     >
-                      <option value="mix">Mix</option>
-                      <option value="women">Women</option>
-                      <option value="men">Men</option>
-                      <option value="team">Team</option>
+                      <option value="mix">{t("mix")}</option>
+                      <option value="women">{t("women")}</option>
+                      <option value="men">{t("men")}</option>
+                      <option value="team">{t("team")}</option>
                     </select>
                   </div>
                   <div className="mb-3">

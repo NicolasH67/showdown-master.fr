@@ -1,8 +1,10 @@
 // src/hooks/useTournament.js
 import { useState, useEffect } from "react";
 import supabase from "../Helpers/supabaseClient";
+import { useTranslation } from "react-i18next";
 
 const useAdminTournament = (id) => {
+  const { t } = useTranslation();
   const [tournamentData, setTournamentData] = useState({
     title: "",
     startDay: "",
@@ -28,7 +30,7 @@ const useAdminTournament = (id) => {
         .eq("id", id);
 
       if (error) {
-        setError("Erreur lors de la récupération des données du tournoi");
+        setError(t("errorFetchingTournamentData"));
         return;
       }
 
@@ -62,11 +64,9 @@ const useAdminTournament = (id) => {
     setLoading(false);
 
     if (error) {
-      setError("Erreur lors de la mise à jour du tournoi");
+      setError(t("errorUpdatingTournament"));
     } else {
-      setSuccessMessage(
-        "Les paramètres du tournoi ont été mis à jour avec succès"
-      );
+      setSuccessMessage(t("successUpdatingTournament"));
     }
   };
 

@@ -97,7 +97,7 @@ const PlayerForm = ({ tournamentId, clubs, groups, onAddSuccess }) => {
           <option value="">{t("selectGroup")}</option>
           {groups.map((group) => (
             <option key={group.id} value={group.id}>
-              {group.name} - {group.group_type}
+              {group.name} - {t(group.group_type)}
             </option>
           ))}
         </select>

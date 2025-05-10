@@ -44,8 +44,6 @@ const Schedule = () => {
     ? matches.filter((match) => match.match_day === selectedDate)
     : matches;
 
-  console.log("Filtered Matches:", filteredMatches);
-
   return (
     <div className="container mt-4">
       <h1 className="text-center mb-4">{t("schedule")}</h1>

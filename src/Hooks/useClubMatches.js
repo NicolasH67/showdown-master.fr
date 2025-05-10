@@ -38,7 +38,6 @@ const useClubMatches = (clubId, tournamentId) => {
     }
 
     if (!clubsLoading && !matchesLoading) {
-      // Trouver le club correspondant à l'ID
       const selectedClub = clubs.find((c) => c.id === parseInt(clubId, 10));
       setClub(selectedClub || null);
 

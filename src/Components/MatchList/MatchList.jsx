@@ -67,7 +67,7 @@ const MatchList = ({
                   <input
                     type="text"
                     className="form-control"
-                    placeholder="Table"
+                    placeholder={t("table")}
                     onChange={(e) =>
                       updateGeneratedMatch(
                         groupId,
@@ -88,7 +88,7 @@ const MatchList = ({
         className="btn btn-success w-100 mt-2"
         onClick={() => saveMatches(groupId)}
       >
-        {t("save")}
+        {t("saveChanges")}
       </button>
     </div>
   );

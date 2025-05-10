@@ -1,7 +1,9 @@
 import { useState } from "react";
 import supabase from "../Helpers/supabaseClient";
+import { useTranslation } from "react-i18next";
 
 const useEntityActions = () => {
+  const { t } = useTranslation();
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
 
@@ -17,11 +19,11 @@ const useEntityActions = () => {
         setError(error.message);
       } else {
         console.log(`${entity} supprimé avec succès, ID :`, entityId);
-        setSuccessMessage(`${entity} supprimé avec succès`);
+        setSuccessMessage(t("entityDeleted", { entity }));
       }
     } catch (err) {
       console.error("Erreur inattendue :", err);
-      setError("Erreur inattendue");
+      setError(t("unexpectedError"));
     }
   };
 
@@ -48,7 +50,7 @@ const useEntityActions = () => {
       }
     } catch (err) {
       console.error("Erreur inattendue :", err);
-      setError("Erreur inattendue");
+      setError(t("unexpectedError"));
     }
   };
 
