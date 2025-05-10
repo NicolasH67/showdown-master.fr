@@ -25,8 +25,8 @@ const useMatches = () => {
           .select(
             `
             id,
-            player1:player1_id(id, firstname, lastname),
-            player2:player2_id(id, firstname, lastname),
+            player1:player1_id(id, firstname, lastname, club_id),
+            player2:player2_id(id, firstname, lastname, club_id),
             group:group_id(name, group_type),
             match_day,
             match_time,

@@ -47,7 +47,12 @@ const PlayerTable = ({ players, groupType }) => {
                       </Link>
                     </td>
                     <td>
-                      {player.club.name} - {player.club.abbreviation}
+                      <Link
+                        to={`/tournament/${id}/provenance/${player.club.id}`}
+                        style={{ textDecoration: "none" }}
+                      >
+                        {player.club.name} - {player.club.abbreviation}
+                      </Link>
                     </td>
                   </tr>
                 ))}
