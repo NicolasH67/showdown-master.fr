@@ -4,9 +4,11 @@ import useGroupsData from "../../Hooks/useGroupsData";
 import RoundSelector from "../../Components/RoundSelector/RoundSelector";
 import GroupsSection from "../../Components/GroupsSection/GroupsSection";
 import { useTranslation } from "react-i18next";
+import useMatches from "../../Hooks/useMatchs";
 
 const GroupsPage = () => {
   const { id } = useParams();
+  const { matches } = useMatches();
   const { groups, players, loading, error } = useGroupsData(id);
   const [selectedRound, setSelectedRound] = useState("1st round");
   const { t } = useTranslation();
@@ -27,7 +29,11 @@ const GroupsPage = () => {
         setSelectedRound={setSelectedRound}
       />
       {filteredGroups.length > 0 ? (
-        <GroupsSection groups={filteredGroups} players={players} />
+        <GroupsSection
+          groups={filteredGroups}
+          players={players}
+          matches={matches}
+        />
       ) : (
         <div className="alert alert-warning text-center">
           {t("noGroupsFound")}

@@ -1,7 +1,7 @@
 import GroupTable from "../GroupTable/GroupTable";
 import { useTranslation } from "react-i18next";
 
-const GroupsSection = ({ groups, players }) => {
+const GroupsSection = ({ groups, players, matches }) => {
   const { t } = useTranslation();
   return (
     <section>
@@ -12,6 +12,7 @@ const GroupsSection = ({ groups, players }) => {
           </h3>
           <GroupTable
             players={players.filter((player) => player.group.id === group.id)}
+            matches={matches}
           />
         </div>
       ))}
