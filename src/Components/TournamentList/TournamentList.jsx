@@ -33,7 +33,6 @@ const TournamentList = ({ tournaments, onTournamentClick }) => {
                 <td>
                   <a
                     href="#"
-                    role="button"
                     onClick={(e) => {
                       e.preventDefault();
                       onTournamentClick(tournament);
