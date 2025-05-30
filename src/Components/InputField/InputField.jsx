@@ -1,3 +1,5 @@
+import { useState } from "react";
+
 /**
  * A reusable input field component with label, value, and change handler.
  *
@@ -10,18 +12,35 @@
  *
  * @returns {JSX.Element} A JSX element representing the input field with a label.
  */
-const InputField = ({ label, type, name, value, onChange }) => (
-  <div className="mb-3">
-    <label className="form-label">{label}</label>
-    <input
-      className="form-control"
-      type={type}
-      name={name}
-      value={value}
-      onChange={onChange}
-      required
-    />
-  </div>
-);
+const InputField = ({ label, type, name, value, onChange }) => {
+  const [showPassword, setShowPassword] = useState(false);
+  const isPassword = type === "password";
+
+  return (
+    <div className="mb-3">
+      <label className="form-label">{label}</label>
+      <div className="input-group">
+        <input
+          className="form-control"
+          type={isPassword && showPassword ? "text" : type}
+          name={name}
+          value={value}
+          onChange={onChange}
+          required
+        />
+        {isPassword && (
+          <button
+            type="button"
+            className="btn btn-outline-secondary"
+            onClick={() => setShowPassword((prev) => !prev)}
+            tabIndex={-1}
+          >
+            {showPassword ? "Masquer" : "Afficher"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export default InputField;

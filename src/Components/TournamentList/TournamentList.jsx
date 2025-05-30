@@ -31,9 +31,18 @@ const TournamentList = ({ tournaments, onTournamentClick }) => {
                 style={{ cursor: "pointer" }}
               >
                 <td>
-                  {tournament.title}{" "}
+                  <a
+                    href="#"
+                    role="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      onTournamentClick(tournament);
+                    }}
+                  >
+                    {tournament.title}
+                  </a>
                   {tournament.user_password && (
-                    <span className="badge bg-danger">{t("private")}</span>
+                    <span className="badge bg-danger ms-2">{t("private")}</span>
                   )}
                 </td>
                 <td>

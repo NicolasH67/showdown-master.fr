@@ -21,7 +21,7 @@ const ProvenanceDetails = () => {
 
   return (
     <div className="container mt-4">
-      <h1>{t("provenanceDetails")}</h1>
+      <h1 autoFocus>{t("provenanceDetails")}</h1>
       <h2>{club.name}</h2>
 
       <h3 className="mt-4">{t("matches")}</h3>

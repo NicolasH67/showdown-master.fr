@@ -63,7 +63,9 @@ const History = () => {
 
   return (
     <div className="container mt-4">
-      <h1 className="mb-4">{t("tournamentHistory")}</h1>
+      <h1 className="mb-4" autoFocus>
+        {t("tournamentHistory")}
+      </h1>
       <TournamentList
         tournaments={tournaments}
         onTournamentClick={handleTournamentClick}

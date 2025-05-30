@@ -32,7 +32,9 @@ const Contact = () => {
 
   return (
     <div className="container mt-5">
-      <h1 className="mb-4">{t("contactUs")}</h1>
+      <h1 className="mb-4" autoFocus>
+        {t("contactUs")}
+      </h1>
       <form onSubmit={handleSubmit} className="contact-form">
         <InputField
           label={t("name")}

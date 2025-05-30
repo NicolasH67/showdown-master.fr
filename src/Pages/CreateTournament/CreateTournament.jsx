@@ -22,7 +22,9 @@ const CreateTournament = () => {
 
   return (
     <div className="container mt-5">
-      <h1 className="mb-4">{t("createNewTournament")}</h1>
+      <h1 className="mb-4" autoFocus>
+        {t("createNewTournament")}
+      </h1>
       <form onSubmit={handleSubmit}>
         <InputField
           label={t("titleNameTournament")}

@@ -76,7 +76,9 @@ const Home = () => {
 
   return (
     <div className="container mt-4">
-      <h1 className="mb-4">{t("availableTournaments")}</h1>
+      <h1 className="mb-4" autoFocus>
+        {t("availableTournaments")}
+      </h1>
       <TournamentList
         tournaments={tournaments}
         onTournamentClick={handleTournamentClick}

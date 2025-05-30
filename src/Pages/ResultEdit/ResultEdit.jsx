@@ -33,7 +33,7 @@ const ResultEdit = () => {
 
   return (
     <div className="container">
-      <h1>{t("schedule")}</h1>
+      <h1 autoFocus>{t("schedule")}</h1>
       <div className="row g-3">
         {sortedMatches.map((match, index) => (
           <div key={match.id} className="col-12">

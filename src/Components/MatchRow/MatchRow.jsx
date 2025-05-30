@@ -25,7 +25,9 @@ const MatchRow = ({ match, index, formatResult }) => {
       <td>{match.table_number}</td>
       <td>{match.group.name}</td>
       <td>
-        {match.player1.firstname} {match.player1.lastname}
+        <p>
+          {match.player1.firstname} {match.player1.lastname}
+        </p>
       </td>
       <td>
         {match.player2.firstname} {match.player2.lastname}

@@ -23,7 +23,9 @@ const GroupsPage = () => {
 
   return (
     <div className="container mt-4">
-      <h1 className="text-center">{t("tournamentGroups")}</h1>
+      <h1 className="text-center" autoFocus>
+        {t("tournamentGroups")}
+      </h1>
       <RoundSelector
         selectedRound={selectedRound}
         setSelectedRound={setSelectedRound}

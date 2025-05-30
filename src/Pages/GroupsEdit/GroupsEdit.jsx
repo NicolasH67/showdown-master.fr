@@ -27,7 +27,7 @@ const GroupsEdit = () => {
 
   return (
     <div className="container mt-4">
-      <h1>{t("createNewGroup")}</h1>
+      <h1 autoFocus>{t("createNewGroup")}</h1>
       <GroupForm tournamentId={id} setGroups={setGroups} />
       <RoundSelector
         selectedRound={selectedRound}

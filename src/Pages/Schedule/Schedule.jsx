@@ -46,7 +46,9 @@ const Schedule = () => {
 
   return (
     <div className="container mt-4">
-      <h1 className="text-center mb-4">{t("schedule")}</h1>
+      <h1 className="text-center mb-4" autoFocus>
+        {t("schedule")}
+      </h1>
       <DateSelector
         dates={uniqueDates}
         selectedDate={selectedDate}

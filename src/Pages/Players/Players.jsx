@@ -70,7 +70,9 @@ const Players = () => {
 
   return (
     <div className="container mt-4">
-      <h1 className="mb-4">{t("titlePlayersList")}</h1>
+      <h1 className="mb-4" autoFocus>
+        {t("titlePlayersList")}
+      </h1>
       <PlayerSelector
         groupTypes={availableGroups}
         selectedGroup={selectedGroup}
