@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import usePlayerMatches from "../../Hooks/usePlayerMatches"; // Hook pour récupérer les matchs du joueur
 import MatchTable from "../../Components/MatchTable/MatchTable"; // Table pour afficher les matchs
 import PlayerStats from "../../Components/PlayerStats/PlayerStats";
-import MatchCard from "../../Components/MatchCard/MatchCard";
+import MatchRow from "../../Components/MatchRow/MatchRow";
 
 const PlayerDetails = () => {
   const { id, playerId } = useParams();
@@ -26,7 +26,35 @@ const PlayerDetails = () => {
 
       <h3>{t("matches")}</h3>
       {matches.length > 0 ? (
-        matches.map((match) => <MatchCard key={match.id} match={match} />)
+        <div className="table-responsive">
+          <table className="table table-striped table-bordered">
+            <thead>
+              <tr>
+                <th className="text-center">{t("day")}</th>
+                <th className="text-center">{t("time")}</th>
+                <th className="text-center">{t("table")}</th>
+                <th className="text-center">{t("group")}</th>
+                <th className="text-center">{t("player1")}</th>
+                <th className="text-center">{t("player2")}</th>
+                <th className="text-center">{t("point")}</th>
+                <th className="text-center">{t("set")}</th>
+                <th className="text-center">{t("goal")}</th>
+                <th className="text-center">{t("result")}</th>
+                <th className="text-center">{t("referees")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {matches.map((match, index) => (
+                <MatchRow
+                  key={match.id}
+                  match={match}
+                  index={index}
+                  formatResult={(result) => result?.join(" - ") ?? ""}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : (
         <div>{t("noMatchesAvailable")}</div>
       )}

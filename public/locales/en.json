@@ -168,5 +168,6 @@
   "unexpectedError": "Unexpected error",
   "allFieldsRequired": "All fields are required.",
   "errorStartDateBeforeEndDate": "Start date must be before end date.",
-  "invalidEmail": "Invalid email address."
+  "invalidEmail": "Invalid email address.",
+  "pairing": "Pairing"
 }

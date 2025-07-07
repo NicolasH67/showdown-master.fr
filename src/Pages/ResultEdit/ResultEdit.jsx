@@ -34,18 +34,37 @@ const ResultEdit = () => {
   return (
     <div className="container">
       <h1 autoFocus>{t("schedule")}</h1>
-      <div className="row g-3">
-        {sortedMatches.map((match, index) => (
-          <div key={match.id} className="col-12">
-            <MatchRowResult
-              match={match}
-              index={index}
-              referees={referees}
-              onMatchChange={handleMatchChange}
-              onSave={handleSave}
-            />
-          </div>
-        ))}
+      <div className="table-responsive">
+        <table className="table table-bordered table-hover text-center">
+          <thead className="table-dark">
+            <tr>
+              <th className="text-center">MNR</th>
+              <th className="text-center">{t("date")}</th>
+              <th className="text-center">{t("time")}</th>
+              <th className="text-center">{t("table")}</th>
+              <th className="text-center">{t("group")}</th>
+              <th className="text-center">{t("pairing")}</th>
+              <th className="text-center">{t("point")}</th>
+              <th className="text-center">{t("set")}</th>
+              <th className="text-center">{t("goal")}</th>
+              <th className="text-center">{t("result")}</th>
+              <th className="text-center">{t("referees")}</th>
+              <th className="text-center">{t("action")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {sortedMatches.map((match, index) => (
+              <MatchRowResult
+                key={match.id}
+                match={match}
+                index={index}
+                referees={referees}
+                onMatchChange={handleMatchChange}
+                onSave={handleSave}
+              />
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );

@@ -4,47 +4,54 @@ import { useTranslation } from "react-i18next";
 
 const MatchRowResult = ({ match, index, referees, onMatchChange, onSave }) => {
   const { t } = useTranslation();
-  const [isEditing, setIsEditing] = useState(
-    !match.result || match.result.length === 0
+  const [localResults, setLocalResults] = useState(
+    match.result?.map((v) => (v === null ? "" : v.toString())) ||
+      Array(10).fill("")
   );
-  const [localResults, setLocalResults] = useState({
-    player1: Array(5).fill(""),
-    player2: Array(5).fill(""),
-  });
+  const [resultText, setResultText] = useState("");
   const [loading, setLoading] = useState(false);
-  const hasResults =
-    localResults.player1.some((val) => val.trim() !== "") ||
-    localResults.player2.some((val) => val.trim() !== "");
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
-    const p1 = [],
-      p2 = [];
-    for (let i = 0; i < 5; i++) {
-      p1[i] = match.result?.[2 * i]?.toString() || "";
-      p2[i] = match.result?.[2 * i + 1]?.toString() || "";
-    }
-    setLocalResults({ player1: p1, player2: p2 });
+    setLocalResults(
+      match.result?.map((v) => (v === null ? "" : v.toString())) ||
+        Array(10).fill("")
+    );
+    setResultText(
+      match.result?.filter((v) => v !== null && v !== undefined).join("-") || ""
+    );
   }, [match.result]);
 
-  const handleInput = (player, idx, value) => {
-    setLocalResults((prev) => {
-      const arr = [...prev[player]];
-      arr[idx] = value;
-      return { ...prev, [player]: arr };
-    });
+  const calculateStats = (result) => {
+    let sets = [0, 0];
+    let goals = [0, 0];
+
+    for (let i = 0; i < result.length; i += 2) {
+      const a = result[i];
+      const b = result[i + 1];
+      if (a == null || b == null) continue;
+      if (a > b) sets[0]++;
+      else sets[1]++;
+      goals[0] += a;
+      goals[1] += b;
+    }
+
+    let points = [0, 0];
+    if (sets[0] > sets[1]) points = [1, 0];
+    else if (sets[1] > sets[0]) points = [0, 1];
+    // Sinon (égalité), on garde [0, 0]
+
+    return { points, sets, goals };
   };
 
+  const parsedResults = localResults.map((v) => {
+    const n = parseInt(v, 10);
+    return isNaN(n) ? null : n;
+  });
+  const { points, sets, goals } = calculateStats(parsedResults);
+
   const handleSave = async () => {
-    const flattened = [];
-    for (let i = 0; i < 5; i++) {
-      const v1 = localResults.player1[i].trim();
-      const v2 = localResults.player2[i].trim();
-      flattened.push(v1 === "" ? null : parseInt(v1, 10));
-      flattened.push(v2 === "" ? null : parseInt(v2, 10));
-    }
-    // Remove all null entries so we only send actual scores
-    const cleanedResults = flattened.filter((v) => v !== null);
-    console.log("Cleaned results to submit:", cleanedResults);
+    const cleanedResults = parsedResults.filter((v) => v !== null);
     setLoading(true);
     try {
       const { data, error, status } = await supabase
@@ -55,8 +62,8 @@ const MatchRowResult = ({ match, index, referees, onMatchChange, onSave }) => {
           referee2_id: match.referee2_id,
         })
         .eq("id", match.id)
-        .select("*") // <— ajoutez select pour récupérer la ligne
-        .maybeSingle(); // <— optionnel, pour obtenir directement un objet
+        .select("*")
+        .maybeSingle();
 
       if (error) {
         console.error(status, "—", error);
@@ -68,9 +75,6 @@ const MatchRowResult = ({ match, index, referees, onMatchChange, onSave }) => {
       }
 
       onSave(data);
-      if (hasResults) {
-        setIsEditing(false);
-      }
     } catch (err) {
       alert(err.message || err);
     } finally {
@@ -79,172 +83,159 @@ const MatchRowResult = ({ match, index, referees, onMatchChange, onSave }) => {
   };
 
   return (
-    <div className="card mb-3">
-      <div className="card-header d-flex justify-content-between align-items-center">
-        <div>
-          <strong>
-            {t("matches")} #{index + 1}
-          </strong>{" "}
-          — G${match.group.name} | {t("table")} {match.table_number}
-        </div>
-        <div>
-          <span className="me-3">
-            <i className="bi bi-calendar-date"></i> {match.match_day}
-          </span>
-          <span>
-            <i className="bi bi-clock"></i> {match.match_time}
-          </span>
-        </div>
-      </div>
-      <div className="card-body">
-        <div className="row g-3">
-          <div className="col-md-6">
-            <h6>
-              {match.player1.firstname} {match.player1.lastname}
-            </h6>
-            <div className="d-flex flex-wrap mb-1">
-              {Array.from({ length: 5 }, (_, idx) => (
-                <div
-                  key={idx}
-                  className="text-center fw-bold me-2"
-                  style={{ width: "60px" }}
-                >
-                  {t("set")}
-                  <br /> {idx + 1}
-                </div>
-              ))}
-            </div>
-            <div className="d-flex flex-wrap">
-              {isEditing
-                ? localResults.player1.map((val, idx) => (
-                    <input
-                      key={idx}
-                      type="number"
-                      className="form-control form-control-sm text-center me-2 mb-2"
-                      style={{ width: "60px" }}
-                      value={val}
-                      onChange={(e) =>
-                        handleInput("player1", idx, e.target.value)
-                      }
-                    />
+    <tr>
+      <td className="text-center">{index + 1}</td>
+      <td className="text-center">{match.match_day}</td>
+      <td className="text-center">{match.match_time}</td>
+      <td className="text-center">{match.table_number}</td>
+      <td className="text-center">{match.group.name}</td>
+      <td className="text-center">
+        <span
+          role="text"
+          aria-label={`${match.player1.firstname} ${match.player1.lastname}`}
+        >
+          {match.player1.firstname} {match.player1.lastname}
+        </span>
+        <span role="text" aria-label="versus">
+          {" "}
+          vs{" "}
+        </span>
+        <span
+          role="text"
+          aria-label={`${match.player2.firstname} ${match.player2.lastname}`}
+        >
+          {match.player2.firstname} {match.player2.lastname}
+        </span>
+      </td>
+      <td className="text-center">
+        <span role="text">
+          {points[0]} - {points[1]}
+        </span>
+      </td>
+      <td className="text-center">
+        <span role="text">
+          {sets[0]} - {sets[1]}
+        </span>
+      </td>
+      <td className="text-center">
+        <span role="text">
+          {goals[0]} - {goals[1]}
+        </span>
+      </td>
+      <td className="text-center">
+        {isEditing ? (
+          <input
+            type="text"
+            className="form-control form-control-sm text-center"
+            style={{ textAlign: "center" }}
+            value={resultText}
+            onChange={(e) => {
+              const text = e.target.value;
+              setResultText(text);
+              const parts = text
+                .split("-")
+                .map((v) => {
+                  const n = parseInt(v.trim(), 10);
+                  return isNaN(n) ? "" : n.toString();
+                })
+                .filter((v) => v !== ""); // Retirer les champs vides
+              setLocalResults(parts);
+            }}
+          />
+        ) : (
+          <div
+            role="button"
+            onClick={() => setIsEditing(true)}
+            style={{
+              cursor: "pointer",
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "4px",
+              justifyContent: "center",
+            }}
+          >
+            {localResults.filter((v) => v !== "").length > 0
+              ? localResults
+                  .reduce((acc, curr, idx) => {
+                    if (idx % 2 === 0) {
+                      acc.push([curr]);
+                    } else {
+                      acc[acc.length - 1].push(curr);
+                    }
+                    return acc;
+                  }, [])
+                  .filter(([a, b]) => a || b)
+                  .map(([a, b], i) => (
+                    <span key={i} role="text">
+                      {a || "—"}-{b || "—"}
+                    </span>
                   ))
-                : localResults.player1.map((val, idx) => (
-                    <div
-                      key={idx}
-                      className="border rounded text-center me-2 mb-2 p-2"
-                      style={{ width: "60px" }}
-                    >
-                      {val}
-                    </div>
-                  ))}
-            </div>
+              : "—"}
           </div>
-          {/* Player 2 block */}
-          <div className="col-md-6">
-            <h6>
-              {match.player2.firstname} {match.player2.lastname}
-            </h6>
-            <div className="d-flex flex-wrap mb-1">
-              {Array.from({ length: 5 }, (_, idx) => (
-                <div
-                  key={idx}
-                  className="text-center fw-bold me-2"
-                  style={{ width: "60px" }}
-                >
-                  {t("set")}
-                  <br /> {idx + 1}
-                </div>
-              ))}
-            </div>
-            <div className="d-flex flex-wrap">
-              {isEditing
-                ? localResults.player2.map((val, idx) => (
-                    <input
-                      key={idx}
-                      type="number"
-                      className="form-control form-control-sm text-center me-2 mb-2"
-                      style={{ width: "60px" }}
-                      value={val}
-                      onChange={(e) =>
-                        handleInput("player2", idx, e.target.value)
-                      }
-                    />
-                  ))
-                : localResults.player2.map((val, idx) => (
-                    <div
-                      key={idx}
-                      className="border rounded text-center me-2 mb-2 p-2"
-                      style={{ width: "60px" }}
-                    >
-                      {val}
-                    </div>
-                  ))}
-            </div>
-          </div>
-        </div>
-        <div className="row mt-3">
-          <div className="col-md-4">
-            <label className="form-label">{t("referee")}</label>
-            <select
-              disabled={!isEditing}
-              className="form-select form-select-sm mb-2"
-              value={match.referee1_id || ""}
-              onChange={(e) =>
-                onMatchChange(
-                  match.id,
-                  "referee1_id",
-                  e.target.value ? Number(e.target.value) : null
-                )
-              }
-            >
-              <option value="">{t("none")}</option>
-              {referees.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.firstname} {r.lastname}
-                </option>
-              ))}
-            </select>
-            <select
-              disabled={!isEditing}
-              className="form-select form-select-sm"
-              value={match.referee2_id || ""}
-              onChange={(e) =>
-                onMatchChange(
-                  match.id,
-                  "referee2_id",
-                  e.target.value ? Number(e.target.value) : null
-                )
-              }
-            >
-              <option value="">{t("none")}</option>
-              {referees.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.firstname} {r.lastname}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="col-md-8 d-flex align-items-end justify-content-end">
-            {isEditing ? (
-              <button
-                onClick={handleSave}
-                disabled={loading}
-                className={`btn ${hasResults ? "btn-success" : "btn-primary"}`}
-              >
-                {loading ? t("saving") : t("saveChanges")}
-              </button>
-            ) : (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="btn btn-outline-secondary"
-              >
-                {t("editResults")}
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
+        )}
+      </td>
+      <td className="text-center">
+        <select
+          className="form-select form-select-sm mb-1"
+          style={{ textAlign: "center" }}
+          value={match.referee1_id || ""}
+          onChange={(e) =>
+            onMatchChange(
+              match.id,
+              "referee1_id",
+              e.target.value ? Number(e.target.value) : null
+            )
+          }
+        >
+          <option value="">{t("none")}</option>
+          {referees.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.firstname} {r.lastname}
+            </option>
+          ))}
+        </select>
+        <select
+          className="form-select form-select-sm"
+          style={{ textAlign: "center" }}
+          value={match.referee2_id || ""}
+          onChange={(e) =>
+            onMatchChange(
+              match.id,
+              "referee2_id",
+              e.target.value ? Number(e.target.value) : null
+            )
+          }
+        >
+          <option value="">{t("none")}</option>
+          {referees.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.firstname} {r.lastname}
+            </option>
+          ))}
+        </select>
+      </td>
+      <td className="text-center">
+        {isEditing ? (
+          <button
+            className="btn btn-sm btn-success"
+            disabled={loading}
+            onClick={() => {
+              handleSave();
+              setIsEditing(false);
+            }}
+          >
+            ✅
+          </button>
+        ) : (
+          <button
+            className="btn btn-sm btn-outline-secondary"
+            onClick={() => setIsEditing(true)}
+          >
+            ✏️
+          </button>
+        )}
+      </td>
+    </tr>
   );
 };
 

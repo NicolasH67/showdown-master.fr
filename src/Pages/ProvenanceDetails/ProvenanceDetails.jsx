@@ -2,7 +2,8 @@ import React from "react";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import useClubMatches from "../../Hooks/useClubMatches"; // Hook pour récupérer les matchs du club
-import MatchCard from "../../Components/MatchCard/MatchCard";
+import MatchRow from "../../Components/MatchRow/MatchRow";
+// import MatchCard from "../../Components/MatchCard/MatchCard";
 
 const ProvenanceDetails = () => {
   const { id, provenanceId } = useParams();
@@ -26,7 +27,35 @@ const ProvenanceDetails = () => {
 
       <h3 className="mt-4">{t("matches")}</h3>
       {matches.length > 0 ? (
-        matches.map((match) => <MatchCard key={match.id} match={match} />)
+        <div className="table-responsive">
+          <table className="table table-striped table-bordered">
+            <thead>
+              <tr>
+                <th className="text-center">{t("day")}</th>
+                <th className="text-center">{t("time")}</th>
+                <th className="text-center">{t("table")}</th>
+                <th className="text-center">{t("group")}</th>
+                <th className="text-center">{t("player1")}</th>
+                <th className="text-center">{t("player2")}</th>
+                <th className="text-center">{t("point")}</th>
+                <th className="text-center">{t("set")}</th>
+                <th className="text-center">{t("goal")}</th>
+                <th className="text-center">{t("result")}</th>
+                <th className="text-center">{t("referees")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {matches.map((match, index) => (
+                <MatchRow
+                  key={match.id}
+                  match={match}
+                  index={index}
+                  formatResult={(result) => result?.join(" - ") ?? ""}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
       ) : (
         <div>{t("noMatchesAvailable")}</div>
       )}

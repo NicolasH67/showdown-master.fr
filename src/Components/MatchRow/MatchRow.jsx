@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 
 /**
  * `MatchRow` Component
@@ -10,10 +10,55 @@ import React from "react";
  * @returns {JSX.Element} A table row displaying a match's details.
  */
 const MatchRow = ({ match, index, formatResult }) => {
+  const calculateStats = (result) => {
+    let points = [0, 0];
+    let sets = [0, 0];
+    let goals = [0, 0];
+
+    if (!result || result.length === 0) {
+      return { points, sets, goals };
+    }
+
+    for (let i = 0; i < result.length; i += 2) {
+      const score1 = result[i];
+      const score2 = result[i + 1];
+
+      if (score1 == null || score2 == null) continue;
+
+      goals[0] += score1;
+      goals[1] += score2;
+
+      if (score1 > score2) {
+        sets[0]++;
+        points[0] = 1;
+        points[1] = 0;
+      } else if (score2 > score1) {
+        sets[1]++;
+        points[0] = 0;
+        points[1] = 1;
+      } else {
+        points[0] = 0;
+        points[1] = 0;
+      }
+    }
+
+    return { points, sets, goals };
+  };
+
+  const resultArray = useMemo(() => {
+    if (!match.result) return [];
+    return match.result.filter((r) => r !== null).map((r) => parseInt(r, 10));
+  }, [match.result]);
+
+  const { points, sets, goals } = useMemo(
+    () => calculateStats(resultArray),
+    [resultArray]
+  );
+
   return (
     <tr>
-      <td>{match.match_day}</td>
-      <td>
+      <td className="text-center">{match.match_day}</td>
+      <td className="text-center">
         {new Date(`${match.match_day}T${match.match_time}`).toLocaleTimeString(
           [],
           {
@@ -22,19 +67,38 @@ const MatchRow = ({ match, index, formatResult }) => {
           }
         )}
       </td>
-      <td>{match.table_number}</td>
-      <td>{match.group.name}</td>
-      <td>
-        <p>
+      <td className="text-center">{match.table_number}</td>
+      <td className="text-center">{match.group.name}</td>
+      <td className="text-center">
+        <span role="text">
           {match.player1.firstname} {match.player1.lastname}
-        </p>
+        </span>
       </td>
-      <td>
-        {match.player2.firstname} {match.player2.lastname}
+      <td className="text-center">
+        <span role="text">
+          {match.player2.firstname} {match.player2.lastname}
+        </span>
       </td>
-      <td>{formatResult(match.result)}</td>
+      <td className="text-center">
+        <span role="text">
+          {points[0]} - {points[1]}
+        </span>
+      </td>
+      <td className="text-center">
+        <span role="text">
+          {sets[0]} - {sets[1]}
+        </span>
+      </td>
+      <td className="text-center">
+        <span role="text">
+          {goals[0]} - {goals[1]}
+        </span>
+      </td>
+      <td className="text-center">{formatResult(match.result)}</td>
       <td style={{ textAlign: "center" }}>
-        {match.referee_1?.firstname} {match.referee_1?.lastname}
+        <span role="text">
+          {match.referee_1?.firstname} {match.referee_1?.lastname}
+        </span>
         {match.referee_2 && (
           <>
             <div
@@ -44,7 +108,9 @@ const MatchRow = ({ match, index, formatResult }) => {
                 margin: "5px 0",
               }}
             />
-            {match.referee_2?.firstname} {match.referee_2?.lastname}
+            <span role="text">
+              {match.referee_2?.firstname} {match.referee_2?.lastname}
+            </span>
           </>
         )}
       </td>
