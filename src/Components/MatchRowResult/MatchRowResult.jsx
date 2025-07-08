@@ -226,10 +226,23 @@ const MatchRowResult = ({ match, index, referees, onMatchChange, onSave }) => {
           >
             ✅
           </button>
+        ) : localResults.every((v) => v === "") ? (
+          <button
+            className="btn btn-sm btn-success"
+            disabled={loading}
+            onClick={() => {
+              handleSave();
+              setIsEditing(true);
+            }}
+          >
+            ✅
+          </button>
         ) : (
           <button
             className="btn btn-sm btn-outline-secondary"
-            onClick={() => setIsEditing(true)}
+            onClick={() => {
+              setIsEditing(true);
+            }}
           >
             ✏️
           </button>

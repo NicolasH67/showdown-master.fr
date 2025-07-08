@@ -28,7 +28,7 @@ const RefereeDetails = () => {
       {matches.length > 0 ? (
         <div className="table-responsive">
           <table className="table table-striped table-bordered">
-            <thead>
+            <thead className="table-dark">
               <tr>
                 <th className="text-center">{t("day")}</th>
                 <th className="text-center">{t("time")}</th>
