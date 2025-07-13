@@ -1,5 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import usePlayers from "../../Hooks/usePlayers";
 import PlayerTable from "../../Components/PlayerTable/PlayerTable";
 import { useTranslation } from "react-i18next";
@@ -30,6 +31,16 @@ const Players = () => {
   } = useReferees(id);
   const [selectedGroup, setSelectedGroup] = useState(null);
   const { t } = useTranslation();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (players.length > 0 && referees.length > 0) {
+      const title = document.getElementById("page-title");
+      if (title) {
+        title.focus();
+      }
+    }
+  }, [location.pathname, players.length, referees.length]);
 
   if (playersLoading || refereesLoading)
     return <div className="text-center mt-3">{t("loadingPlayers")}</div>;
