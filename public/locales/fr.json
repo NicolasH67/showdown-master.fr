@@ -168,5 +168,6 @@
   "allFieldsRequired": "Tous les champs sont requis.",
   "errorStartDateBeforeEndDate": "La date de début doit être avant la date de fin.",
   "invalidEmail": "L'email est invalide.",
-  "pairing": "Confrontation"
+  "pairing": "Confrontation",
+  "editParticipants": "Édition des Joueurs, Arbitres et Provenances"
 }

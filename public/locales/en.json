@@ -169,5 +169,6 @@
   "allFieldsRequired": "All fields are required.",
   "errorStartDateBeforeEndDate": "Start date must be before end date.",
   "invalidEmail": "Invalid email address.",
-  "pairing": "Pairing"
+  "pairing": "Pairing",
+  "editParticipants": "Edit Players, Referees and Clubs"
 }

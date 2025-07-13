@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useParams, useLocation } from "react-router-dom";
 import useTournamentData from "../../Hooks/useTournamentData";
 import PlayerForm from "../../Components/PlayerForm/PlayerForm";
 import RefereeForm from "../../Components/RefereeForm/RefereeForm";
@@ -27,9 +27,19 @@ const PlayersEdit = () => {
 
   const [formType, setFormType] = useState("player");
   const { t } = useTranslation();
+  const location = useLocation();
   const { onDelete, onEdit, error, successMessage } = useEntityActions();
 
   const groupType = "default";
+
+  useEffect(() => {
+    if (players.length > 0 || clubs.length > 0 || referees.length > 0) {
+      const title = document.getElementById("page-title");
+      if (title) {
+        title.focus();
+      }
+    }
+  }, [location.pathname, players.length, clubs.length, referees.length]);
 
   if (loading) return <p>{t("loading")}</p>;
   if (tournamentError) return <p>{tournamentError}</p>; // Affiche l'erreur du tournoi
@@ -46,6 +56,9 @@ const PlayersEdit = () => {
 
   return (
     <div className="container mt-5">
+      <h1 id="page-title" tabIndex="-1">
+        {t("editParticipants")}
+      </h1>
       <div className="d-flex justify-content-center my-3">
         <Button
           label={t("createClubs")}
