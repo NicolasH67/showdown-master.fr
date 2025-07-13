@@ -60,6 +60,15 @@ const History = () => {
     setSelectedTournament(null);
   };
 
+  useEffect(() => {
+    if (tournaments.length > 0) {
+      const title = document.getElementById("page-title");
+      if (title) {
+        title.focus();
+      }
+    }
+  }, [location.pathname, tournaments.length]);
+
   if (loading) return <div>{t("loading")}</div>;
   if (error) return <div>{t("errorFetchingTournaments")}</div>;
 
