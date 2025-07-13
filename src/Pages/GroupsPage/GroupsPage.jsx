@@ -1,11 +1,10 @@
-import { useParams } from "react-router-dom";
-import { useState } from "react";
+import { useParams, useLocation } from "react-router-dom";
+import { useState, useEffect } from "react";
 import useGroupsData from "../../Hooks/useGroupsData";
 import RoundSelector from "../../Components/RoundSelector/RoundSelector";
 import GroupsSection from "../../Components/GroupsSection/GroupsSection";
 import { useTranslation } from "react-i18next";
 import useMatches from "../../Hooks/useMatchs";
-import { useLocation } from "react-router-dom";
 
 const GroupsPage = () => {
   const { id } = useParams();
@@ -14,6 +13,17 @@ const GroupsPage = () => {
   const [selectedRound, setSelectedRound] = useState("1st round");
   const { t } = useTranslation();
 
+  const location = useLocation();
+
+  useEffect(() => {
+    if (groups.length > 0) {
+      const title = document.getElementById("page-title");
+      if (title) {
+        title.focus();
+      }
+    }
+  }, [location.pathname, groups.length]);
+
   if (loading)
     return <div className="text-center mt-3">{t("loadingGroups")}</div>;
   if (error) return <div className="alert alert-danger">{error.message}</div>;
@@ -21,8 +31,6 @@ const GroupsPage = () => {
   const filteredGroups = groups.filter(
     (group) => group.round_type === selectedRound
   );
-
-  const location = useLocation();
 
   return (
     <div className="container mt-4">
