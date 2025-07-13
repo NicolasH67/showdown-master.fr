@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import useMatches from "../../Hooks/useMatchs";
 import usePlayers from "../../Hooks/usePlayers";
 import MatchRow from "../../Components/MatchRow/MatchRow";
@@ -8,6 +9,7 @@ import DateSelector from "../../Components/DateSelector/DateSelector";
 const Schedule = () => {
   const { matches, loading, error } = useMatches();
   const { t } = useTranslation();
+  const location = useLocation();
 
   const getUniqueDates = (matches) => {
     const dates = matches.map((match) => match.match_day);
@@ -19,6 +21,15 @@ const Schedule = () => {
 
   const [selectedDate, setSelectedDate] = useState(null);
   const [isFirstLoad, setIsFirstLoad] = useState(true);
+
+  useEffect(() => {
+    if (matches.length > 0) {
+      const title = document.getElementById("page-title");
+      if (title) {
+        title.focus();
+      }
+    }
+  }, [location.pathname, matches.length]);
 
   useEffect(() => {
     if (isFirstLoad && uniqueDates.includes(today)) {
