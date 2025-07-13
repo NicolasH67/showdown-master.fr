@@ -33,7 +33,9 @@ const ResultEdit = () => {
 
   return (
     <div className="container">
-      <h1 autoFocus>{t("schedule")}</h1>
+      <h1 id="page-title" tabIndex="-1">
+        {t("schedule")}
+      </h1>
       <div className="table-responsive">
         <table className="table table-bordered table-hover text-center">
           <thead className="table-dark">

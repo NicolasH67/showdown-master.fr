@@ -158,7 +158,9 @@ const ScheduleEdit = () => {
 
   return (
     <div>
-      <h1>{t("groups")}</h1>
+      <h1 id="page-title" tabIndex="-1">
+        {t("groups")}
+      </h1>
       <RoundSelector
         selectedRound={selectedRound}
         setSelectedRound={setSelectedRound}

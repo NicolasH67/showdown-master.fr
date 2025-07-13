@@ -19,7 +19,9 @@ const RefereeDetails = () => {
 
   return (
     <div className="container mt-4">
-      <h1 autoFocus>{t("refereeDetails")}</h1>
+      <h1 id="page-title" tabIndex="-1">
+        {t("refereeDetails")}
+      </h1>
       <h2>
         {referee.firstname} {referee.lastname}
       </h2>

@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import useTournamentForm from "../../Hooks/useTournamentForm";
 import InputField from "../../Components/InputField/InputField";
 import { useTranslation } from "react-i18next";
@@ -19,10 +20,18 @@ const CreateTournament = () => {
   const { formData, handleChange, handleSubmit, error, loading } =
     useTournamentForm();
   const { t, i18n } = useTranslation();
+  const location = useLocation();
+
+  useEffect(() => {
+    const title = document.getElementById("page-title");
+    if (title) {
+      title.focus();
+    }
+  }, [location.pathname]);
 
   return (
     <div className="container mt-5">
-      <h1 className="mb-4" autoFocus>
+      <h1 className="mb-4" id="page-title" tabIndex="-1">
         {t("createNewTournament")}
       </h1>
       <form onSubmit={handleSubmit}>

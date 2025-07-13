@@ -70,7 +70,7 @@ const Players = () => {
 
   return (
     <div className="container mt-4">
-      <h1 className="mb-4" autoFocus>
+      <h1 className="mb-4" id="page-title" tabIndex="-1">
         {t("titlePlayersList")}
       </h1>
       <PlayerSelector

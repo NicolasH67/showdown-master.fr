@@ -4,6 +4,7 @@ import InputField from "../../Components/InputField/InputField";
 import TextAreaField from "../../Components/TextAreaField/TextAreaField";
 import { useTranslation } from "react-i18next";
 import { useEffect } from "react";
+import { useLocation } from "react-router-dom";
 
 /**
  * Contact Component - Displays a contact form allowing users to send messages.
@@ -18,6 +19,7 @@ const Contact = () => {
   const { formData, handleChange, handleSubmit, error, success } =
     useContactForm();
   const { t, i18n } = useTranslation();
+  const location = useLocation();
 
   const handleLogout = () => {
     localStorage.removeItem("isAdmin");
@@ -30,9 +32,16 @@ const Contact = () => {
     handleLogout();
   }, []);
 
+  useEffect(() => {
+    const title = document.getElementById("page-title");
+    if (title) {
+      title.focus();
+    }
+  }, [location.pathname]);
+
   return (
     <div className="container mt-5">
-      <h1 className="mb-4" autoFocus>
+      <h1 className="mb-4" id="page-title" tabIndex="-1">
         {t("contactUs")}
       </h1>
       <form onSubmit={handleSubmit} className="contact-form">

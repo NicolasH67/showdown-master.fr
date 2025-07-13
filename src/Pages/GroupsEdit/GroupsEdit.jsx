@@ -5,6 +5,7 @@ import RoundSelector from "../../Components/RoundSelector/RoundSelector";
 import GroupTableEdit from "../../Components/GroupTableEdit/GroupTableEdit"; // Nouveau composant
 import useGroupsData from "../../Hooks/useGroupsData";
 import { useTranslation } from "react-i18next";
+import { useLocation } from "react-router-dom";
 
 const GroupsEdit = () => {
   const { t } = useTranslation();
@@ -25,9 +26,20 @@ const GroupsEdit = () => {
     );
   };
 
+  const location = useLocation();
+
+  useEffect(() => {
+    const title = document.getElementById("page-title");
+    if (title) {
+      title.focus();
+    }
+  }, [location.pathname]);
+
   return (
     <div className="container mt-4">
-      <h1 autoFocus>{t("createNewGroup")}</h1>
+      <h1 id="page-title" tabIndex="-1">
+        {t("createNewGroup")}
+      </h1>
       <GroupForm tournamentId={id} setGroups={setGroups} />
       <RoundSelector
         selectedRound={selectedRound}

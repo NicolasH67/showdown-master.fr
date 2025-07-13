@@ -5,6 +5,7 @@ import RoundSelector from "../../Components/RoundSelector/RoundSelector";
 import GroupsSection from "../../Components/GroupsSection/GroupsSection";
 import { useTranslation } from "react-i18next";
 import useMatches from "../../Hooks/useMatchs";
+import { useLocation } from "react-router-dom";
 
 const GroupsPage = () => {
   const { id } = useParams();
@@ -21,9 +22,11 @@ const GroupsPage = () => {
     (group) => group.round_type === selectedRound
   );
 
+  const location = useLocation();
+
   return (
     <div className="container mt-4">
-      <h1 className="text-center" autoFocus>
+      <h1 className="text-center" id="page-title" tabIndex="-1">
         {t("tournamentGroups")}
       </h1>
       <RoundSelector

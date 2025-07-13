@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import { React, useState, useEffect } from "react";
 import TournamentList from "../../Components/TournamentList/TournamentList";
 import TournamentModal from "../../Components/TournamentModal/TournamentModal";
 import { useTournaments } from "../../Hooks/useTournament";
 import { useTranslation } from "react-i18next";
+import { useLocation } from "react-router-dom";
 
 /**
  * Home component that displays past tournaments and handles tournament password protection.
@@ -14,6 +15,7 @@ import { useTranslation } from "react-i18next";
  * )
  */
 const History = () => {
+  const location = useLocation();
   const { tournaments, loading, error } = useTournaments(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTournament, setSelectedTournament] = useState(null);
@@ -63,7 +65,7 @@ const History = () => {
 
   return (
     <div className="container mt-4">
-      <h1 className="mb-4" autoFocus>
+      <h1 className="mb-4" id="page-title" tabIndex="-1">
         {t("tournamentHistory")}
       </h1>
       <TournamentList

@@ -2,7 +2,6 @@ import React from "react";
 import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import usePlayerMatches from "../../Hooks/usePlayerMatches"; // Hook pour récupérer les matchs du joueur
-import MatchTable from "../../Components/MatchTable/MatchTable"; // Table pour afficher les matchs
 import PlayerStats from "../../Components/PlayerStats/PlayerStats";
 import MatchRow from "../../Components/MatchRow/MatchRow";
 
@@ -17,7 +16,9 @@ const PlayerDetails = () => {
 
   return (
     <div className="container mt-4">
-      <h1>{t("playerDetails")}</h1>
+      <h1 id="page-title" tabIndex="-1">
+        {t("playerDetails")}
+      </h1>
       <h2>
         {player.firstname} {player.lastname}
       </h2>

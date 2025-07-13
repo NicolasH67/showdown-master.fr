@@ -33,7 +33,9 @@ const TournamentForm = ({
 
   return (
     <div className="container mt-5">
-      <h1>{t("tournamentManagement")}</h1>
+      <h1 id="page-title" tabIndex="-1">
+        {t("tournamentManagement")}
+      </h1>
       {error && <div className="alert alert-danger">{error}</div>}
       {successMessage && (
         <div className="alert alert-success">{successMessage}</div>

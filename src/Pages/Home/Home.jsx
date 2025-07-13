@@ -4,6 +4,7 @@ import TournamentModal from "../../Components/TournamentModal/TournamentModal";
 import { useTournaments } from "../../Hooks/useTournament";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 
 /**
  * Home component that displays upcoming tournaments and handles password protection.
@@ -21,6 +22,16 @@ const Home = () => {
   const [password, setPassword] = useState("");
   const [t, i18n] = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!loading) {
+      const title = document.getElementById("page-title");
+      if (title) {
+        title.focus();
+      }
+    }
+  }, [location.pathname, loading]);
 
   const handleLogout = () => {
     localStorage.removeItem("isAdmin");
@@ -76,7 +87,7 @@ const Home = () => {
 
   return (
     <div className="container mt-4">
-      <h1 className="mb-4" autoFocus>
+      <h1 id="page-title" tabIndex="-1" className="mb-4">
         {t("availableTournaments")}
       </h1>
       <TournamentList
