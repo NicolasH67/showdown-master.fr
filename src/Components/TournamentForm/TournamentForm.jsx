@@ -1,7 +1,7 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import supabase from "../../Helpers/supabaseClient";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 
 const TournamentForm = ({
   tournamentData,
@@ -13,7 +13,20 @@ const TournamentForm = ({
 }) => {
   const { t } = useTranslation();
 
+  const location = useLocation();
+
   const { id } = useParams();
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const title = document.getElementById("page-title");
+      if (title && document.body.contains(title)) {
+        title.focus();
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [location.pathname]);
 
   const deleteTournament = async (e) => {
     e.preventDefault();
