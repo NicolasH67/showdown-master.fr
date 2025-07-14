@@ -1,14 +1,26 @@
-import React from "react";
-import { useParams } from "react-router-dom";
+import React, { useEffect } from "react";
+import { useParams, useLocation } from "react-router-dom";
 import useMatchesResult from "../../Hooks/useMatchResult";
 import MatchRowResult from "../../Components/MatchRowResult/MatchRowResult";
 import { useTranslation } from "react-i18next";
 
 const ResultEdit = () => {
   const { t } = useTranslation();
+  const location = useLocation();
   const { id } = useParams();
   const { matches, referees, loading, error, handleMatchChange, handleSave } =
     useMatchesResult(id);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const title = document.getElementById("page-title");
+      if (title && document.body.contains(title)) {
+        title.focus();
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [location.pathname, matches.length]);
 
   const sortedMatches = [...matches].sort((a, b) => {
     const dateA = new Date(`${a.match_day}T${a.match_time}`);
