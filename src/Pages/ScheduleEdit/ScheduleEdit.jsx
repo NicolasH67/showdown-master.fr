@@ -1,18 +1,28 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import useMatchData from "../../Hooks/useMatchData";
 import GroupList from "../../Components/GroupList/GroupList";
 import matchOrder from "../../Helpers/matchOrder.json";
 import RoundSelector from "../../Components/RoundSelector/RoundSelector";
 import supabase from "../../Helpers/supabaseClient";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
 const ScheduleEdit = () => {
   const { t } = useTranslation();
+  const location = useLocation();
   const { id } = useParams();
   const { groups, players, clubs, loading, error } = useMatchData();
   const [generatedMatches, setGeneratedMatches] = useState({});
   const [selectedRound, setSelectedRound] = useState("1st round");
+
+  useEffect(() => {
+    if (groups.length > 0) {
+      const title = document.getElementById("page-title");
+      if (title) {
+        title.focus();
+      }
+    }
+  }, [location.pathname, groups.length]);
 
   // Trier les joueurs par leur identifiant dans chaque groupe
   const sortedPlayers = Object.fromEntries(
@@ -159,7 +169,7 @@ const ScheduleEdit = () => {
   return (
     <div>
       <h1 id="page-title" tabIndex="-1">
-        {t("groups")}
+        {t("scheduleEdit")}
       </h1>
       <RoundSelector
         selectedRound={selectedRound}

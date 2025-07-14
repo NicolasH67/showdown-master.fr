@@ -170,5 +170,6 @@
   "errorStartDateBeforeEndDate": "Start date must be before end date.",
   "invalidEmail": "Invalid email address.",
   "pairing": "Pairing",
-  "editParticipants": "Edit Players, Referees and Clubs"
+  "editParticipants": "Edit Players, Referees and Clubs",
+  "scheduleEdit": "Edit Schedule"
 }
