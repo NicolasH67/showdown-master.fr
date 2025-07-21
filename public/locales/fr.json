@@ -170,5 +170,6 @@
   "invalidEmail": "L'email est invalide.",
   "pairing": "Confrontation",
   "editParticipants": "Édition des Joueurs, Arbitres et Provenances",
-  "scheduleEdit": "Edition du Planning"
+  "scheduleEdit": "Edition du Planning",
+  "existingMatches": "Matchs existants"
 }

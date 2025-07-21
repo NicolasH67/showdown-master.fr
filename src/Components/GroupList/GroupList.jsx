@@ -6,12 +6,15 @@ const GroupList = ({
   groups,
   players,
   clubs,
+  matches,
   group_former,
   generateMatches,
   generatedMatches,
   updateGeneratedMatch,
   saveMatches,
   allGroups,
+  onEditMatch,
+  onDeleteMatch,
 }) => {
   const { t } = useTranslation();
   return (
@@ -89,13 +92,6 @@ const GroupList = ({
                   </tbody>
                 </table>
 
-                <button
-                  className="btn btn-primary w-100"
-                  onClick={() => generateMatches(group.id)}
-                >
-                  {t("matchesGenerate")}
-                </button>
-
                 {generatedMatches[group.id]?.length > 0 && (
                   <MatchList
                     matches={generatedMatches[group.id]}
@@ -105,6 +101,87 @@ const GroupList = ({
                     saveMatches={saveMatches}
                   />
                 )}
+
+                {matches[group.id] && matches[group.id].length > 0 && (
+                  <div className="mt-4">
+                    <h5>{t("existingMatches")}</h5>
+                    <div className="table-responsive mt-3">
+                      <table className="table table-bordered">
+                        <thead>
+                          <tr>
+                            <th className="text-center">{t("date")}</th>
+                            <th className="text-center">{t("time")}</th>
+                            <th className="text-center">{t("table")}</th>
+                            <th className="text-center">{t("group")}</th>
+                            <th className="text-center">{t("player1")}</th>
+                            <th className="text-center">{t("player2")}</th>
+                            <th className="text-center">{t("action")}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {matches[group.id].map((match) => {
+                            const player1 = players[group.id]?.find(
+                              (p) => p.id === match.player1_id
+                            );
+                            const player2 = players[group.id]?.find(
+                              (p) => p.id === match.player2_id
+                            );
+                            return (
+                              <tr key={match.id}>
+                                <td className="text-center">
+                                  {match.match_day}
+                                </td>
+                                <td className="text-center">
+                                  {new Date(
+                                    `${match.match_day}T${match.match_time}`
+                                  ).toLocaleTimeString([], {
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
+                                </td>
+                                <td className="text-center">
+                                  {match.table_number}
+                                </td>
+                                <td className="text-center">{group.name}</td>
+                                <td className="text-center">
+                                  {player1
+                                    ? `${player1.firstname} ${player1.lastname}`
+                                    : `ID ${match.player1_id}`}
+                                </td>
+                                <td className="text-center">
+                                  {player2
+                                    ? `${player2.firstname} ${player2.lastname}`
+                                    : `ID ${match.player2_id}`}
+                                </td>
+                                <td className="text-center">
+                                  <button
+                                    className="btn btn-sm btn-outline-primary me-2"
+                                    onClick={() => onEditMatch(match)}
+                                  >
+                                    {t("edit")}
+                                  </button>
+                                  <button
+                                    className="btn btn-sm btn-outline-danger"
+                                    onClick={() => onDeleteMatch(match)}
+                                  >
+                                    {t("delete")}
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  className="btn btn-primary w-100"
+                  onClick={() => generateMatches(group.id)}
+                >
+                  {t("matchesGenerate")}
+                </button>
               </div>
             </div>
           </div>

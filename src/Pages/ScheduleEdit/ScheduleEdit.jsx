@@ -6,12 +6,13 @@ import RoundSelector from "../../Components/RoundSelector/RoundSelector";
 import supabase from "../../Helpers/supabaseClient";
 import { useParams, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { useMatch } from "react-router-dom";
 
 const ScheduleEdit = () => {
   const { t } = useTranslation();
   const location = useLocation();
   const { id } = useParams();
-  const { groups, players, clubs, loading, error } = useMatchData();
+  const { groups, players, matches, clubs, loading, error } = useMatchData();
   const [generatedMatches, setGeneratedMatches] = useState({});
   const [selectedRound, setSelectedRound] = useState("1st round");
 
@@ -166,6 +167,25 @@ const ScheduleEdit = () => {
   if (loading) return <div>{t("loading")}</div>;
   if (error) return <div>{error}</div>;
 
+  // Handlers for editing and deleting matches
+  const handleEditMatch = (match) => {
+    alert(`${t("edit")} - ID: ${match.id}`);
+  };
+
+  const handleDeleteMatch = async (match) => {
+    const confirmed = window.confirm(`${t("confirmDeleteMatch")}`);
+    if (!confirmed) return;
+
+    const { error } = await supabase.from("match").delete().eq("id", match.id);
+    if (error) {
+      console.error(error.message);
+      alert(t("deleteError"));
+      return;
+    }
+
+    alert(t("matchDeleted"));
+  };
+
   return (
     <div>
       <h1 id="page-title" tabIndex="-1">
@@ -179,11 +199,14 @@ const ScheduleEdit = () => {
         groups={filteredSortedGroups}
         players={sortedPlayers}
         clubs={clubs}
+        matches={matches}
         generateMatches={generateMatches}
         generatedMatches={generatedMatches}
         updateGeneratedMatch={updateGeneratedMatch}
         saveMatches={saveMatches}
         allGroups={groups}
+        onEditMatch={handleEditMatch}
+        onDeleteMatch={handleDeleteMatch}
       />
     </div>
   );

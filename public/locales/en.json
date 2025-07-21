@@ -171,5 +171,6 @@
   "invalidEmail": "Invalid email address.",
   "pairing": "Pairing",
   "editParticipants": "Edit Players, Referees and Clubs",
-  "scheduleEdit": "Edit Schedule"
+  "scheduleEdit": "Edit Schedule",
+  "existingMatches": "Existing Matches"
 }
