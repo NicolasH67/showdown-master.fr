@@ -28,12 +28,18 @@ const MatchList = ({
             {matches.map((match, index) => (
               <tr key={index}>
                 <td>
-                  {players.find((p) => p.id === match.player1_id)?.firstname}{" "}
-                  {players.find((p) => p.id === match.player1_id)?.lastname}
+                  {Array.isArray(players) &&
+                    players.find((p) => p.id === match.player1_id)
+                      ?.firstname}{" "}
+                  {Array.isArray(players) &&
+                    players.find((p) => p.id === match.player1_id)?.lastname}
                 </td>
                 <td>
-                  {players.find((p) => p.id === match.player2_id)?.firstname}{" "}
-                  {players.find((p) => p.id === match.player2_id)?.lastname}
+                  {Array.isArray(players) &&
+                    players.find((p) => p.id === match.player2_id)
+                      ?.firstname}{" "}
+                  {Array.isArray(players) &&
+                    players.find((p) => p.id === match.player2_id)?.lastname}
                 </td>
                 <td>
                   <input

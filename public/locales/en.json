@@ -172,5 +172,6 @@
   "pairing": "Pairing",
   "editParticipants": "Edit Players, Referees and Clubs",
   "scheduleEdit": "Edit Schedule",
-  "existingMatches": "Existing Matches"
+  "existingMatches": "Existing Matches",
+  "notAssigned": "Not Assigned"
 }

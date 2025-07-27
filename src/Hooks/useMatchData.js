@@ -46,6 +46,8 @@ const useMatchData = () => {
           .from("club")
           .select("id, abbreviation");
 
+        console.log(clubsData);
+
         if (clubsError) throw clubsError;
 
         const clubsMap = Object.fromEntries(

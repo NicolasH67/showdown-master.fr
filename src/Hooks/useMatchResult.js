@@ -8,6 +8,7 @@ const useMatchesResult = (tournamentId) => {
   const [results, setResults] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [groups, setGroups] = useState([]);
 
   useEffect(() => {
     const fetchMatchesAndReferees = async () => {
@@ -19,7 +20,9 @@ const useMatchesResult = (tournamentId) => {
             id,
             player1:player1_id(firstname, lastname),
             player2:player2_id(firstname, lastname),
-            group:group_id(name),
+            player1_group_position,
+            player2_group_position,
+            group:group_id(id, name, group_former),
             match_day,
             match_time, 
             table_number,
@@ -39,6 +42,13 @@ const useMatchesResult = (tournamentId) => {
           return a.table_number - b.table_number;
         });
         setMatches(matchData);
+
+        let { data: groupData, error: groupError } = await supabase
+          .from("group")
+          .select("id, name, group_former")
+          .eq("tournament_id", tournamentId);
+        if (groupError) throw groupError;
+        setGroups(groupData);
 
         // Récupération des arbitres assignés au tournoi
         let { data: refereeData, error: refereeError } = await supabase
@@ -158,6 +168,7 @@ const useMatchesResult = (tournamentId) => {
 
   return {
     matches,
+    groups,
     referees,
     loading,
     error,

@@ -2,7 +2,14 @@ import React, { useState, useEffect } from "react";
 import supabase from "../../Helpers/supabaseClient";
 import { useTranslation } from "react-i18next";
 
-const MatchRowResult = ({ match, index, referees, onMatchChange, onSave }) => {
+const MatchRowResult = ({
+  match,
+  allgroups,
+  index,
+  referees,
+  onMatchChange,
+  onSave,
+}) => {
   const { t } = useTranslation();
   const [localResults, setLocalResults] = useState(
     match.result?.map((v) => (v === null ? "" : v.toString())) ||
@@ -11,6 +18,8 @@ const MatchRowResult = ({ match, index, referees, onMatchChange, onSave }) => {
   const [resultText, setResultText] = useState("");
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+
+  console.log(match);
 
   useEffect(() => {
     setLocalResults(
@@ -90,22 +99,54 @@ const MatchRowResult = ({ match, index, referees, onMatchChange, onSave }) => {
       <td className="text-center">{match.table_number}</td>
       <td className="text-center">{match.group.name}</td>
       <td className="text-center">
-        <span
-          role="text"
-          aria-label={`${match.player1.firstname} ${match.player1.lastname}`}
-        >
-          {match.player1.firstname} {match.player1.lastname}
-        </span>
-        <span role="text" aria-label="versus">
-          {" "}
-          vs{" "}
-        </span>
-        <span
-          role="text"
-          aria-label={`${match.player2.firstname} ${match.player2.lastname}`}
-        >
-          {match.player2.firstname} {match.player2.lastname}
-        </span>
+        {match.player1 && match.player2 ? (
+          <>
+            <span
+              role="text"
+              aria-label={`${match.player1.firstname} ${match.player1.lastname}`}
+            >
+              {match.player1.firstname} {match.player1.lastname}
+            </span>
+            <span role="text" aria-label="versus">
+              {" "}
+              vs{" "}
+            </span>
+            <span
+              role="text"
+              aria-label={`${match.player2.firstname} ${match.player2.lastname}`}
+            >
+              {match.player2.firstname} {match.player2.lastname}
+            </span>
+          </>
+        ) : (
+          <>
+            {match.player1_group_position &&
+            match.player2_group_position &&
+            match.group?.group_former ? (
+              (() => {
+                const former = JSON.parse(match.group.group_former);
+                const getLabel = (position) => {
+                  const entry = former[Number(position) - 1];
+                  if (!entry) return position;
+                  const groupId = entry[1];
+                  const group = allgroups.find((g) => g.id === groupId);
+                  return group
+                    ? `${group.name}(${entry[0]})`
+                    : `${groupId}(${entry[0]})`;
+                };
+
+                return (
+                  <span role="text">
+                    {getLabel(match.player1_group_position)} vs{" "}
+                    {getLabel(match.player2_group_position)}
+                  </span>
+                );
+              })()
+            ) : (
+              <span role="text">{t("notAssigned")}</span>
+            )}
+          </>
+        )}
       </td>
       <td className="text-center">
         <span role="text">
@@ -123,7 +164,7 @@ const MatchRowResult = ({ match, index, referees, onMatchChange, onSave }) => {
         </span>
       </td>
       <td className="text-center">
-        {isEditing ? (
+        {isEditing && match.player1 && match.player2 ? (
           <input
             type="text"
             className="form-control form-control-sm text-center"
@@ -145,9 +186,12 @@ const MatchRowResult = ({ match, index, referees, onMatchChange, onSave }) => {
         ) : (
           <div
             role="button"
-            onClick={() => setIsEditing(true)}
+            onClick={() => {
+              if (match.player1 && match.player2) setIsEditing(true);
+            }}
             style={{
-              cursor: "pointer",
+              cursor:
+                match.player1 && match.player2 ? "pointer" : "not-allowed",
               display: "flex",
               flexWrap: "wrap",
               gap: "4px",
@@ -176,6 +220,7 @@ const MatchRowResult = ({ match, index, referees, onMatchChange, onSave }) => {
       </td>
       <td className="text-center">
         <select
+          disabled={!match.player1 || !match.player2}
           className="form-select form-select-sm mb-1"
           style={{ textAlign: "center" }}
           value={match.referee1_id || ""}
@@ -195,6 +240,7 @@ const MatchRowResult = ({ match, index, referees, onMatchChange, onSave }) => {
           ))}
         </select>
         <select
+          disabled={!match.player1 || !match.player2}
           className="form-select form-select-sm"
           style={{ textAlign: "center" }}
           value={match.referee2_id || ""}
@@ -215,7 +261,15 @@ const MatchRowResult = ({ match, index, referees, onMatchChange, onSave }) => {
         </select>
       </td>
       <td className="text-center">
-        {isEditing ? (
+        {!match.player1 || !match.player2 ? (
+          <button
+            className="btn btn-sm btn-outline-secondary"
+            disabled
+            title={t("notAssigned")}
+          >
+            ✏️
+          </button>
+        ) : isEditing ? (
           <button
             className="btn btn-sm btn-success"
             disabled={loading}

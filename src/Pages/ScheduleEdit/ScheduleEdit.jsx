@@ -6,7 +6,6 @@ import RoundSelector from "../../Components/RoundSelector/RoundSelector";
 import supabase from "../../Helpers/supabaseClient";
 import { useParams, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useMatch } from "react-router-dom";
 
 const ScheduleEdit = () => {
   const { t } = useTranslation();
@@ -36,10 +35,15 @@ const ScheduleEdit = () => {
   const generateMatches = (groupId) => {
     const groupPlayers = sortedPlayers[groupId] || [];
     const group = groups.find((g) => g.id === groupId);
-    const fakeGroupPlayer = group.group_former;
+    const parsedGroupFormer = Array.isArray(group.group_former)
+      ? group.group_former
+      : group.group_former
+      ? JSON.parse(group.group_former)
+      : [];
 
-    if (groupPlayers.length < 2 && (fakeGroupPlayer == [] || null)) {
+    if (groupPlayers.length + parsedGroupFormer.length < 2) {
       alert("Il faut au moins 2 joueurs.");
+      return;
     }
 
     if (groupPlayers.length > 2) {
@@ -50,9 +54,13 @@ const ScheduleEdit = () => {
         ...prev,
         [groupId]: matchOrderForGroup.map((matchStr) => {
           const [p1, p2] = matchStr.split("-").map(Number);
+          const player1 = groupPlayers[p1 - 1];
+          const player2 = groupPlayers[p2 - 1];
           return {
-            player1_id: groupPlayers[p1 - 1]?.id,
-            player2_id: groupPlayers[p2 - 1]?.id,
+            player1_id: player1 ? player1.id : null,
+            player1_group_position: player1 ? null : p1,
+            player2_id: player2 ? player2.id : null,
+            player2_group_position: player2 ? null : p2,
           };
         }),
       }));
@@ -69,9 +77,13 @@ const ScheduleEdit = () => {
           ...prev,
           [groupId]: matchOrderForGroup.map((matchStr) => {
             const [p1, p2] = matchStr.split("-").map(Number);
+            const player1 = groupPlayers[p1 - 1];
+            const player2 = groupPlayers[p2 - 1];
             return {
-              player1_id: groupPlayers[p1 - 1]?.id,
-              player2_id: groupPlayers[p2 - 1]?.id,
+              player1_id: player1 ? player1.id : null,
+              player1_group_position: player1 ? null : p1,
+              player2_id: player2 ? player2.id : null,
+              player2_group_position: player2 ? null : p2,
             };
           }),
         }));
@@ -123,8 +135,8 @@ const ScheduleEdit = () => {
 
       const validMatches = matches.map((match) => {
         if (
-          !match.player1_id ||
-          !match.player2_id ||
+          (!match.player1_id && !match.player1_group_position) ||
+          (!match.player2_id && !match.player2_group_position) ||
           !match.match_date ||
           !match.match_time ||
           !match.table_number
@@ -133,8 +145,14 @@ const ScheduleEdit = () => {
         }
 
         return {
-          player1_id: match.player1_id,
-          player2_id: match.player2_id,
+          player1_id: match.player1_id ?? null,
+          player2_id: match.player2_id ?? null,
+          player1_group_position: match.player1_id
+            ? null
+            : match.player1_group_position ?? null,
+          player2_group_position: match.player2_id
+            ? null
+            : match.player2_group_position ?? null,
           result: [],
           match_day: match.match_date,
           match_time: match.match_time,
@@ -186,6 +204,14 @@ const ScheduleEdit = () => {
     alert(t("matchDeleted"));
   };
 
+  const getFakePlayerLabel = (group, position) => {
+    if (!group?.group_former) return "";
+    const groupFormerArray = Array.isArray(group.group_former)
+      ? group.group_former
+      : JSON.parse(group.group_former);
+    return groupFormerArray[position - 1] || `(${position})`;
+  };
+
   return (
     <div>
       <h1 id="page-title" tabIndex="-1">
@@ -200,13 +226,76 @@ const ScheduleEdit = () => {
         players={sortedPlayers}
         clubs={clubs}
         matches={matches}
-        generateMatches={generateMatches}
+        generateMatches={(groupId) => {
+          const group = groups.find((g) => g.id === groupId);
+          const groupPlayers = sortedPlayers[groupId] || [];
+          const parsedGroupFormer = Array.isArray(group.group_former)
+            ? group.group_former
+            : group.group_former
+            ? JSON.parse(group.group_former)
+            : [];
+
+          if (groupPlayers.length + parsedGroupFormer.length < 2) {
+            alert("Il faut au moins 2 joueurs.");
+            return;
+          }
+
+          if (groupPlayers.length > 2) {
+            const matchOrderForGroup =
+              matchOrder["Match Order"][groupPlayers.length];
+            if (!matchOrderForGroup)
+              return alert("Aucun ordre de match défini.");
+
+            setGeneratedMatches((prev) => ({
+              ...prev,
+              [groupId]: matchOrderForGroup.map((matchStr) => {
+                const [p1, p2] = matchStr.split("-").map(Number);
+                const player1 = groupPlayers[p1 - 1];
+                const player2 = groupPlayers[p2 - 1];
+                return {
+                  player1_id: player1 ? player1.id : null,
+                  player1_group_position: player1 ? null : p1,
+                  player2_id: player2 ? player2.id : null,
+                  player2_group_position: player2 ? null : p2,
+                };
+              }),
+            }));
+          } else {
+            try {
+              const parsedGroupFormer = Array.isArray(group.group_former)
+                ? group.group_former
+                : JSON.parse(group.group_former);
+              const matchOrderForGroup =
+                matchOrder["Match Order"][parsedGroupFormer.length];
+              if (!matchOrderForGroup)
+                return alert("Aucun ordre de match défini.");
+
+              setGeneratedMatches((prev) => ({
+                ...prev,
+                [groupId]: matchOrderForGroup.map((matchStr) => {
+                  const [p1, p2] = matchStr.split("-").map(Number);
+                  const player1 = groupPlayers[p1 - 1];
+                  const player2 = groupPlayers[p2 - 1];
+                  return {
+                    player1_id: player1 ? player1.id : null,
+                    player1_group_position: player1 ? null : p1,
+                    player2_id: player2 ? player2.id : null,
+                    player2_group_position: player2 ? null : p2,
+                  };
+                }),
+              }));
+            } catch (error) {
+              console.log(error);
+            }
+          }
+        }}
         generatedMatches={generatedMatches}
         updateGeneratedMatch={updateGeneratedMatch}
         saveMatches={saveMatches}
         allGroups={groups}
         onEditMatch={handleEditMatch}
         onDeleteMatch={handleDeleteMatch}
+        getFakePlayerLabel={getFakePlayerLabel}
       />
     </div>
   );

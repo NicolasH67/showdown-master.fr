@@ -8,8 +8,15 @@ const ResultEdit = () => {
   const { t } = useTranslation();
   const location = useLocation();
   const { id } = useParams();
-  const { matches, referees, loading, error, handleMatchChange, handleSave } =
-    useMatchesResult(id);
+  const {
+    matches,
+    groups,
+    referees,
+    loading,
+    error,
+    handleMatchChange,
+    handleSave,
+  } = useMatchesResult(id);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -70,6 +77,7 @@ const ResultEdit = () => {
             {sortedMatches.map((match, index) => (
               <MatchRowResult
                 key={match.id}
+                allgroups={groups}
                 match={match}
                 index={index}
                 referees={referees}
