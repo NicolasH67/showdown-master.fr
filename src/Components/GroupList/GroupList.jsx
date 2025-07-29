@@ -146,11 +146,55 @@ const GroupList = ({
                                 <td className="text-center">
                                   {player1
                                     ? `${player1.firstname} ${player1.lastname}`
+                                    : group.group_former
+                                    ? (() => {
+                                        try {
+                                          const parsed = JSON.parse(
+                                            group.group_former
+                                          );
+                                          const entry =
+                                            parsed[
+                                              Number(
+                                                match.player1_group_position
+                                              ) - 1
+                                            ];
+                                          const refGroup = allGroups?.find(
+                                            (g) => g.id === entry?.[1]
+                                          );
+                                          return refGroup
+                                            ? `${refGroup.name}(${entry[0]})`
+                                            : `Groupe ${entry?.[1]}(${entry?.[0]})`;
+                                        } catch {
+                                          return t("notAssigned");
+                                        }
+                                      })()
                                     : `ID ${match.player1_id}`}
                                 </td>
                                 <td className="text-center">
                                   {player2
                                     ? `${player2.firstname} ${player2.lastname}`
+                                    : group.group_former
+                                    ? (() => {
+                                        try {
+                                          const parsed = JSON.parse(
+                                            group.group_former
+                                          );
+                                          const entry =
+                                            parsed[
+                                              Number(
+                                                match.player2_group_position
+                                              ) - 1
+                                            ];
+                                          const refGroup = allGroups?.find(
+                                            (g) => g.id === entry?.[1]
+                                          );
+                                          return refGroup
+                                            ? `${refGroup.name}(${entry[0]})`
+                                            : `Groupe ${entry?.[1]}(${entry?.[0]})`;
+                                        } catch {
+                                          return t("notAssigned");
+                                        }
+                                      })()
                                     : `ID ${match.player2_id}`}
                                 </td>
                                 <td className="text-center">
