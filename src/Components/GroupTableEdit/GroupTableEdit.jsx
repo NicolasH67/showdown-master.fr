@@ -118,7 +118,9 @@ const GroupTableEdit = ({ groups, players, onEdit, onDelete, allGroups }) => {
           <tbody>
             {sortedGroups.map((group) => {
               const playerCount = players.filter(
-                (player) => player.group.id === group.id
+                (player) =>
+                  Array.isArray(player.group_id) &&
+                  player.group_id.includes(group.id)
               ).length;
 
               return (

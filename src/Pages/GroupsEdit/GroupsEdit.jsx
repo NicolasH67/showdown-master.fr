@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import GroupForm from "../../Components/GroupForm/GroupForm";
 import RoundSelector from "../../Components/RoundSelector/RoundSelector";
 import GroupTableEdit from "../../Components/GroupTableEdit/GroupTableEdit"; // Nouveau composant
 import useGroupsData from "../../Hooks/useGroupsData";
 import { useTranslation } from "react-i18next";
-import { useLocation } from "react-router-dom";
 
 const GroupsEdit = () => {
   const { t } = useTranslation();
