@@ -212,6 +212,13 @@ const MatchRowResult = ({
                   .map(([a, b], i) => (
                     <span key={i} role="text">
                       {a || "—"}-{b || "—"}
+                      {i <
+                      Math.floor(
+                        localResults.filter((v) => v !== "").length / 2
+                      ) -
+                        1
+                        ? "; "
+                        : ""}
                     </span>
                   ))
               : "—"}
