@@ -30,8 +30,21 @@ const usePlayers = (tournamentId) => {
 
         if (error) throw error;
 
+        const { data: groupsData, error: groupsError } = await supabase
+          .from("group")
+          .select("id, name, group_type");
+        if (groupsError) throw groupsError;
+
+        const enrichedPlayers = data.map((player) => {
+          const mainGroupId = Array.isArray(player.group_id)
+            ? player.group_id[0]
+            : null;
+          const group = groupsData.find((g) => g.id === mainGroupId);
+          return { ...player, group };
+        });
+
         const parsedTournamentId = parseInt(tournamentId, 10);
-        const filteredPlayers = data.filter(
+        const filteredPlayers = enrichedPlayers.filter(
           (player) => player.tournament_id === parsedTournamentId
         );
         setPlayers(filteredPlayers);

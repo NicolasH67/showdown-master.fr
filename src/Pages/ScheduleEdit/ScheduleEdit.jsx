@@ -240,7 +240,7 @@ const ScheduleEdit = () => {
             return;
           }
 
-          if (groupPlayers.length > 2) {
+          if (groupPlayers.length >= 2) {
             const matchOrderForGroup =
               matchOrder["Match Order"][groupPlayers.length];
             if (!matchOrderForGroup)
