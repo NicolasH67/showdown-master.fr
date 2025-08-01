@@ -18,7 +18,7 @@ const PlayerForm = ({ tournamentId, clubs, groups, onAddSuccess }) => {
         {
           firstname,
           lastname,
-          group_id: groupId,
+          group_id: [parseInt(groupId)],
           club_id: clubId,
           tournament_id: tournamentId,
         },

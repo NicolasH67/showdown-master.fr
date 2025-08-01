@@ -89,8 +89,14 @@ const PlayerTableEdit = ({
                   </td>
                   <td>{player.club?.name || "N/A"}</td>
                   <td>
-                    {player.group
-                      ? `${player.group.name} - ${t(player.group.group_type)}`
+                    {Array.isArray(player.group_id) &&
+                    player.group_id.length > 0
+                      ? (() => {
+                          const g = groups.find(
+                            (grp) => grp.id === player.group_id[0]
+                          );
+                          return g ? `${g.name} - ${t(g.group_type)}` : "N/A";
+                        })()
                       : "N/A"}
                   </td>
                   <td>

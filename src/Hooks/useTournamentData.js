@@ -26,7 +26,7 @@ const useTournamentData = (tournamentId, refreshTrigger) => {
           supabase
             .from("player")
             .select(
-              "id, firstname, lastname, club:club_id (id, name, abbreviation), tournament_id, group:group_id (id, name, group_type)"
+              "id, firstname, lastname, club:club_id (id, name, abbreviation), tournament_id, group_id"
             ),
           supabase
             .from("referee")
@@ -70,7 +70,23 @@ const useTournamentData = (tournamentId, refreshTrigger) => {
     if (tournamentId) fetchData();
   }, [tournamentId, refreshTrigger]); // Ajout de refreshTrigger comme dépendance
 
-  return { groups, clubs, players, referees, loading, error };
+  const playersWithGroups = players.map((player) => {
+    const groupNames = player.group_id
+      ?.map((id) => groups.find((g) => g.id === id)?.name)
+      .filter(Boolean)
+      .join(", ");
+    return { ...player, groupNames };
+  });
+
+  return {
+    groups,
+    clubs,
+    players,
+    playersWithGroups,
+    referees,
+    loading,
+    error,
+  };
 };
 
 export default useTournamentData;

@@ -22,7 +22,7 @@ const useMatchesResult = (tournamentId) => {
             player2:player2_id(firstname, lastname),
             player1_group_position,
             player2_group_position,
-            group:group_id(id, name, group_former),
+            group:group_id(id, name, group_former, tournament_id),
             match_day,
             match_time, 
             table_number,
@@ -162,6 +162,105 @@ const useMatchesResult = (tournamentId) => {
         );
       } else {
         console.log("Résultat du match enregistré avec succès");
+        const match = matches.find((m) => m.id === matchId);
+        if (match?.group?.id && match?.group?.tournament_id) {
+          await processGroupQualification(
+            match.group.id,
+            match.group.tournament_id
+          );
+        }
+      }
+    }
+  };
+
+  const processGroupQualification = async (groupId, tournamentId) => {
+    const { data: matches, error: matchError } = await supabase
+      .from("match")
+      .select("id, result, player1_id, player2_id")
+      .eq("group_id", groupId)
+      .eq("tournament_id", tournamentId);
+
+    if (matchError) {
+      console.error("[processGroupQualification] matchError:", matchError);
+      return;
+    }
+
+    const groupFinished = matches.every(
+      (m) => Array.isArray(m.result) && m.result.length > 0
+    );
+    if (!groupFinished) return;
+
+    const { data: players, error: playerErr } = await supabase
+      .from("player")
+      .select("*")
+      .contains("group_id", [groupId]);
+
+    if (playerErr) {
+      console.error("[processGroupQualification] playerErr:", playerErr);
+      return;
+    }
+
+    const points = Object.fromEntries(players.map((p) => [p.id, 0]));
+
+    matches.forEach((m) => {
+      if (!Array.isArray(m.result) || m.result.length < 2) return;
+      const sum1 = m.result
+        .filter((_, i) => i % 2 === 0)
+        .reduce((a, b) => a + b, 0);
+      const sum2 = m.result
+        .filter((_, i) => i % 2 === 1)
+        .reduce((a, b) => a + b, 0);
+
+      if (sum1 > sum2 && m.player1_id) points[m.player1_id] += 1;
+      else if (sum2 > sum1 && m.player2_id) points[m.player2_id] += 1;
+    });
+
+    const classement = [...players].sort(
+      (a, b) =>
+        points[b.id] - points[a.id] || a.lastname.localeCompare(b.lastname)
+    );
+
+    const { data: groups, error: groupErr } = await supabase
+      .from("group")
+      .select("id, group_former")
+      .eq("tournament_id", tournamentId);
+
+    if (groupErr) {
+      console.error("[processGroupQualification] groupErr:", groupErr);
+      return;
+    }
+
+    for (const g of groups) {
+      if (!g.group_former) continue;
+
+      let former;
+      try {
+        former = JSON.parse(g.group_former);
+      } catch {
+        continue;
+      }
+
+      const targets = former
+        .map((e) => ({ place: e[0], from: e[1] }))
+        .filter((e) => e.from === groupId);
+
+      for (const { place } of targets) {
+        const player = classement[place - 1];
+        if (!player) continue;
+
+        const newGroupId = g.id;
+        const updatedGroupArray = player.group_id.includes(newGroupId)
+          ? player.group_id
+          : [...player.group_id, newGroupId];
+
+        const { error: updErr } = await supabase
+          .from("player")
+          .update({ group_id: updatedGroupArray })
+          .eq("id", player.id);
+
+        if (updErr) {
+          console.error("[processGroupQualification] updErr:", updErr);
+        }
       }
     }
   };
