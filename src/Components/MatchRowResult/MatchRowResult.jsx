@@ -274,7 +274,7 @@ const MatchRowResult = ({
             disabled
             title={t("notAssigned")}
           >
-            ✏️
+            edit
           </button>
         ) : isEditing ? (
           <button
@@ -285,7 +285,7 @@ const MatchRowResult = ({
               setIsEditing(false);
             }}
           >
-            ✅
+            save
           </button>
         ) : localResults.every((v) => v === "") ? (
           <button
@@ -296,7 +296,7 @@ const MatchRowResult = ({
               setIsEditing(true);
             }}
           >
-            ✅
+            save
           </button>
         ) : (
           <button
@@ -305,7 +305,7 @@ const MatchRowResult = ({
               setIsEditing(true);
             }}
           >
-            ✏️
+            edit
           </button>
         )}
       </td>

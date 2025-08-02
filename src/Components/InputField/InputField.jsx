@@ -27,6 +27,12 @@ const InputField = ({ label, type, name, value, onChange }) => {
           value={value}
           onChange={onChange}
           required
+          pattern={
+            type === "email"
+              ? "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}"
+              : undefined
+          }
+          maxLength={255}
         />
         {isPassword && (
           <button

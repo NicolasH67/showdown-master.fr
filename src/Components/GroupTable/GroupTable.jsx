@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 
 const parseMatch = (match) => {
   if (!match.player1?.id || !match.player2?.id) {
-    console.warn("Match mal formé :", match);
     return {
       playerAId: -1,
       playerBId: -1,
@@ -74,7 +73,7 @@ const computeStats = (players = [], rawMatches = []) => {
   return stats;
 };
 
-const GroupTable = ({ players, matches }) => {
+const GroupTable = ({ players, matches, group, allGroups }) => {
   const { t } = useTranslation();
   const stats = computeStats(players, matches);
   /*
@@ -95,12 +94,15 @@ const GroupTable = ({ players, matches }) => {
     return computeStats(playersSubset, filteredMatches);
   };
 
+  const hasResults = matches.some((m) => (m.result || []).length > 0);
+
   const sortedPlayers = [...players].sort((a, b) => {
+    if (!hasResults) return a.id - b.id;
+
     const pa = stats[a.id];
     const pb = stats[b.id];
     if (pb.wins !== pa.wins) return pb.wins - pa.wins;
 
-    // égalité détectée
     const tiedPlayers = players.filter((p) => stats[p.id].wins === pa.wins);
     if (tiedPlayers.length === 2 || tiedPlayers.length === 3) {
       const subStats = getDirectStats(tiedPlayers, matches);
@@ -116,7 +118,6 @@ const GroupTable = ({ players, matches }) => {
       if (goalDiffA !== goalDiffB) return goalDiffB - goalDiffA;
     }
 
-    // Tirage au sort si égalité persistante
     return a.lastname.localeCompare(b.lastname);
   });
 
@@ -154,6 +155,36 @@ const GroupTable = ({ players, matches }) => {
               </tr>
             );
           })
+        ) : group?.group_former ? (
+          (() => {
+            let parsedFormer = [];
+            try {
+              parsedFormer = Array.isArray(group.group_former)
+                ? group.group_former
+                : JSON.parse(group.group_former);
+            } catch (err) {
+              console.error("Erreur parsing group_former", err);
+            }
+
+            return parsedFormer.map(([position, groupId], index) => {
+              const sourceGroup = allGroups?.find(
+                (g) => Number(g.id) === Number(groupId)
+              );
+              return (
+                <tr key={index}>
+                  <td>{index + 1}</td>
+                  <td>
+                    {sourceGroup
+                      ? `${sourceGroup.name}(${position})`
+                      : `?(${position})`}
+                  </td>
+                  <td colSpan="3" className="text-center">
+                    —
+                  </td>
+                </tr>
+              );
+            });
+          })()
         ) : (
           <tr>
             <td colSpan="5" className="text-center">
