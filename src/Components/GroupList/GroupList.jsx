@@ -15,6 +15,7 @@ const GroupList = ({
   allGroups,
   onEditMatch,
   onDeleteMatch,
+  tournamentStartDate,
 }) => {
   const { t } = useTranslation();
   return (
@@ -99,6 +100,7 @@ const GroupList = ({
                     groupId={group.id}
                     updateGeneratedMatch={updateGeneratedMatch}
                     saveMatches={saveMatches}
+                    tournamentStartDate={tournamentStartDate}
                   />
                 )}
 

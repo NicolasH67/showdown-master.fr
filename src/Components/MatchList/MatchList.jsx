@@ -7,6 +7,7 @@ const MatchList = ({
   groupId,
   updateGeneratedMatch,
   saveMatches,
+  tournamentStartDate, // ajout de la prop
 }) => {
   const { t } = useTranslation();
   return (
@@ -45,6 +46,7 @@ const MatchList = ({
                   <input
                     type="date"
                     className="form-control"
+                    defaultValue={tournamentStartDate}
                     onChange={(e) =>
                       updateGeneratedMatch(
                         groupId,

@@ -14,6 +14,7 @@ const ScheduleEdit = () => {
   const { groups, players, matches, clubs, loading, error } = useMatchData();
   const [generatedMatches, setGeneratedMatches] = useState({});
   const [selectedRound, setSelectedRound] = useState("1st round");
+  const [tournamentStartDate, setTournamentStartDate] = useState("");
 
   useEffect(() => {
     if (groups.length > 0) {
@@ -23,6 +24,29 @@ const ScheduleEdit = () => {
       }
     }
   }, [location.pathname, groups.length]);
+
+  useEffect(() => {
+    const fetchTournamentStartDate = async () => {
+      const { data, error } = await supabase
+        .from("tournament")
+        .select("startday")
+        .eq("id", id)
+        .single();
+
+      if (error) {
+        console.error(
+          "Erreur de récupération de la date de début :",
+          error.message
+        );
+      } else if (data?.startday) {
+        setTournamentStartDate(data.startday);
+      }
+    };
+
+    if (id) {
+      fetchTournamentStartDate();
+    }
+  }, [id]);
 
   // Trier les joueurs par leur identifiant dans chaque groupe
   const sortedPlayers = Object.fromEntries(
@@ -61,6 +85,9 @@ const ScheduleEdit = () => {
             player1_group_position: player1 ? null : p1,
             player2_id: player2 ? player2.id : null,
             player2_group_position: player2 ? null : p2,
+            match_date: tournamentStartDate || "",
+            match_time: "",
+            table_number: "",
           };
         }),
       }));
@@ -84,6 +111,9 @@ const ScheduleEdit = () => {
               player1_group_position: player1 ? null : p1,
               player2_id: player2 ? player2.id : null,
               player2_group_position: player2 ? null : p2,
+              match_date: tournamentStartDate || "",
+              match_time: "",
+              table_number: "",
             };
           }),
         }));
@@ -134,6 +164,7 @@ const ScheduleEdit = () => {
       }
 
       const validMatches = matches.map((match) => {
+        console.log(match);
         if (
           (!match.player1_id && !match.player1_group_position) ||
           (!match.player2_id && !match.player2_group_position) ||
@@ -257,6 +288,9 @@ const ScheduleEdit = () => {
                   player1_group_position: player1 ? null : p1,
                   player2_id: player2 ? player2.id : null,
                   player2_group_position: player2 ? null : p2,
+                  match_date: tournamentStartDate || "",
+                  match_time: "",
+                  table_number: "",
                 };
               }),
             }));
@@ -281,6 +315,9 @@ const ScheduleEdit = () => {
                     player1_group_position: player1 ? null : p1,
                     player2_id: player2 ? player2.id : null,
                     player2_group_position: player2 ? null : p2,
+                    match_date: tournamentStartDate || "",
+                    match_time: "",
+                    table_number: "",
                   };
                 }),
               }));
@@ -296,6 +333,7 @@ const ScheduleEdit = () => {
         onEditMatch={handleEditMatch}
         onDeleteMatch={handleDeleteMatch}
         getFakePlayerLabel={getFakePlayerLabel}
+        tournamentStartDate={tournamentStartDate}
       />
     </div>
   );
