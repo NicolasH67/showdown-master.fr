@@ -1,15 +1,38 @@
 import React, { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useParams } from "react-router-dom";
 import useMatches from "../../Hooks/useMatchs";
 import usePlayers from "../../Hooks/usePlayers";
 import MatchRow from "../../Components/MatchRow/MatchRow";
 import { useTranslation } from "react-i18next";
 import DateSelector from "../../Components/DateSelector/DateSelector";
+import supabase from "../../Helpers/supabaseClient";
 
 const Schedule = () => {
+  const { id } = useParams();
   const { matches, loading, error } = useMatches();
   const { t } = useTranslation();
   const location = useLocation();
+  const [allGroups, setAllgroups] = useState([]);
+
+  useEffect(() => {
+    const fetchGroups = async () => {
+      const { data: group, error: groupsError } = await supabase
+        .from("group")
+        .select("*")
+        .eq("tournament_id", id);
+      if (groupsError) {
+        console.error(
+          "Erreur de chargement des groupes :",
+          groupsError.message
+        );
+      } else {
+        setAllgroups(group);
+      }
+    };
+    if (id) {
+      fetchGroups();
+    }
+  }, [id]);
 
   const getUniqueDates = (matches) => {
     const dates = matches.map((match) => match.match_day);
@@ -100,6 +123,7 @@ const Schedule = () => {
                   match={match}
                   index={index}
                   formatResult={formatResult}
+                  allgroups={allGroups}
                 />
               ))}
             </tbody>

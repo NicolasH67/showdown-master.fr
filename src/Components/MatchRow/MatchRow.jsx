@@ -9,7 +9,8 @@ import React, { useMemo } from "react";
  * @param {Function} props.formatResult - Function to format match results.
  * @returns {JSX.Element} A table row displaying a match's details.
  */
-const MatchRow = ({ match, index, formatResult }) => {
+const MatchRow = ({ match, index, formatResult, allgroups }) => {
+  console.log(match);
   const calculateStats = (result) => {
     let points = [0, 0];
     let sets = [0, 0];
@@ -71,12 +72,40 @@ const MatchRow = ({ match, index, formatResult }) => {
       <td className="text-center">{match.group.name}</td>
       <td className="text-center">
         <span role="text">
-          {match.player1.firstname} {match.player1.lastname}
+          {match.player1
+            ? `${match.player1.firstname} ${match.player1.lastname}`
+            : match.group?.group_former && match.player1_group_position
+            ? (() => {
+                const former = JSON.parse(match.group.group_former);
+                const entry = former[Number(match.player1_group_position) - 1];
+                if (!entry) return match.player1_group_position;
+                const group = allgroups?.find(
+                  (g) => Number(g.id) === Number(entry[1])
+                );
+                return group
+                  ? `${group.name}(${entry[0]})`
+                  : `${entry[1]}(${entry[0]})`;
+              })()
+            : "—"}
         </span>
       </td>
       <td className="text-center">
         <span role="text">
-          {match.player2.firstname} {match.player2.lastname}
+          {match.player2
+            ? `${match.player2.firstname} ${match.player2.lastname}`
+            : match.group?.group_former && match.player2_group_position
+            ? (() => {
+                const former = JSON.parse(match.group.group_former);
+                const entry = former[Number(match.player2_group_position) - 1];
+                if (!entry) return match.player2_group_position;
+                const group = allgroups?.find(
+                  (g) => Number(g.id) === Number(entry[1])
+                );
+                return group
+                  ? `${group.name}(${entry[0]})`
+                  : `${entry[1]}(${entry[0]})`;
+              })()
+            : "—"}
         </span>
       </td>
       <td className="text-center">

@@ -30,17 +30,23 @@ const MatchList = ({
               <tr key={index}>
                 <td>
                   {Array.isArray(players) &&
-                    players.find((p) => p.id === match.player1_id)
-                      ?.firstname}{" "}
-                  {Array.isArray(players) &&
-                    players.find((p) => p.id === match.player1_id)?.lastname}
+                  players.find((p) => p.id === match.player1_id)
+                    ? `${
+                        players.find((p) => p.id === match.player1_id).firstname
+                      } ${
+                        players.find((p) => p.id === match.player1_id).lastname
+                      }`
+                    : match.player1_group_position || "—"}
                 </td>
                 <td>
                   {Array.isArray(players) &&
-                    players.find((p) => p.id === match.player2_id)
-                      ?.firstname}{" "}
-                  {Array.isArray(players) &&
-                    players.find((p) => p.id === match.player2_id)?.lastname}
+                  players.find((p) => p.id === match.player2_id)
+                    ? `${
+                        players.find((p) => p.id === match.player2_id).firstname
+                      } ${
+                        players.find((p) => p.id === match.player2_id).lastname
+                      }`
+                    : match.player2_group_position || "—"}
                 </td>
                 <td>
                   <input
