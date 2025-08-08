@@ -28,9 +28,9 @@ const GroupsPage = () => {
     return <div className="text-center mt-3">{t("loadingGroups")}</div>;
   if (error) return <div className="alert alert-danger">{error.message}</div>;
 
-  const filteredGroups = groups.filter(
-    (group) => group.round_type === selectedRound
-  );
+  const filteredGroups = groups
+    .filter((group) => group.round_type === selectedRound)
+    .sort((a, b) => a.id - b.id);
 
   return (
     <div className="container mt-4">
