@@ -12,7 +12,7 @@ const GroupsSection = ({ groups, players, matches }) => {
           </h3>
           <GroupTable
             players={players.filter((player) => player.group.id === group.id)}
-            matches={matches}
+            matches={matches.filter((match) => match.group.id === group.id)}
           />
         </div>
       ))}
