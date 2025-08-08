@@ -76,7 +76,6 @@ const computeStats = (players = [], rawMatches = []) => {
 const GroupTable = ({ players, matches, group, allGroups }) => {
   const { t } = useTranslation();
   const stats = computeStats(players, matches);
-  console.log(matches);
 
   const getDirectStats = (playersSubset, matchesSubset) => {
     const ids = playersSubset.map((p) => p.id);

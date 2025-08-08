@@ -32,7 +32,7 @@ const InputField = ({ label, type, name, value, onChange }) => {
               ? "[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}"
               : undefined
           }
-          maxLength={255}
+          maxLength={50}
         />
         {isPassword && (
           <button
