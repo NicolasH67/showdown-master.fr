@@ -19,6 +19,19 @@ const MatchRowResult = ({
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
+  const [errorMsg, setErrorMsg] = useState("");
+
+  // Accepts 1 to 5 sets written as pairs: a-b-a-b-... (no trailing hyphen)
+  const RESULT_REGEX = /^\d{1,2}-\d{1,2}(?:-\d{1,2}-\d{1,2}){0,4}$/;
+
+  const isValidResultText = (text) => {
+    const trimmed = (text || "").trim();
+    if (!RESULT_REGEX.test(trimmed)) return false;
+    // optional: cap total items to 10 (5 sets)
+    const parts = trimmed.split("-");
+    return parts.length >= 2 && parts.length <= 10 && parts.length % 2 === 0;
+  };
+
   console.log(match);
 
   useEffect(() => {
@@ -60,7 +73,44 @@ const MatchRowResult = ({
   const { points, sets, goals } = calculateStats(parsedResults);
 
   const handleSave = async () => {
-    const cleanedResults = parsedResults.filter((v) => v !== null);
+    // Validate before saving. Allow empty string to clear the result.
+    const inputText = (resultText || "").trim();
+
+    let cleanedResults = [];
+    if (inputText === "") {
+      // Empty input -> clear the result
+      cleanedResults = [];
+    } else {
+      // Non-empty must match a-b(-a-b){0,4}
+      if (!isValidResultText(inputText)) {
+        setErrorMsg(
+          t("invalidResultFormat") ||
+            "Format invalide. Utilisez des paires a-b séparées par des tirets (ex: 11-1 ou 11-1-11-1), maximum 5 sets."
+        );
+        setIsEditing(true);
+        return; // stop here, do not save
+      }
+
+      cleanedResults = inputText
+        .split("-")
+        .map((v) => parseInt(v, 10))
+        .filter((v) => !Number.isNaN(v));
+
+      // Safety: must be an even number of values (pairs) and between 2 and 10 numbers
+      if (
+        cleanedResults.length % 2 !== 0 ||
+        cleanedResults.length < 2 ||
+        cleanedResults.length > 10
+      ) {
+        setErrorMsg(
+          t("invalidResultFormat") ||
+            "Format invalide. Entrez des paires a-b (min 1 set, max 5 sets)."
+        );
+        setIsEditing(true);
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const { data, error, status } = await supabase
@@ -165,24 +215,51 @@ const MatchRowResult = ({
       </td>
       <td className="text-center">
         {isEditing && match.player1 && match.player2 ? (
-          <input
-            type="text"
-            className="form-control form-control-sm text-center"
-            style={{ textAlign: "center" }}
-            value={resultText}
-            onChange={(e) => {
-              const text = e.target.value;
-              setResultText(text);
-              const parts = text
-                .split("-")
-                .map((v) => {
-                  const n = parseInt(v.trim(), 10);
-                  return isNaN(n) ? "" : n.toString();
-                })
-                .filter((v) => v !== ""); // Retirer les champs vides
-              setLocalResults(parts);
-            }}
-          />
+          <>
+            <input
+              type="text"
+              className="form-control form-control-sm text-center"
+              style={{ textAlign: "center" }}
+              aria-invalid={!!errorMsg}
+              placeholder="11-1-11-1"
+              value={resultText}
+              onChange={(e) => {
+                const text = e.target.value.replace(/\s+/g, ""); // remove spaces
+                setResultText(text);
+
+                // Update local array for preview while typing
+                const parts = text
+                  .split("-")
+                  .map((v) => {
+                    const n = parseInt(v.trim(), 10);
+                    return Number.isNaN(n) ? "" : n.toString();
+                  })
+                  .filter((v) => v !== "");
+                setLocalResults(parts);
+
+                // Live validation message (optional while typing)
+                if (text.length === 0) {
+                  setErrorMsg("");
+                } else if (!isValidResultText(text)) {
+                  setErrorMsg(
+                    t("invalidResultFormatShort") ||
+                      "Format: a-b ou a-b-a-b (jusqu'à 5 sets)."
+                  );
+                } else {
+                  setErrorMsg("");
+                }
+              }}
+            />
+            {errorMsg && (
+              <div
+                role="alert"
+                aria-live="polite"
+                className="mt-1 small text-danger"
+              >
+                {errorMsg}
+              </div>
+            )}
+          </>
         ) : (
           <div
             role="button"
@@ -279,10 +356,16 @@ const MatchRowResult = ({
         ) : isEditing ? (
           <button
             className="btn btn-sm btn-success"
-            disabled={loading}
+            disabled={loading || (resultText && !isValidResultText(resultText))}
+            title={
+              resultText && !isValidResultText(resultText)
+                ? t("invalidResultFormatShort") || "Corrigez le format a-b-a-b"
+                : undefined
+            }
             onClick={() => {
               handleSave();
-              setIsEditing(false);
+              // keep editing open only if invalid; handleSave returns early on invalid
+              if (isValidResultText(resultText)) setIsEditing(false);
             }}
           >
             save
@@ -290,10 +373,15 @@ const MatchRowResult = ({
         ) : localResults.every((v) => v === "") ? (
           <button
             className="btn btn-sm btn-success"
-            disabled={loading}
+            disabled={loading || (resultText && !isValidResultText(resultText))}
+            title={
+              resultText && !isValidResultText(resultText)
+                ? t("invalidResultFormatShort") || "Corrigez le format a-b-a-b"
+                : undefined
+            }
             onClick={() => {
               handleSave();
-              setIsEditing(true);
+              if (isValidResultText(resultText)) setIsEditing(true);
             }}
           >
             save
