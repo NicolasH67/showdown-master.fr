@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 const GroupList = ({
   groups,
   players,
+  playersByGroup,
   clubs,
   matches,
   group_former,
@@ -17,7 +18,60 @@ const GroupList = ({
   onDeleteMatch,
   tournamentStartDate,
 }) => {
+  console.log(players);
   const { t } = useTranslation();
+
+  // Build a map groupId -> players[] from either playersByGroup (preferred) or flat players[]
+  const buildPlayersByGroup = (list, groupList) => {
+    // Normalize `list` to an array of players even if we received a map like { [groupId]: Player[] }
+    const normalizeToArray = (src) => {
+      if (Array.isArray(src)) return src;
+      if (src && typeof src === "object") {
+        const arr = [];
+        for (const v of Object.values(src)) {
+          if (Array.isArray(v)) arr.push(...v);
+        }
+        return arr;
+      }
+      return [];
+    };
+
+    const playersArray = normalizeToArray(list);
+
+    const map = {};
+    (groupList || []).forEach((g) => (map[g.id] = []));
+    (playersArray || []).forEach((p) => {
+      const raw =
+        p?.group_id ?? p?.groupId ?? (p?.group ? p.group.id : undefined);
+      if (Array.isArray(raw)) {
+        raw.forEach((gid) => {
+          const k = Number(gid);
+          if (map[k]) map[k].push(p);
+        });
+      } else if (raw !== undefined && raw !== null) {
+        const k = Number(raw);
+        if (map[k]) map[k].push(p);
+      }
+    });
+    // sort by id asc per group for stable UI
+    Object.keys(map).forEach((k) =>
+      map[k].sort((a, b) => (a?.id ?? 0) - (b?.id ?? 0))
+    );
+    return map;
+  };
+
+  const playersMap = React.useMemo(() => {
+    if (
+      playersByGroup &&
+      typeof playersByGroup === "object" &&
+      !Array.isArray(playersByGroup)
+    ) {
+      return playersByGroup;
+    }
+    // fallback: derive from flat players array
+    return buildPlayersByGroup(players, groups);
+  }, [playersByGroup, players, groups]);
+
   return (
     <div className="container mt-4">
       <div className="row">
@@ -37,18 +91,19 @@ const GroupList = ({
                     </tr>
                   </thead>
                   <tbody>
-                    {players[group.id]?.length ? (
-                      players[group.id].map((player, index) => (
-                        <tr key={player.id}>
-                          <td>{index + 1}</td>
-                          <td>
-                            {player.firstname} {player.lastname} (
-                            {clubs[player.club_id] || "N/A"})
-                          </td>
-                        </tr>
-                      ))
-                    ) : group.group_former ? (
-                      (() => {
+                    {(() => {
+                      const groupPlayers = playersMap[group.id] || [];
+                      if (groupPlayers.length) {
+                        return groupPlayers.map((player, index) => (
+                          <tr key={player.id}>
+                            <td>{index + 1}</td>
+                            <td>
+                              {player.firstname} {player.lastname} (
+                              {clubs[player.club_id] || "N/A"})
+                            </td>
+                          </tr>
+                        ));
+                      } else if (group.group_former) {
                         try {
                           const parsedGroupFormer = Array.isArray(
                             group.group_former
@@ -82,21 +137,23 @@ const GroupList = ({
                             </tr>
                           );
                         }
-                      })()
-                    ) : (
-                      <tr>
-                        <td colSpan="2" className="text-center text-muted">
-                          {t("messageNoPlayersInGroup")}
-                        </td>
-                      </tr>
-                    )}
+                      } else {
+                        return (
+                          <tr>
+                            <td colSpan="2" className="text-center text-muted">
+                              {t("messageNoPlayersInGroup")}
+                            </td>
+                          </tr>
+                        );
+                      }
+                    })()}
                   </tbody>
                 </table>
 
                 {generatedMatches[group.id]?.length > 0 && (
                   <MatchList
                     matches={generatedMatches[group.id]}
-                    players={players[group.id]}
+                    players={playersMap[group.id]}
                     groupId={group.id}
                     updateGeneratedMatch={updateGeneratedMatch}
                     saveMatches={saveMatches}
@@ -122,10 +179,10 @@ const GroupList = ({
                         </thead>
                         <tbody>
                           {matches[group.id].map((match) => {
-                            const player1 = players[group.id]?.find(
+                            const player1 = playersMap[group.id]?.find(
                               (p) => p.id === match.player1_id
                             );
-                            const player2 = players[group.id]?.find(
+                            const player2 = playersMap[group.id]?.find(
                               (p) => p.id === match.player2_id
                             );
                             return (

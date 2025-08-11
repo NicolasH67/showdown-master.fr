@@ -66,6 +66,342 @@ const MatchRowResult = ({
     return { points, sets, goals };
   };
 
+  // --- Helpers post-save ---
+  const fetchGroupMatches = async (groupId) => {
+    const { data, error } = await supabase
+      .from("match")
+      .select("id, group_id, player1_id, player2_id, result")
+      .eq("group_id", groupId);
+    if (error) throw error;
+    return data || [];
+  };
+
+  const matchesAreComplete = (matches) =>
+    matches.length > 0 &&
+    matches.every((m) => Array.isArray(m.result) && m.result.length >= 2);
+
+  // Helper: checks if all matches in a group are complete
+  const isGroupComplete = async (groupId) => {
+    const matches = await fetchGroupMatches(groupId);
+    return matchesAreComplete(matches);
+  };
+
+  const computeRankingFromMatches = (matches) => {
+    const S = new Map(); // playerId -> stats
+    const add = (pid, d) => {
+      const s = S.get(pid) || {
+        points: 0,
+        setsWon: 0,
+        setsLost: 0,
+        goalsFor: 0,
+        goalsAgainst: 0,
+      };
+      Object.keys(d).forEach((k) => (s[k] += d[k]));
+      S.set(pid, s);
+    };
+
+    for (const m of matches) {
+      const r = m.result || [];
+      let sA = 0,
+        sB = 0,
+        gA = 0,
+        gB = 0;
+      for (let i = 0; i < r.length; i += 2) {
+        const a = r[i],
+          b = r[i + 1];
+        if (a > b) sA++;
+        else sB++;
+        gA += a;
+        gB += b;
+      }
+      if (sA > sB) {
+        add(m.player1_id, {
+          points: 1,
+          setsWon: sA,
+          setsLost: sB,
+          goalsFor: gA,
+          goalsAgainst: gB,
+        });
+        add(m.player2_id, {
+          points: 0,
+          setsWon: sB,
+          setsLost: sA,
+          goalsFor: gB,
+          goalsAgainst: gA,
+        });
+      } else if (sB > sA) {
+        add(m.player2_id, {
+          points: 1,
+          setsWon: sB,
+          setsLost: sA,
+          goalsFor: gB,
+          goalsAgainst: gA,
+        });
+        add(m.player1_id, {
+          points: 0,
+          setsWon: sA,
+          setsLost: sB,
+          goalsFor: gA,
+          goalsAgainst: gB,
+        });
+      } else {
+        // égalité -> 0/0
+        add(m.player1_id, {
+          points: 0,
+          setsWon: sA,
+          setsLost: sB,
+          goalsFor: gA,
+          goalsAgainst: gB,
+        });
+        add(m.player2_id, {
+          points: 0,
+          setsWon: sB,
+          setsLost: sA,
+          goalsFor: gB,
+          goalsAgainst: gA,
+        });
+      }
+    }
+
+    return [...S.entries()]
+      .map(([playerId, s]) => ({ playerId, ...s }))
+      .sort((a, b) => {
+        const diffSetsA = a.setsWon - a.setsLost;
+        const diffSetsB = b.setsWon - b.setsLost;
+        const diffGoalsA = a.goalsFor - a.goalsAgainst;
+        const diffGoalsB = b.goalsFor - b.goalsAgainst;
+        return (
+          b.points - a.points ||
+          diffSetsB - diffSetsA ||
+          diffGoalsB - diffGoalsA
+        );
+      });
+  };
+
+  // Cache de ranking pour éviter des re-fetchs multiples pendant une passe
+  const rankingCache = new Map(); // groupId -> ranking array
+
+  const getRankingForGroup = async (groupId) => {
+    if (rankingCache.has(groupId)) return rankingCache.get(groupId);
+    const matches = await fetchGroupMatches(groupId);
+    if (!matches || matches.length === 0) {
+      rankingCache.set(groupId, []);
+      return [];
+    }
+    const ranking = computeRankingFromMatches(matches);
+    rankingCache.set(groupId, ranking);
+    return ranking;
+  };
+
+  // Trouver les groupes *cibles* qui référencent le groupe courant dans leur group_former
+  const findDestinationGroups = (currentGroupId) => {
+    return (allgroups || []).filter((g) => {
+      if (!g.group_former) return false;
+      try {
+        const arr = JSON.parse(g.group_former);
+        return (
+          Array.isArray(arr) &&
+          arr.some(([pos, srcId]) => Number(srcId) === Number(currentGroupId))
+        );
+      } catch {
+        return false;
+      }
+    });
+  };
+
+  const ensureFormerArray = (v) => {
+    if (!v) return [];
+    if (Array.isArray(v)) return v; // déjà JSON côté DB
+    if (typeof v === "string") {
+      try {
+        return JSON.parse(v);
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  };
+
+  // Ajouter un group_id au joueur si pas déjà présent
+  const addGroupToPlayerIfMissing = async (playerId, newGroupId) => {
+    console.log("[addGroupToPlayerIfMissing] read player", {
+      playerId,
+      newGroupId,
+    });
+    const { data: p, error } = await supabase
+      .from("player")
+      .select("id, group_id")
+      .eq("id", playerId)
+      .maybeSingle();
+    if (error) throw error;
+    const current = Array.isArray(p?.group_id) ? p.group_id : [];
+    const already = current.map(String).includes(String(newGroupId));
+    if (already) return;
+    const next = [...current, newGroupId];
+    console.log("[addGroupToPlayerIfMissing] updating player group_id", {
+      playerId,
+      next,
+    });
+    const { error: upErr } = await supabase
+      .from("player")
+      .update({ group_id: next })
+      .eq("id", playerId);
+    if (upErr) throw upErr;
+    console.log("[addGroupToPlayerIfMissing] update ok", { playerId });
+  };
+
+  // Remplit les matchs déjà programmés dans un groupe cible en assignant les joueurs réels
+  const fillScheduledMatchesForGroup = async (destGroupId) => {
+    const destGroup = (allgroups || []).find(
+      (g) => Number(g.id) === Number(destGroupId)
+    );
+    if (!destGroup) return;
+
+    const former = ensureFormerArray(destGroup.group_former);
+    if (!former.length) return;
+
+    // Charger les matchs du groupe cible
+    const { data: mlist, error } = await supabase
+      .from("match")
+      .select(
+        "id, group_id, player1_id, player2_id, player1_group_position, player2_group_position"
+      )
+      .eq("group_id", destGroupId);
+    if (error) throw error;
+
+    const updates = [];
+
+    for (const m of mlist || []) {
+      const patch = {};
+
+      // player1
+      if (!m.player1_id && m.player1_group_position) {
+        const idx = Number(m.player1_group_position) - 1;
+        const entry = former[idx]; // [positionDansSource, sourceGroupId]
+        if (entry && Array.isArray(entry) && entry.length >= 2) {
+          const [posInSource, sourceGroupId] = entry;
+          // Vérifie d'abord que le groupe source est terminé
+          const srcComplete = await isGroupComplete(Number(sourceGroupId));
+          console.log(
+            "[fillScheduledMatchesForGroup] source group completeness",
+            { sourceGroupId, srcComplete }
+          );
+          if (srcComplete) {
+            const sourceRanking = await getRankingForGroup(
+              Number(sourceGroupId)
+            );
+            const pick = sourceRanking[Number(posInSource) - 1];
+            if (pick && pick.playerId) patch.player1_id = pick.playerId;
+          }
+        }
+      }
+
+      if (!m.player2_id && m.player2_group_position) {
+        const idx = Number(m.player2_group_position) - 1;
+        const entry = former[idx];
+        if (entry && Array.isArray(entry) && entry.length >= 2) {
+          const [posInSource, sourceGroupId] = entry;
+          const srcComplete = await isGroupComplete(Number(sourceGroupId));
+          console.log(
+            "[fillScheduledMatchesForGroup] source group completeness",
+            { sourceGroupId, srcComplete }
+          );
+          if (srcComplete) {
+            const sourceRanking = await getRankingForGroup(
+              Number(sourceGroupId)
+            );
+            const pick = sourceRanking[Number(posInSource) - 1];
+            if (pick && pick.playerId) patch.player2_id = pick.playerId;
+          }
+        }
+      }
+
+      if (Object.keys(patch).length) {
+        updates.push(supabase.from("match").update(patch).eq("id", m.id));
+      }
+    }
+
+    if (updates.length) {
+      await Promise.all(updates);
+    }
+    console.log("[fillScheduledMatchesForGroup] done", {
+      destGroupId,
+      updates: updates.length,
+    });
+  };
+
+  // Post-traitement appelé après la sauvegarde d'un match
+  const postProcessAfterSave = async (updatedMatch) => {
+    console.log("[postProcessAfterSave] start", {
+      groupId: updatedMatch.group_id,
+      updatedMatch,
+    });
+    const groupId = updatedMatch.group_id;
+    // 1) Récupérer tous les matchs du groupe
+    const matches = await fetchGroupMatches(groupId);
+    console.log("[postProcessAfterSave] matches fetched", {
+      count: matches.length,
+      matches,
+    });
+    // 2) Vérifier si le groupe est complet (dernier match saisi)
+    if (!matchesAreComplete(matches)) {
+      console.log("[postProcessAfterSave] group not complete – skip");
+      return;
+    }
+
+    // 3) Calculer le ranking
+    const ranking = computeRankingFromMatches(matches);
+    console.log("[postProcessAfterSave] ranking computed", ranking);
+
+    // 4) Trouver les groupes cibles qui référencent ce groupe dans leur group_former
+    const destGroups = findDestinationGroups(groupId);
+    console.log(
+      "[postProcessAfterSave] destination groups",
+      destGroups.map((g) => ({
+        id: g.id,
+        name: g.name,
+        group_former: g.group_former,
+      }))
+    );
+    if (!destGroups.length) return;
+
+    // 5) Pour chaque entrée [position, currentGroupId], attribuer le joueur positionné au groupe cible
+    for (const g of destGroups) {
+      try {
+        let former = [];
+        try {
+          former = JSON.parse(g.group_former) || [];
+        } catch {
+          former = [];
+        }
+        for (const [pos, srcId] of former) {
+          if (Number(srcId) !== Number(groupId)) continue;
+          const r = ranking[pos - 1];
+          if (!r) continue; // pas assez de classés
+          console.log("[postProcessAfterSave] assign candidate", {
+            targetGroupId: g.id,
+            position: pos,
+            sourceGroupId: srcId,
+            player: r,
+          });
+          await addGroupToPlayerIfMissing(r.playerId, g.id);
+          console.log("[postProcessAfterSave] assigned", {
+            playerId: r.playerId,
+            toGroupId: g.id,
+          });
+        }
+        // Après avoir affecté les joueurs dans les groupes cibles, remplir les matchs déjà programmés de ce groupe
+        await fillScheduledMatchesForGroup(g.id);
+      } catch (e) {
+        console.error(
+          "[postProcessAfterSave] error while assigning to group",
+          g?.id,
+          e
+        );
+      }
+    }
+  };
+
   const parsedResults = localResults.map((v) => {
     const n = parseInt(v, 10);
     return isNaN(n) ? null : n;
@@ -133,6 +469,7 @@ const MatchRowResult = ({
         throw new Error("Aucune donnée renvoyée après la mise à jour.");
       }
 
+      await postProcessAfterSave(data);
       onSave(data);
     } catch (err) {
       alert(err.message || err);
@@ -365,7 +702,8 @@ const MatchRowResult = ({
             onClick={() => {
               handleSave();
               // keep editing open only if invalid; handleSave returns early on invalid
-              if (isValidResultText(resultText)) setIsEditing(false);
+              if (!resultText || isValidResultText(resultText))
+                setIsEditing(false);
             }}
           >
             save
@@ -381,7 +719,8 @@ const MatchRowResult = ({
             }
             onClick={() => {
               handleSave();
-              if (isValidResultText(resultText)) setIsEditing(true);
+              if (!resultText || isValidResultText(resultText))
+                setIsEditing(true);
             }}
           >
             save
