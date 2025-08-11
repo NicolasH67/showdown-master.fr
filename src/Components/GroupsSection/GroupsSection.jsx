@@ -1,7 +1,7 @@
 import GroupTable from "../GroupTable/GroupTable";
 import { useTranslation } from "react-i18next";
 
-const GroupsSection = ({ groups, players, matches }) => {
+const GroupsSection = ({ groups, players, matches, allGroups }) => {
   const { t } = useTranslation();
   return (
     <section>
@@ -12,7 +12,6 @@ const GroupsSection = ({ groups, players, matches }) => {
           </h3>
           <GroupTable
             players={players.filter((player) => {
-              // Supporte: player.group_id (array), player.groupId (valeur), player.group.id (objet)
               const raw =
                 player?.group_id ??
                 player?.groupId ??
@@ -29,6 +28,8 @@ const GroupsSection = ({ groups, players, matches }) => {
               const gid = match?.group?.id ?? match?.group_id ?? match?.groupId;
               return Number(gid) === Number(group.id);
             })}
+            group={group}
+            allGroups={allGroups}
           />
         </div>
       ))}

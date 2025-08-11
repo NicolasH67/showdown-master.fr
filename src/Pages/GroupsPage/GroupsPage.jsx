@@ -5,6 +5,7 @@ import RoundSelector from "../../Components/RoundSelector/RoundSelector";
 import GroupsSection from "../../Components/GroupsSection/GroupsSection";
 import { useTranslation } from "react-i18next";
 import useMatches from "../../Hooks/useMatchs";
+import supabase from "../../Helpers/supabaseClient";
 
 const GroupsPage = () => {
   const { id } = useParams();
@@ -14,6 +15,28 @@ const GroupsPage = () => {
   const { t } = useTranslation();
 
   const location = useLocation();
+
+  const [allGroups, setAllgroups] = useState([]);
+
+  useEffect(() => {
+    const fetchGroups = async () => {
+      const { data: group, error: groupsError } = await supabase
+        .from("group")
+        .select("*")
+        .eq("tournament_id", id);
+      if (groupsError) {
+        console.error(
+          "Erreur de chargement des groupes :",
+          groupsError.message
+        );
+      } else {
+        setAllgroups(group);
+      }
+    };
+    if (id) {
+      fetchGroups();
+    }
+  }, [id]);
 
   useEffect(() => {
     if (groups.length > 0) {
@@ -46,6 +69,7 @@ const GroupsPage = () => {
           groups={filteredGroups}
           players={players}
           matches={matches}
+          allGroups={allGroups}
         />
       ) : (
         <div className="alert alert-warning text-center">
