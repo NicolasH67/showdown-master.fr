@@ -20,7 +20,6 @@ const PlayerDetails = () => {
 
   const titleRef = useRef(null);
 
-  // Accessibilité : focus initial sur le titre après chargement
   useEffect(() => {
     if (!loading && titleRef.current) {
       titleRef.current.focus();
@@ -43,6 +42,11 @@ const PlayerDetails = () => {
   const safePlayer = player ?? null;
   const safeMatches = Array.isArray(matches) ? matches : [];
 
+  if (process.env.NODE_ENV !== "production") {
+    console.table(safeMatches);
+    console.log("safeMatches:", JSON.stringify(safeMatches, null, 2));
+  }
+
   // Petits utilitaires affichage
   const playerLabel =
     safePlayer?.firstname || safePlayer?.lastname
@@ -59,7 +63,7 @@ const PlayerDetails = () => {
       <h2 aria-live="polite">{playerLabel}</h2>
 
       {/* Stats joueur – si ton composant ne gère pas player null, passe-lui une valeur vide */}
-      <PlayerStats player={safePlayer ?? {}} />
+      <PlayerStats player={safePlayer ?? {}} matches={safeMatches} />
 
       <h3 className="mt-4">{t("matches")}</h3>
 
