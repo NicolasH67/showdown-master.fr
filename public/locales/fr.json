@@ -172,5 +172,7 @@
   "editParticipants": "Édition des Joueurs, Arbitres et Provenances",
   "scheduleEdit": "Edition du Planning",
   "existingMatches": "Matchs existants",
-  "notAssigned": "Non assigné"
+  "notAssigned": "Non assigné",
+  "invalidResultFormat": "Format invalide. Utilisez des paires a-b séparées par des tirets (ex: 11-1 ou 11-1-11-1), maximum 5 sets.",
+  "invalidResultFormatShort": "Format: a-b ou a-b-a-b (jusqu'à 5 sets)."
 }

@@ -173,5 +173,7 @@
   "editParticipants": "Edit Players, Referees and Clubs",
   "scheduleEdit": "Edit Schedule",
   "existingMatches": "Existing Matches",
-  "notAssigned": "Not Assigned"
+  "notAssigned": "Not Assigned",
+  "invalidResultFormat": "Invalid format. Use a-b pairs separated by hyphens (e.g., 11-1 or 11-1-11-1), maximum 5 sets.",
+  "invalidResultFormatShort": "Format: a-b or a-b-a-b (up to 5 sets)."
 }
