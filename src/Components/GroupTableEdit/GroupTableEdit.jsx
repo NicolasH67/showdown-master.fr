@@ -279,11 +279,23 @@ const GroupTableEdit = ({ groups, players, onEdit, onDelete, allGroups }) => {
                             }}
                           >
                             <option value="">Sélectionner un groupe</option>
-                            {allGroups.map((group) => (
-                              <option key={group.id} value={group.id}>
-                                {group.name} - {group.group_type}
-                              </option>
-                            ))}
+                            {allGroups
+                              .filter((g) => g.group_type === groupType)
+                              .sort((a, b) => {
+                                const isANumber = /^\d/.test(a.name);
+                                const isBNumber = /^\d/.test(b.name);
+                                if (isANumber && !isBNumber) return 1;
+                                if (!isANumber && isBNumber) return -1;
+                                return a.name.localeCompare(b.name, undefined, {
+                                  numeric: true,
+                                  sensitivity: "base",
+                                });
+                              })
+                              .map((group) => (
+                                <option key={group.id} value={group.id}>
+                                  {group.name} - {group.group_type}
+                                </option>
+                              ))}
                           </select>
                           <button
                             type="button"
