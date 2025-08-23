@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 
 /**
  * `MatchRow` Component
@@ -10,7 +11,7 @@ import React, { useMemo } from "react";
  * @returns {JSX.Element} A table row displaying a match's details.
  */
 const MatchRow = ({ match, index, formatResult, allgroups }) => {
-  console.log(match);
+  const { t } = useTranslation();
   const calculateStats = (result) => {
     let points = [0, 0];
     let sets = [0, 0];
@@ -69,7 +70,10 @@ const MatchRow = ({ match, index, formatResult, allgroups }) => {
         )}
       </td>
       <td className="text-center">{match.table_number}</td>
-      <td className="text-center">{match.group.name}</td>
+      <td className="text-center">
+        {match.group.name} |{" "}
+        {t(match.group.group_type)?.charAt(0)?.toUpperCase()}
+      </td>
       <td className="text-center">
         <span role="text">
           {match.player1
