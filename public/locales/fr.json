@@ -175,5 +175,7 @@
   "notAssigned": "Non assigné",
   "invalidResultFormat": "Format invalide. Utilisez des paires a-b séparées par des tirets (ex: 11-1 ou 11-1-11-1), maximum 5 sets.",
   "invalidResultFormatShort": "Format: a-b ou a-b-a-b (jusqu'à 5 sets).",
-  "day": "Jour"
+  "day": "Jour",
+  "rankingNavbar": "Classement",
+  "adminRanking": "Édition du Classement"
 }
