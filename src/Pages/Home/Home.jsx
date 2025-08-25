@@ -20,6 +20,7 @@ const Home = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTournament, setSelectedTournament] = useState(null);
   const [password, setPassword] = useState("");
+  const [modalMessage, setModalMessage] = useState("");
   const [t, i18n] = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
@@ -52,6 +53,7 @@ const Home = () => {
   const handleTournamentClick = (tournament) => {
     if (tournament.user_password) {
       setSelectedTournament(tournament);
+      setModalMessage("");
       setIsModalOpen(true);
     } else {
       navigate(`/tournament/${tournament.id}/players`);
@@ -66,10 +68,15 @@ const Home = () => {
   const handlePasswordSubmit = (e) => {
     e.preventDefault();
     if (password === selectedTournament.user_password) {
+      setModalMessage(
+        t("passwordCorrect", { defaultValue: "Mot de passe correct." })
+      );
       setIsModalOpen(false);
       navigate(`/tournament/${selectedTournament.id}/players`);
     } else {
-      alert(t("wrongPassword"));
+      setModalMessage(
+        t("wrongPassword", { defaultValue: "Mot de passe incorrect." })
+      );
     }
   };
 
@@ -79,6 +86,7 @@ const Home = () => {
   const handleModalClose = () => {
     setIsModalOpen(false);
     setPassword("");
+    setModalMessage("");
     setSelectedTournament(null);
   };
 
@@ -98,9 +106,13 @@ const Home = () => {
         <TournamentModal
           isOpen={isModalOpen}
           password={password}
-          setPassword={setPassword}
+          setPassword={(val) => {
+            setPassword(val);
+            setModalMessage("");
+          }}
           onSubmit={handlePasswordSubmit}
           onClose={handleModalClose}
+          errorMessage={modalMessage}
         />
       )}
     </div>

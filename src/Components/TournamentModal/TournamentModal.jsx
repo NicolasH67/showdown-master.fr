@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next";
  * @param {Function} props.setPassword - Function to update the password state
  * @param {Function} props.onSubmit - Function called when the form is submitted
  * @param {Function} props.onClose - Function called when the modal is closed
+ * @param {string} [props.errorMessage] - Message indicating validation result (error or success)
  *
  * @returns {JSX.Element|null} The rendered modal component or null if `isOpen` is false
  */
@@ -23,6 +24,7 @@ const TournamentModal = ({
   setPassword,
   onSubmit,
   onClose,
+  errorMessage,
 }) => {
   const { t } = useTranslation();
   if (!isOpen) return null;
@@ -61,7 +63,24 @@ const TournamentModal = ({
                   required
                   autoFocus
                   aria-label={t("password")}
+                  aria-describedby={
+                    errorMessage ? "password-feedback" : undefined
+                  }
                 />
+                {errorMessage && (
+                  <div
+                    id="password-feedback"
+                    role="alert"
+                    aria-live="assertive"
+                    className={
+                      errorMessage.includes("correct")
+                        ? "text-success mt-2"
+                        : "text-danger mt-2"
+                    }
+                  >
+                    {errorMessage}
+                  </div>
+                )}
               </div>
             </form>
           </div>
