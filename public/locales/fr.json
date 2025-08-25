@@ -177,5 +177,11 @@
   "invalidResultFormatShort": "Format: a-b ou a-b-a-b (jusqu'à 5 sets).",
   "day": "Jour",
   "rankingNavbar": "Classement",
-  "adminRanking": "Édition du Classement"
+  "adminRanking": "Édition du Classement",
+  "validation_required": "Champ requis.",
+  "validation_max": "50 caractères maximum.",
+  "validation_start_before_end": "La date de début doit précéder la date de fin.",
+  "validation_end_after_start": "La date de fin doit suivre la date de début.",
+  "validation_password_rules": "8+ caractères, au moins 1 lettre et 1 chiffre.",
+  "validation_email": "Email invalide."
 }

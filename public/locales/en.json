@@ -178,5 +178,11 @@
   "invalidResultFormatShort": "Format: a-b or a-b-a-b (up to 5 sets).",
   "day": "Day",
   "rankingNavbar": "Ranking",
-  "adminRanking": "Ranking Edit"
+  "adminRanking": "Ranking Edit",
+  "validation_required": "This field is required.",
+  "validation_max": "Maximum 50 characters.",
+  "validation_start_before_end": "Start date must be before the end date.",
+  "validation_end_after_start": "End date must be after the start date.",
+  "validation_password_rules": "8+ characters, at least 1 letter and 1 number.",
+  "validation_email": "Invalid email address."
 }

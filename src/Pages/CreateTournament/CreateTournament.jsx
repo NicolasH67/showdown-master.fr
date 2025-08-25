@@ -38,40 +38,27 @@ const CreateTournament = () => {
     const data = { ...formData, ...draft, [name]: value };
     switch (name) {
       case "title":
-        if (!value?.trim())
-          msg = t("validation_required", { defaultValue: "Champ requis." });
-        else if (value.length > 255)
-          msg = t("validation_max255", { defaultValue: "255 caractères max." });
+        if (!value?.trim()) msg = t("validation_required");
+        else if (value.length > 50) msg = t("validation_max");
         break;
       case "startday":
-        if (!value)
-          msg = t("validation_required", { defaultValue: "Champ requis." });
+        if (!value) msg = t("validation_required");
         else if (data.endday && value > data.endday)
-          msg = t("validation_start_before_end", {
-            defaultValue: "La date de début doit précéder la date de fin.",
-          });
+          msg = t("validation_start_before_end");
         break;
       case "endday":
-        if (!value)
-          msg = t("validation_required", { defaultValue: "Champ requis." });
+        if (!value) msg = t("validation_required");
         else if (data.startday && value < data.startday)
-          msg = t("validation_end_after_start", {
-            defaultValue: "La date de fin doit suivre la date de début.",
-          });
+          msg = t("validation_end_after_start");
         break;
       case "adminPassword":
-        if (!value)
-          msg = t("validation_required", { defaultValue: "Champ requis." });
+        if (!value) msg = t("validation_required");
         else if (!passwordRegex.test(value))
-          msg = t("validation_password_rules", {
-            defaultValue: "8+ caractères, au moins 1 lettre et 1 chiffre.",
-          });
+          msg = t("validation_password_rules");
         break;
       case "email":
-        if (!value)
-          msg = t("validation_required", { defaultValue: "Champ requis." });
-        else if (!emailRegex.test(value))
-          msg = t("validation_email", { defaultValue: "Email invalide." });
+        if (!value) msg = t("validation_required");
+        else if (!emailRegex.test(value)) msg = t("validation_email");
         break;
       default:
         break;
