@@ -22,6 +22,88 @@ const CreateTournament = () => {
   const { t, i18n } = useTranslation();
   const location = useLocation();
 
+  const [fieldErrors, setFieldErrors] = React.useState({
+    title: "",
+    startday: "",
+    endday: "",
+    adminPassword: "",
+    email: "",
+  });
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
+  const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/; // min 8, 1 lettre, 1 chiffre
+
+  const validateField = (name, value, draft) => {
+    let msg = "";
+    const data = { ...formData, ...draft, [name]: value };
+    switch (name) {
+      case "title":
+        if (!value?.trim())
+          msg = t("validation_required", { defaultValue: "Champ requis." });
+        else if (value.length > 255)
+          msg = t("validation_max255", { defaultValue: "255 caractères max." });
+        break;
+      case "startday":
+        if (!value)
+          msg = t("validation_required", { defaultValue: "Champ requis." });
+        else if (data.endday && value > data.endday)
+          msg = t("validation_start_before_end", {
+            defaultValue: "La date de début doit précéder la date de fin.",
+          });
+        break;
+      case "endday":
+        if (!value)
+          msg = t("validation_required", { defaultValue: "Champ requis." });
+        else if (data.startday && value < data.startday)
+          msg = t("validation_end_after_start", {
+            defaultValue: "La date de fin doit suivre la date de début.",
+          });
+        break;
+      case "adminPassword":
+        if (!value)
+          msg = t("validation_required", { defaultValue: "Champ requis." });
+        else if (!passwordRegex.test(value))
+          msg = t("validation_password_rules", {
+            defaultValue: "8+ caractères, au moins 1 lettre et 1 chiffre.",
+          });
+        break;
+      case "email":
+        if (!value)
+          msg = t("validation_required", { defaultValue: "Champ requis." });
+        else if (!emailRegex.test(value))
+          msg = t("validation_email", { defaultValue: "Email invalide." });
+        break;
+      default:
+        break;
+    }
+    return msg;
+  };
+
+  const validateAll = (draft = {}) => {
+    const next = { ...fieldErrors };
+    next.title = validateField("title", draft.title ?? formData.title, draft);
+    next.startday = validateField(
+      "startday",
+      draft.startday ?? formData.startday,
+      draft
+    );
+    next.endday = validateField(
+      "endday",
+      draft.endday ?? formData.endday,
+      draft
+    );
+    next.adminPassword = validateField(
+      "adminPassword",
+      draft.adminPassword ?? formData.adminPassword,
+      draft
+    );
+    next.email = validateField("email", draft.email ?? formData.email, draft);
+    setFieldErrors(next);
+    return next;
+  };
+
+  const hasErrors = Object.values(fieldErrors).some(Boolean);
+
   useEffect(() => {
     const title = document.getElementById("page-title");
     if (title) {
@@ -29,51 +111,164 @@ const CreateTournament = () => {
     }
   }, [location.pathname]);
 
+  useEffect(() => {
+    validateAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="container mt-5">
       <h1 className="mb-4" id="page-title" tabIndex="-1">
         {t("createNewTournament")}
       </h1>
-      <form onSubmit={handleSubmit}>
+      <form
+        onSubmit={(e) => {
+          const errs = validateAll();
+          const any = Object.values(errs).some(Boolean);
+          if (any) {
+            e.preventDefault();
+            // déplace le focus sur le premier message d'erreur pour accessibilité
+            const firstErrorKey = Object.keys(errs).find((k) => errs[k]);
+            if (firstErrorKey) {
+              const el = document.getElementById(`${firstErrorKey}-error`);
+              if (el) el.focus();
+            }
+            return;
+          }
+          handleSubmit(e);
+        }}
+      >
         <InputField
           label={t("titleNameTournament")}
           type="text"
           name="title"
           value={formData.title}
-          onChange={handleChange}
+          onChange={(e) => {
+            handleChange(e);
+            const msg = validateField("title", e.target.value, {
+              title: e.target.value,
+            });
+            setFieldErrors((prev) => ({ ...prev, title: msg }));
+          }}
         />
+        {fieldErrors.title && (
+          <div
+            id="title-error"
+            role="alert"
+            aria-live="assertive"
+            tabIndex="-1"
+            className="text-danger mt-1"
+          >
+            {fieldErrors.title}
+          </div>
+        )}
         <InputField
           label={t("titleStartDay")}
           type="date"
           name="startday"
           value={formData.startday}
-          onChange={handleChange}
+          onChange={(e) => {
+            handleChange(e);
+            const msg = validateField("startday", e.target.value, {
+              startday: e.target.value,
+            });
+            setFieldErrors((prev) => ({ ...prev, startday: msg }));
+          }}
         />
+        {fieldErrors.startday && (
+          <div
+            id="startday-error"
+            role="alert"
+            aria-live="assertive"
+            tabIndex="-1"
+            className="text-danger mt-1"
+          >
+            {fieldErrors.startday}
+          </div>
+        )}
         <InputField
           label={t("titleEndDay")}
           type="date"
           name="endday"
           value={formData.endday}
-          onChange={handleChange}
+          onChange={(e) => {
+            handleChange(e);
+            const msg = validateField("endday", e.target.value, {
+              endday: e.target.value,
+            });
+            setFieldErrors((prev) => ({ ...prev, endday: msg }));
+          }}
         />
+        {fieldErrors.endday && (
+          <div
+            id="endday-error"
+            role="alert"
+            aria-live="assertive"
+            tabIndex="-1"
+            className="text-danger mt-1"
+          >
+            {fieldErrors.endday}
+          </div>
+        )}
         <InputField
           label={t("password")}
           type="password"
           name="adminPassword"
           value={formData.adminPassword}
-          onChange={handleChange}
+          required
+          aria-required="true"
+          onChange={(e) => {
+            handleChange(e);
+            const msg = validateField("adminPassword", e.target.value, {
+              adminPassword: e.target.value,
+            });
+            setFieldErrors((prev) => ({ ...prev, adminPassword: msg }));
+          }}
         />
+        {fieldErrors.adminPassword && (
+          <div
+            id="adminPassword-error"
+            role="alert"
+            aria-live="assertive"
+            tabIndex="-1"
+            className="text-danger mt-1"
+          >
+            {fieldErrors.adminPassword}
+          </div>
+        )}
         <InputField
           label="Email"
           type="email"
           name="email"
           value={formData.email}
-          onChange={handleChange}
+          onChange={(e) => {
+            handleChange(e);
+            const msg = validateField("email", e.target.value, {
+              email: e.target.value,
+            });
+            setFieldErrors((prev) => ({ ...prev, email: msg }));
+          }}
         />
+        {fieldErrors.email && (
+          <div
+            id="email-error"
+            role="alert"
+            aria-live="assertive"
+            tabIndex="-1"
+            className="text-danger mt-1"
+          >
+            {fieldErrors.email}
+          </div>
+        )}
 
         {error && <p className="text-danger">{error}</p>}
 
-        <button type="submit" className="btn btn-primary" disabled={loading}>
+        <button
+          type="submit"
+          className="btn btn-primary"
+          disabled={loading || hasErrors}
+          aria-disabled={loading || hasErrors}
+        >
           {loading ? t("creating") : t("createTournamentButton")}
         </button>
       </form>
