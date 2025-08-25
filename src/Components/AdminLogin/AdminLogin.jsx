@@ -12,6 +12,7 @@ const AdminLogin = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [password, setPassword] = useState("");
+  const [modalMessage, setModalMessage] = useState("");
   const storedPassword = useAdminPassword();
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -30,9 +31,12 @@ const AdminLogin = () => {
       setIsAdmin(true);
       setIsModalOpen(false);
       setPassword("");
+      setModalMessage("");
       navigate(`/tournament/${id}/admin/players`);
     } else {
-      alert(t("wrongPassword"));
+      setModalMessage(
+        t("wrongPassword", { defaultValue: "Mot de passe incorrect." })
+      );
     }
   };
 
@@ -61,7 +65,9 @@ const AdminLogin = () => {
         onClose={() => {
           setIsModalOpen(false);
           setPassword("");
+          setModalMessage("");
         }}
+        errorMessage={modalMessage}
       />
     </div>
   );
