@@ -238,7 +238,7 @@ const GroupTableEdit = ({ groups, players, onEdit, onDelete, allGroups }) => {
                   </div>
                   <div className="mb-3">
                     <label htmlFor="highestPosition" className="form-label">
-                      {t("highestPositionNonOptional")}
+                      {t("highestPosition")}
                     </label>
                     <input
                       type="number"
