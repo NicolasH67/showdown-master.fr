@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import useTournamentForm from "../../Hooks/useTournamentForm";
 import InputField from "../../Components/InputField/InputField";
 import { useTranslation } from "react-i18next";
+const API_BASE = import.meta.env.VITE_API_BASE || ""; // e.g. "http://localhost:3001" when using a separate Express server
 
 /**
  * CreateTournament component - A form for creating a new tournament.
@@ -29,6 +30,15 @@ const CreateTournament = () => {
     adminPassword: "",
     email: "",
   });
+
+  // Email verification (SMTP endpoints)
+  const [emailCodeSent, setEmailCodeSent] = React.useState(false);
+  const [emailSending, setEmailSending] = React.useState(false);
+  const [emailVerified, setEmailVerified] = React.useState(false);
+  const [userEmailCode, setUserEmailCode] = React.useState("");
+  const [emailCodeError, setEmailCodeError] = React.useState("");
+  const [emailCodeInfo, setEmailCodeInfo] = React.useState("");
+  const [requestId, setRequestId] = React.useState("");
 
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
   const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d).{8,}$/; // min 8, 1 lettre, 1 chiffre
@@ -87,6 +97,103 @@ const CreateTournament = () => {
     next.email = validateField("email", draft.email ?? formData.email, draft);
     setFieldErrors(next);
     return next;
+  };
+
+  const handleSendEmailCode = async () => {
+    setEmailCodeError("");
+    setEmailCodeInfo("");
+    setEmailVerified(false);
+
+    // Validate email first
+    const msg = validateField("email", formData.email, {
+      email: formData.email,
+    });
+    setFieldErrors((prev) => ({ ...prev, email: msg }));
+    if (msg) return;
+
+    setEmailSending(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/send-email-code`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: formData.email }),
+      });
+      if (res.status === 404) throw new Error("endpoint_not_found");
+      if (!res.ok) throw new Error("send_failed");
+      const data = await res.json();
+      setRequestId(data.requestId || "");
+      setEmailCodeSent(true);
+      setEmailCodeInfo(
+        t("email_code_sent", {
+          defaultValue: "Un code vient d'être envoyé à votre adresse email.",
+        })
+      );
+    } catch (e) {
+      if (e?.message === "endpoint_not_found") {
+        setEmailCodeError(
+          t("email_endpoint_missing", {
+            defaultValue:
+              "Endpoint /api/send-email-code introuvable. Vérifiez votre serveur SMTP et la variable VITE_API_BASE.",
+          })
+        );
+      } else {
+        setEmailCodeError(
+          t("email_code_send_failed", {
+            defaultValue: "L'envoi du code a échoué. Réessayez.",
+          })
+        );
+      }
+    } finally {
+      setEmailSending(false);
+    }
+  };
+
+  const handleVerifyEmailCode = async () => {
+    setEmailCodeError("");
+    const code = (userEmailCode || "").trim();
+    if (!code) {
+      setEmailCodeError(
+        t("validation_required", { defaultValue: "Champ requis." })
+      );
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/verify-email-code`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId, code }),
+      });
+      if (res.status === 404) throw new Error("endpoint_not_found");
+      if (!res.ok) throw new Error("verify_failed");
+      const data = await res.json();
+      if (data.verified) {
+        setEmailVerified(true);
+        setEmailCodeInfo(
+          t("email_verified", { defaultValue: "Adresse email vérifiée." })
+        );
+      } else {
+        setEmailVerified(false);
+        setEmailCodeError(
+          t("email_code_invalid", { defaultValue: "Code invalide." })
+        );
+      }
+    } catch (e) {
+      if (e?.message === "endpoint_not_found") {
+        setEmailVerified(false);
+        setEmailCodeError(
+          t("email_endpoint_missing_verify", {
+            defaultValue:
+              "Endpoint /api/verify-email-code introuvable. Vérifiez votre serveur SMTP et la variable VITE_API_BASE.",
+          })
+        );
+      } else {
+        setEmailVerified(false);
+        setEmailCodeError(
+          t("email_code_invalid", { defaultValue: "Code invalide." })
+        );
+      }
+    }
   };
 
   const hasErrors = Object.values(fieldErrors).some(Boolean);
@@ -234,6 +341,13 @@ const CreateTournament = () => {
               email: e.target.value,
             });
             setFieldErrors((prev) => ({ ...prev, email: msg }));
+            // reset email verification state when email changes
+            setEmailCodeSent(false);
+            setEmailVerified(false);
+            setUserEmailCode("");
+            setEmailCodeError("");
+            setEmailCodeInfo("");
+            setRequestId("");
           }}
         />
         {fieldErrors.email && (
@@ -247,14 +361,64 @@ const CreateTournament = () => {
             {fieldErrors.email}
           </div>
         )}
+        <div className="d-flex align-items-center gap-2 mt-2">
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-sm"
+            onClick={handleSendEmailCode}
+            disabled={emailSending || !!fieldErrors.email || !formData.email}
+          >
+            {emailSending
+              ? t("email_sending", { defaultValue: "Envoi…" })
+              : t("send_code", { defaultValue: "Envoyer le code" })}
+          </button>
+
+          {emailCodeSent && !emailVerified && (
+            <div className="d-flex align-items-center gap-2">
+              <input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                aria-label={t("enter_code", { defaultValue: "Entrer le code" })}
+                className="form-control form-control-sm"
+                placeholder={t("enter_code", {
+                  defaultValue: "Entrer le code",
+                })}
+                value={userEmailCode}
+                onChange={(e) => setUserEmailCode(e.target.value)}
+                style={{ width: 160 }}
+              />
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={handleVerifyEmailCode}
+              >
+                {t("verify_code", { defaultValue: "Vérifier" })}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {(emailCodeInfo || emailCodeError) && (
+          <div
+            id="email-code-feedback"
+            role="alert"
+            aria-live="assertive"
+            className={
+              emailCodeError ? "text-danger mt-1" : "text-success mt-1"
+            }
+          >
+            {emailCodeError || emailCodeInfo}
+          </div>
+        )}
 
         {error && <p className="text-danger">{error}</p>}
 
         <button
           type="submit"
           className="btn btn-primary"
-          disabled={loading || hasErrors}
-          aria-disabled={loading || hasErrors}
+          disabled={loading || hasErrors || !emailVerified}
+          aria-disabled={loading || hasErrors || !emailVerified}
         >
           {loading ? t("creating") : t("createTournamentButton")}
         </button>
