@@ -194,5 +194,10 @@
   "email_code_invalid": "Invalid code.",
   "email_verified": "Email address verified.",
   "email_endpoint_missing": "Endpoint /api/send-email-code not found. Check your SMTP server and VITE_API_BASE variable.",
-  "email_endpoint_missing_verify": "Endpoint /api/verify-email-code not found. Check your SMTP server and VITE_API_BASE variable."
+  "email_endpoint_missing_verify": "Endpoint /api/verify-email-code not found. Check your SMTP server and VITE_API_BASE variable.",
+  "no_data_ranking": "No match data available to calculate the ranking.",
+  "position": "Position",
+  "provenance": "Provenance",
+  "others": "Others",
+  "error_loading": "Loading error:"
 }

@@ -387,20 +387,15 @@ const RankingPage = () => {
     <div className="container mx-auto px-4 py-6">
       <h1 className="text-2xl font-semibold mb-4">{t("rankingNavbar")}</h1>
 
-      {loading && <p>{t("loading", { defaultValue: "Chargement…" })}</p>}
+      {loading && <p>{t("loading")}</p>}
       {error && (
         <div className="text-red-600 mb-4">
-          {t("error_loading", { defaultValue: "Erreur de chargement:" })}{" "}
-          {error}
+          {t("error_loading")} {error}
         </div>
       )}
 
       {!loading && !error && (!rowsByType || rowsByType.size === 0) && (
-        <p>
-          {t("no_data", {
-            defaultValue: "Aucune donnée de match pour calculer le classement.",
-          })}
-        </p>
+        <p>{t("no_data_ranking")}</p>
       )}
 
       {!loading && !error && rowsByType && rowsByType.size > 0 && (

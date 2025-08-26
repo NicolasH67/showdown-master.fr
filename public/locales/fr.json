@@ -193,5 +193,10 @@
   "email_code_invalid": "Code invalide.",
   "email_verified": "Adresse email vérifiée.",
   "email_endpoint_missing": "Endpoint /api/send-email-code introuvable. Vérifiez votre serveur SMTP et la variable VITE_API_BASE.",
-  "email_endpoint_missing_verify": "Endpoint /api/verify-email-code introuvable. Vérifiez votre serveur SMTP et la variable VITE_API_BASE."
+  "email_endpoint_missing_verify": "Endpoint /api/verify-email-code introuvable. Vérifiez votre serveur SMTP et la variable VITE_API_BASE.",
+  "no_data_ranking": "Aucune donnée de match pour calculer le classement.",
+  "position": "Position",
+  "provenance": "Provenance",
+  "others": "Autres",
+  "error_loading": "Erreur de chargement :"
 }
