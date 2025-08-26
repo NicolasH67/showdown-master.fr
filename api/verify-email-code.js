@@ -1,4 +1,4 @@
-import crypto from "crypto";
+const crypto = require("crypto");
 
 // ----- CORS -----
 const allowOrigin =
@@ -9,8 +9,7 @@ function setCors(res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 }
 
-// ----- Vérif token -----
-const parseToken = (token, secret) => {
+function parseToken(token, secret) {
   const [body, sig] = String(token || "").split(".");
   if (!body || !sig) throw new Error("bad_token");
   const exp = crypto
@@ -19,19 +18,27 @@ const parseToken = (token, secret) => {
     .digest("base64url");
   if (sig !== exp) throw new Error("bad_signature");
   return JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
-};
+}
 
-export default function handler(req, res) {
-  setCors(res);
-
-  if (req.method === "OPTIONS") return res.status(204).end();
-  if (req.method !== "POST") {
-    res.setHeader("Allow", "POST,OPTIONS");
-    return res.status(405).end();
-  }
-
+module.exports = function (req, res) {
   try {
-    const { requestId, code } = req.body || {};
+    setCors(res);
+    if (req.method === "OPTIONS") return res.status(204).end();
+    if (req.method !== "POST") {
+      res.setHeader("Allow", "POST,OPTIONS");
+      return res.status(405).end();
+    }
+
+    let body = req.body;
+    if (!body || typeof body === "string") {
+      try {
+        body = JSON.parse(body || "{}");
+      } catch {
+        body = {};
+      }
+    }
+
+    const { requestId, code } = body || {};
     if (!requestId || !code)
       return res.status(400).json({ error: "Missing fields" });
 
@@ -47,7 +54,8 @@ export default function handler(req, res) {
       .update(`${code}:${salt}`)
       .digest("hex");
     return res.status(200).json({ verified: hash === codeHash, email });
-  } catch {
+  } catch (e) {
+    console.error("verify-email-code error:", e && (e.stack || e.message || e));
     return res.status(400).json({ verified: false, error: "invalid_request" });
   }
-}
+};
