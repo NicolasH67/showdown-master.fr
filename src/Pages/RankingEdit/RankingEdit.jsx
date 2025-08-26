@@ -115,6 +115,20 @@ function directStats(playersSubset, matchesSubset) {
   return computeStats(playersSubset, filtered);
 }
 
+// Helper to check if all matches in a group are complete
+function isGroupComplete(gPlayers, gMatches) {
+  // A group is complete if all round-robin matches between its players have a non-empty result
+  const ids = new Set(gPlayers.map((p) => p.id));
+  const n = gPlayers.length;
+  const expected = n >= 2 ? (n * (n - 1)) / 2 : 0; // round-robin match count
+  let completed = 0;
+  for (const m of gMatches) {
+    if (!ids.has(m.player1_id) || !ids.has(m.player2_id)) continue;
+    if (Array.isArray(m.result) && m.result.length > 0) completed += 1;
+  }
+  return expected > 0 && completed === expected;
+}
+
 // ---- Component ----------------------------------------------------------
 const RankingEdit = () => {
   const { t } = useTranslation();
@@ -221,6 +235,11 @@ const RankingEdit = () => {
       const gPlayers = players.filter((p) =>
         Array.isArray(p.group_id) ? p.group_id.includes(gId) : false
       );
+
+      // Skip this group if its matches are not all completed
+      if (!isGroupComplete(gPlayers, gMatches)) {
+        continue;
+      }
 
       // Stats globales pour le groupe
       const stats = computeStats(gPlayers, gMatches);
@@ -439,7 +458,11 @@ const RankingEdit = () => {
         <button
           type="button"
           onClick={downloadCSV}
-          className="px-4 py-2 border rounded hover:bg-gray-50"
+          className="px-4 py-2 border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={loading || !!error || !rowsByType || rowsByType.size === 0}
+          aria-disabled={
+            loading || !!error || !rowsByType || rowsByType.size === 0
+          }
         >
           {t("export_csv", { defaultValue: "Exporter en CSV" })}
         </button>
