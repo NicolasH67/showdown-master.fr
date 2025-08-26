@@ -1,5 +1,5 @@
-const nodemailer = require("nodemailer");
-const crypto = require("crypto");
+import nodemailer from "nodemailer";
+import crypto from "crypto";
 
 // ----- CORS -----
 const allowOrigin =
@@ -10,32 +10,48 @@ function setCors(res) {
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
 }
 
-// ----- Token stateless (HMAC) -----
+// ----- utils -----
 const b64 = (obj) => Buffer.from(JSON.stringify(obj)).toString("base64url");
 const hmac = (s, secret) =>
   crypto.createHmac("sha256", secret).update(s).digest("base64url");
-const sign = (payload, secret) =>
-  `${b64(payload)}.${hmac(b64(payload), secret)}`;
+const sign = (payload, secret) => {
+  const body = b64(payload);
+  const sig = hmac(body, secret);
+  return `${body}.${sig}`;
+};
 
-// Important: créer le transporter dans le handler pour éviter des erreurs au cold start si env manquantes
-module.exports = async function (req, res) {
+// Vercel peut fournir req.body sous forme d'objet, string, ou Buffer
+async function parseBody(req) {
+  if (req.body && typeof req.body === "object") return req.body;
+  if (typeof req.body === "string") {
+    try {
+      return JSON.parse(req.body);
+    } catch {
+      return {};
+    }
+  }
+  // Si rien n’est dispo, lis le stream
+  const chunks = [];
+  for await (const c of req) chunks.push(c);
+  const raw = Buffer.concat(chunks).toString("utf8");
   try {
-    setCors(res);
-    if (req.method === "OPTIONS") return res.status(204).end();
-    if (req.method !== "POST") {
-      res.setHeader("Allow", "POST,OPTIONS");
-      return res.status(405).end();
-    }
+    return JSON.parse(raw || "{}");
+  } catch {
+    return {};
+  }
+}
 
-    // Parse JSON body
-    let body = req.body;
-    if (!body || typeof body === "string") {
-      try {
-        body = JSON.parse(body || "{}");
-      } catch {
-        body = {};
-      }
-    }
+export default async function handler(req, res) {
+  setCors(res);
+
+  if (req.method === "OPTIONS") return res.status(204).end();
+  if (req.method !== "POST") {
+    res.setHeader("Allow", "POST,OPTIONS");
+    return res.status(405).end();
+  }
+
+  try {
+    const body = await parseBody(req);
     const { email } = body || {};
     if (!email) return res.status(400).json({ error: "Missing email" });
 
@@ -52,7 +68,8 @@ module.exports = async function (req, res) {
       .createHash("sha256")
       .update(`${code}:${salt}`)
       .digest("hex");
-    const expires = Date.now() + 10 * 60 * 1000; // 10 min
+    const expires = Date.now() + 10 * 60 * 1000;
+
     const requestId = sign(
       { email, codeHash, salt, expires },
       process.env.EMAIL_CODE_SECRET
@@ -66,10 +83,7 @@ module.exports = async function (req, res) {
     });
 
     if (process.env.NODE_ENV !== "production") {
-      console.log(
-        "Email sent:",
-        info && (info.messageId || info.response || info)
-      );
+      console.log("Email sent:", info?.messageId || info);
       console.log(`[DEV] Code for ${email}: ${code}`);
     }
 
@@ -77,7 +91,7 @@ module.exports = async function (req, res) {
     if (process.env.NODE_ENV !== "production") payload.devCode = code;
     return res.status(200).json(payload);
   } catch (e) {
-    console.error("send-email-code error:", e && (e.stack || e.message || e));
+    console.error("send-email-code error:", e?.stack || e?.message || e);
     return res.status(500).json({ error: "send_failed" });
   }
-};
+}
