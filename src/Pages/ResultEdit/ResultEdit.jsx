@@ -4,6 +4,8 @@ import useMatchesResult from "../../Hooks/useMatchResult";
 import MatchRowResult from "../../Components/MatchRowResult/MatchRowResult";
 import { useTranslation } from "react-i18next";
 
+import supabase from "../../Helpers/supabaseClient";
+
 const ResultEdit = () => {
   const { t } = useTranslation();
   const location = useLocation();
@@ -18,6 +20,8 @@ const ResultEdit = () => {
     handleSave,
   } = useMatchesResult(id);
 
+  const [allClubs, setAllClubs] = React.useState([]);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       const title = document.getElementById("page-title");
@@ -28,6 +32,20 @@ const ResultEdit = () => {
 
     return () => clearTimeout(timer);
   }, [location.pathname, matches.length]);
+
+  useEffect(() => {
+    const fetchClubs = async () => {
+      const { data: clubs, error: clubsError } = await supabase
+        .from("club")
+        .select("*");
+      if (clubsError) {
+        console.error("Erreur de chargement des clubs :", clubsError.message);
+      } else {
+        setAllClubs(clubs || []);
+      }
+    };
+    fetchClubs();
+  }, []);
 
   const sortedMatches = [...matches].sort((a, b) => {
     const dateA = new Date(`${a.match_day}T${a.match_time}`);
@@ -78,6 +96,7 @@ const ResultEdit = () => {
               <MatchRowResult
                 key={match.id}
                 allgroups={groups}
+                allclubs={allClubs}
                 match={match}
                 index={index}
                 referees={referees}

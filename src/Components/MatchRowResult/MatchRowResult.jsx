@@ -9,8 +9,24 @@ const MatchRowResult = ({
   referees,
   onMatchChange,
   onSave,
+  allclubs,
 }) => {
+  console.log(match);
   const { t } = useTranslation();
+  const getClubAbbr = (clubId) => {
+    if (!clubId || !Array.isArray(allclubs)) return "";
+    const club = allclubs.find((c) => Number(c.id) === Number(clubId));
+    if (!club) return "";
+    const abbr =
+      club.abbr ||
+      club.abbreviation ||
+      club.short_name ||
+      club.shortname ||
+      club.code ||
+      club.slug ||
+      (typeof club.name === "string" ? club.name.split(" ")[0] : "");
+    return abbr ? String(abbr).toUpperCase() : "";
+  };
   const [localResults, setLocalResults] = useState(
     match.result?.map((v) => (v === null ? "" : v.toString())) ||
       Array(10).fill("")
@@ -656,7 +672,12 @@ const MatchRowResult = ({
               role="text"
               aria-label={`${match.player1.firstname} ${match.player1.lastname}`}
             >
-              {match.player1.firstname} {match.player1.lastname}
+              {(() => {
+                const ab = getClubAbbr(match.player1.club_id);
+                return `${match.player1.firstname} ${match.player1.lastname}${
+                  ab ? ` (${ab})` : ""
+                }`;
+              })()}
             </span>
             <span role="text" aria-label="versus">
               {" "}
@@ -666,7 +687,12 @@ const MatchRowResult = ({
               role="text"
               aria-label={`${match.player2.firstname} ${match.player2.lastname}`}
             >
-              {match.player2.firstname} {match.player2.lastname}
+              {(() => {
+                const ab = getClubAbbr(match.player2.club_id);
+                return `${match.player2.firstname} ${match.player2.lastname}${
+                  ab ? ` (${ab})` : ""
+                }`;
+              })()}
             </span>
           </>
         ) : (

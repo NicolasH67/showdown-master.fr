@@ -13,6 +13,7 @@ const Schedule = () => {
   const { t } = useTranslation();
   const location = useLocation();
   const [allGroups, setAllgroups] = useState([]);
+  const [allClubs, setAllClubs] = useState([]);
 
   useEffect(() => {
     const fetchGroups = async () => {
@@ -29,8 +30,19 @@ const Schedule = () => {
         setAllgroups(group);
       }
     };
+    const fetchClubs = async () => {
+      const { data: clubs, error: clubsError } = await supabase
+        .from("club")
+        .select("*");
+      if (clubsError) {
+        console.error("Erreur de chargement des clubs :", clubsError.message);
+      } else {
+        setAllClubs(clubs || []);
+      }
+    };
     if (id) {
       fetchGroups();
+      fetchClubs();
     }
   }, [id]);
 
@@ -124,6 +136,7 @@ const Schedule = () => {
                   index={index}
                   formatResult={formatResult}
                   allgroups={allGroups}
+                  allclubs={allClubs}
                 />
               ))}
             </tbody>

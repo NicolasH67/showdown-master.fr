@@ -18,8 +18,8 @@ const useMatchesResult = (tournamentId) => {
           .select(
             `
             id,
-            player1:player1_id(firstname, lastname),
-            player2:player2_id(firstname, lastname),
+            player1:player1_id(id, firstname, lastname, club_id),
+            player2:player2_id(id, firstname, lastname, club_id),
             player1_group_position,
             player2_group_position,
             group:group_id(id, name, group_former, tournament_id),
