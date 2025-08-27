@@ -91,7 +91,7 @@ const PlayerDetails = () => {
                   key={match?.id ?? `${match?.group_id ?? "g"}-${index}`}
                   match={match}
                   index={index}
-                  // Évite les crash côté rendu du résultat
+                  tournamentId={tournamentId}
                   formatResult={(result) =>
                     Array.isArray(result) ? result.join(" - ") : ""
                   }

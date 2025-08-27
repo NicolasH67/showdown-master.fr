@@ -52,6 +52,7 @@ const ProvenanceDetails = () => {
                   key={match.id}
                   match={match}
                   index={index}
+                  tournamentId={id}
                   formatResult={(result) => result?.join(" - ") ?? ""}
                 />
               ))}

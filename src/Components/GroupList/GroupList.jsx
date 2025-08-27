@@ -98,7 +98,7 @@ const GroupList = ({
                           <tr key={player.id}>
                             <td>{index + 1}</td>
                             <td>
-                              {player.firstname} {player.lastname} (
+                              {player.lastname} {player.firstname} (
                               {clubs[player.club_id] || "N/A"})
                             </td>
                           </tr>
@@ -204,7 +204,7 @@ const GroupList = ({
                                 <td className="text-center">{group.name}</td>
                                 <td className="text-center">
                                   {player1
-                                    ? `${player1.firstname} ${player1.lastname}`
+                                    ? `${player1.lastname} ${player1.firstname}`
                                     : group.group_former
                                     ? (() => {
                                         try {
@@ -231,7 +231,7 @@ const GroupList = ({
                                 </td>
                                 <td className="text-center">
                                   {player2
-                                    ? `${player2.firstname} ${player2.lastname}`
+                                    ? `${player2.lastname} ${player2.firstname}`
                                     : group.group_former
                                     ? (() => {
                                         try {

@@ -136,7 +136,7 @@ const GroupTable = ({ players, matches, group, allGroups }) => {
               <tr key={player.id}>
                 <td>{index + 1}</td>
                 <td>
-                  {player.firstname} {player.lastname}
+                  {player.lastname} {player.firstname}
                 </td>
                 <td>{stat.wins}</td>
                 <td>

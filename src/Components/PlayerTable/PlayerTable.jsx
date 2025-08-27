@@ -43,7 +43,7 @@ const PlayerTable = ({ players, groupType }) => {
                         to={`/tournament/${id}/players/${player.id}`}
                         style={{ textDecoration: "none" }}
                       >
-                        {player.firstname} {player.lastname}
+                        {player.lastname} {player.firstname}
                       </Link>
                     </td>
                     <td>

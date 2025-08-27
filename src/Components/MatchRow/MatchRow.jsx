@@ -103,8 +103,8 @@ const MatchRow = ({
           {match.player1
             ? (() => {
                 const ab = getClubAbbr(match.player1.club_id);
-                const label = `${match.player1.firstname} ${
-                  match.player1.lastname
+                const label = `${match.player1.lastname} ${
+                  match.player1.firstname
                 }${ab ? ` (${ab})` : ""}`;
                 return tournamentId ? (
                   <Link
@@ -136,8 +136,8 @@ const MatchRow = ({
           {match.player2
             ? (() => {
                 const ab = getClubAbbr(match.player2.club_id);
-                const label = `${match.player2.firstname} ${
-                  match.player2.lastname
+                const label = `${match.player2.lastname} ${
+                  match.player2.firstname
                 }${ab ? ` (${ab})` : ""}`;
                 return tournamentId ? (
                   <Link
