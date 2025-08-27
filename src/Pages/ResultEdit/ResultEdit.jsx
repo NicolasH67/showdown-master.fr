@@ -102,6 +102,7 @@ const ResultEdit = () => {
                 referees={referees}
                 onMatchChange={handleMatchChange}
                 onSave={handleSave}
+                tournamentId={id}
               />
             ))}
           </tbody>

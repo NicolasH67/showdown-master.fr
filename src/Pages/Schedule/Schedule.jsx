@@ -137,6 +137,7 @@ const Schedule = () => {
                   formatResult={formatResult}
                   allgroups={allGroups}
                   allclubs={allClubs}
+                  tournamentId={id}
                 />
               ))}
             </tbody>

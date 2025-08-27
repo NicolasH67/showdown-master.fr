@@ -1,5 +1,6 @@
 import React, { useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 /**
  * `MatchRow` Component
@@ -10,7 +11,14 @@ import { useTranslation } from "react-i18next";
  * @param {Function} props.formatResult - Function to format match results.
  * @returns {JSX.Element} A table row displaying a match's details.
  */
-const MatchRow = ({ match, index, formatResult, allgroups, allclubs }) => {
+const MatchRow = ({
+  match,
+  index,
+  formatResult,
+  allgroups,
+  allclubs,
+  tournamentId,
+}) => {
   const { t } = useTranslation();
   console.log(allclubs);
   const getClubAbbr = (clubId) => {
@@ -95,9 +103,18 @@ const MatchRow = ({ match, index, formatResult, allgroups, allclubs }) => {
           {match.player1
             ? (() => {
                 const ab = getClubAbbr(match.player1.club_id);
-                return `${match.player1.firstname} ${match.player1.lastname}${
-                  ab ? ` (${ab})` : ""
-                }`;
+                const label = `${match.player1.firstname} ${
+                  match.player1.lastname
+                }${ab ? ` (${ab})` : ""}`;
+                return tournamentId ? (
+                  <Link
+                    to={`/tournament/${tournamentId}/players/${match.player1.id}`}
+                  >
+                    {label}
+                  </Link>
+                ) : (
+                  label
+                );
               })()
             : match.group?.group_former && match.player1_group_position
             ? (() => {
@@ -119,9 +136,18 @@ const MatchRow = ({ match, index, formatResult, allgroups, allclubs }) => {
           {match.player2
             ? (() => {
                 const ab = getClubAbbr(match.player2.club_id);
-                return `${match.player2.firstname} ${match.player2.lastname}${
-                  ab ? ` (${ab})` : ""
-                }`;
+                const label = `${match.player2.firstname} ${
+                  match.player2.lastname
+                }${ab ? ` (${ab})` : ""}`;
+                return tournamentId ? (
+                  <Link
+                    to={`/tournament/${tournamentId}/players/${match.player2.id}`}
+                  >
+                    {label}
+                  </Link>
+                ) : (
+                  label
+                );
               })()
             : match.group?.group_former && match.player2_group_position
             ? (() => {

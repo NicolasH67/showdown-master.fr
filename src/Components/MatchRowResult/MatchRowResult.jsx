@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import supabase from "../../Helpers/supabaseClient";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 const MatchRowResult = ({
   match,
@@ -10,22 +11,25 @@ const MatchRowResult = ({
   onMatchChange,
   onSave,
   allclubs,
+  tournamentId,
 }) => {
   console.log(match);
   const { t } = useTranslation();
   const getClubAbbr = (clubId) => {
     if (!clubId || !Array.isArray(allclubs)) return "";
-    const club = allclubs.find((c) => Number(c.id) === Number(clubId));
+    const club = allclubs.find((c) => String(c.id) === String(clubId));
     if (!club) return "";
     const abbr =
       club.abbr ||
       club.abbreviation ||
+      club.acronym ||
       club.short_name ||
       club.shortname ||
+      club.short ||
       club.code ||
       club.slug ||
       (typeof club.name === "string" ? club.name.split(" ")[0] : "");
-    return abbr ? String(abbr).toUpperCase() : "";
+    return abbr ? String(abbr).trim().toUpperCase() : "";
   };
   const [localResults, setLocalResults] = useState(
     match.result?.map((v) => (v === null ? "" : v.toString())) ||
@@ -674,9 +678,18 @@ const MatchRowResult = ({
             >
               {(() => {
                 const ab = getClubAbbr(match.player1.club_id);
-                return `${match.player1.firstname} ${match.player1.lastname}${
-                  ab ? ` (${ab})` : ""
-                }`;
+                const label = `${match.player1.firstname} ${
+                  match.player1.lastname
+                }${ab ? ` (${ab})` : ""}`;
+                return tournamentId ? (
+                  <Link
+                    to={`/tournament/${tournamentId}/players/${match.player1.id}`}
+                  >
+                    {label}
+                  </Link>
+                ) : (
+                  label
+                );
               })()}
             </span>
             <span role="text" aria-label="versus">
@@ -689,9 +702,18 @@ const MatchRowResult = ({
             >
               {(() => {
                 const ab = getClubAbbr(match.player2.club_id);
-                return `${match.player2.firstname} ${match.player2.lastname}${
-                  ab ? ` (${ab})` : ""
-                }`;
+                const label = `${match.player2.firstname} ${
+                  match.player2.lastname
+                }${ab ? ` (${ab})` : ""}`;
+                return tournamentId ? (
+                  <Link
+                    to={`/tournament/${tournamentId}/players/${match.player2.id}`}
+                  >
+                    {label}
+                  </Link>
+                ) : (
+                  label
+                );
               })()}
             </span>
           </>
