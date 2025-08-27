@@ -22,7 +22,7 @@ const useMatchesResult = (tournamentId) => {
             player2:player2_id(id, firstname, lastname, club_id),
             player1_group_position,
             player2_group_position,
-            group:group_id(id, name, group_former, tournament_id),
+            group:group_id(id, name, group_type, group_former, tournament_id),
             match_day,
             match_time, 
             table_number,

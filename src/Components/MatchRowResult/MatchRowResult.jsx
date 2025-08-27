@@ -668,7 +668,10 @@ const MatchRowResult = ({
           onChange={(e) => setEditTable(e.target.value)}
         />
       </td>
-      <td className="text-center">{match.group.name}</td>
+      <td className="text-center">
+        {match.group.name} |{" "}
+        {t(match.group.group_type)?.charAt(0)?.toUpperCase()}
+      </td>
       <td className="text-center">
         {match.player1 && match.player2 ? (
           <>
