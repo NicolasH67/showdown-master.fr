@@ -48,12 +48,6 @@ i18n
      * @type {boolean}
      */
     debug: true,
-    /**
-     * Initial language to use if no language is detected.
-     *
-     * @type {string}
-     */
-    lng: "en",
     detection: {
       /**
        * Determines the order in which i18next detects the user's preferred language.
