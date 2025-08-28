@@ -198,5 +198,7 @@
   "position": "Position",
   "provenance": "Provenance",
   "others": "Autres",
-  "error_loading": "Erreur de chargement :"
+  "error_loading": "Erreur de chargement :",
+  "groupMatches": "Matchs du groupe",
+  "groupRanking": "Classement du groupe"
 }

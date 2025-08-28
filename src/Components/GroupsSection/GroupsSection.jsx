@@ -1,5 +1,6 @@
 import GroupTable from "../GroupTable/GroupTable";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 
 const GroupsSection = ({ groups, players, matches, allGroups }) => {
   const { t } = useTranslation();
@@ -8,7 +9,9 @@ const GroupsSection = ({ groups, players, matches, allGroups }) => {
       {groups.map((group) => (
         <div key={group.id} className="mb-4">
           <h3 className="text-center">
-            {group.name} - {t(group.group_type)}
+            <Link to={`/tournament/${group.tournament_id}/groups/${group.id}`}>
+              {group.name} - {t(group.group_type)}
+            </Link>
           </h3>
           <GroupTable
             players={players.filter((player) => {

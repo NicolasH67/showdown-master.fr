@@ -199,5 +199,7 @@
   "position": "Position",
   "provenance": "Provenance",
   "others": "Others",
-  "error_loading": "Loading error:"
+  "error_loading": "Loading error:",
+  "groupMatches": "Group Matches",
+  "groupRanking": "Group Ranking"
 }

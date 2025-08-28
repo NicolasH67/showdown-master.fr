@@ -20,7 +20,6 @@ const MatchRow = ({
   tournamentId,
 }) => {
   const { t } = useTranslation();
-  console.log(allclubs);
   const getClubAbbr = (clubId) => {
     if (!clubId || !Array.isArray(allclubs)) return "";
     const club = allclubs.find((c) => Number(c.id) === Number(clubId));
@@ -95,8 +94,14 @@ const MatchRow = ({
       </td>
       <td className="text-center">{match.table_number}</td>
       <td className="text-center">
-        {match.group.name} |{" "}
-        {t(match.group.group_type)?.charAt(0)?.toUpperCase()}
+        {match.group ? (
+          <Link to={`/tournament/${tournamentId}/groups/${match.group.id}`}>
+            {match.group.name} |{" "}
+            {t(match.group.group_type)?.charAt(0)?.toUpperCase()}
+          </Link>
+        ) : (
+          "—"
+        )}
       </td>
       <td className="text-center">
         <span role="text">

@@ -20,6 +20,7 @@ import ResultEdit from "./Pages/ResultEdit/ResultEdit";
 import ProvenanceDetails from "./Pages/ProvenanceDetails/ProvenanceDetails";
 import RankingPage from "./Pages/RankingPage/RankingPage";
 import RankingEdit from "./Pages/RankingEdit/RankingEdit";
+import GroupsDetails from "./Pages/GoupsDetails/GroupsDetails";
 
 /**
  * Main App component that contains routing logic using react-router-dom.
@@ -43,6 +44,10 @@ function App() {
         <Route
           path="/tournament/:id/players/:playerId"
           element={<PlayerDetails />}
+        />
+        <Route
+          path="/tournament/:id/groups/:groupId"
+          element={<GroupsDetails />}
         />
         <Route
           path="/tournament/:id/referees/:refereeId"
