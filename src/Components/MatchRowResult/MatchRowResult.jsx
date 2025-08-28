@@ -669,8 +669,10 @@ const MatchRowResult = ({
         />
       </td>
       <td className="text-center">
-        {match.group.name} |{" "}
-        {t(match.group.group_type)?.charAt(0)?.toUpperCase()}
+        <Link to={`/tournament/${tournamentId}/groups/${match.group.id}`}>
+          {match.group.name} |{" "}
+          {t(match.group.group_type)?.charAt(0)?.toUpperCase()}
+        </Link>
       </td>
       <td className="text-center">
         {match.player1 && match.player2 ? (
