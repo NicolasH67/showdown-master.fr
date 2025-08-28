@@ -201,5 +201,6 @@
   "others": "Others",
   "error_loading": "Loading error:",
   "groupMatches": "Group Matches",
-  "groupRanking": "Group Ranking"
+  "groupRanking": "Group Ranking",
+  "allTables": "All tables"
 }

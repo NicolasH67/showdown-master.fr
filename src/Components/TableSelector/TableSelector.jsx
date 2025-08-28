@@ -32,7 +32,7 @@ const TableSelector = ({ tables, selectedTable = null, onSelectTable }) => {
           }`}
           onClick={() => onSelectTable?.(null)}
         >
-          {t("allTables", "All tables")}
+          {t("allTables")}
         </button>
         {Array.from({ length: tables }, (_, i) => i + 1).map((tableNumber) => {
           const isActive = selectedTable === tableNumber;
@@ -43,7 +43,7 @@ const TableSelector = ({ tables, selectedTable = null, onSelectTable }) => {
               className={`btn btn-outline-primary ${isActive ? "active" : ""}`}
               onClick={() => onSelectTable?.(tableNumber)}
             >
-              {t("table", "Table")} {tableNumber}
+              {t("table")} {tableNumber}
             </button>
           );
         })}

@@ -200,5 +200,6 @@
   "others": "Autres",
   "error_loading": "Erreur de chargement :",
   "groupMatches": "Matchs du groupe",
-  "groupRanking": "Classement du groupe"
+  "groupRanking": "Classement du groupe",
+  "allTables": "Toutes les tables"
 }
