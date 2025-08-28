@@ -6,6 +6,7 @@ import MatchRow from "../../Components/MatchRow/MatchRow";
 import { useTranslation } from "react-i18next";
 import DateSelector from "../../Components/DateSelector/DateSelector";
 import supabase from "../../Helpers/supabaseClient";
+import TableSelector from "../../Components/TableSelector/TableSelector";
 
 const Schedule = () => {
   const { id } = useParams();
@@ -14,6 +15,7 @@ const Schedule = () => {
   const location = useLocation();
   const [allGroups, setAllgroups] = useState([]);
   const [allClubs, setAllClubs] = useState([]);
+  const [selectedTable, setSelectedTable] = useState(null);
 
   useEffect(() => {
     const fetchGroups = async () => {
@@ -53,6 +55,12 @@ const Schedule = () => {
 
   const uniqueDates = getUniqueDates(matches);
   const today = new Date().toISOString().split("T")[0];
+
+  // Derive table count from current matches (max table_number)
+  const tableCount = Math.max(
+    0,
+    ...matches.map((m) => Number(m.table_number || 0))
+  );
 
   const [selectedDate, setSelectedDate] = useState(null);
   const [isFirstLoad, setIsFirstLoad] = useState(true);
@@ -94,9 +102,13 @@ const Schedule = () => {
     return <div>{error.message}</div>;
   }
 
-  const filteredMatches = selectedDate
-    ? matches.filter((match) => match.match_day === selectedDate)
-    : matches;
+  const filteredMatches = matches
+    .filter((match) => !selectedDate || match.match_day === selectedDate)
+    .filter((match) =>
+      selectedTable === null || selectedTable === undefined
+        ? true
+        : Number(match.table_number) === Number(selectedTable)
+    );
 
   return (
     <div className="container mt-4">
@@ -108,6 +120,12 @@ const Schedule = () => {
         dates={uniqueDates}
         selectedDate={selectedDate}
         onSelectDate={setSelectedDate}
+      />
+
+      <TableSelector
+        tables={tableCount}
+        selectedTable={selectedTable}
+        onSelectTable={setSelectedTable}
       />
 
       {filteredMatches.length > 0 ? (

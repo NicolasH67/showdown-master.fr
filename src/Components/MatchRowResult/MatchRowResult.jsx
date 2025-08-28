@@ -7,13 +7,13 @@ const MatchRowResult = ({
   match,
   allgroups,
   index,
+  mnr,
   referees,
   onMatchChange,
   onSave,
   allclubs,
   tournamentId,
 }) => {
-  console.log(match);
   const { t } = useTranslation();
   const getClubAbbr = (clubId) => {
     if (!clubId || !Array.isArray(allclubs)) return "";
@@ -56,8 +56,6 @@ const MatchRowResult = ({
     const parts = trimmed.split("-");
     return parts.length >= 2 && parts.length <= 10 && parts.length % 2 === 0;
   };
-
-  console.log(match);
 
   useEffect(() => {
     setLocalResults(
@@ -641,7 +639,7 @@ const MatchRowResult = ({
 
   return (
     <tr>
-      <td className="text-center">{index + 1}</td>
+      <td className="text-center">{mnr ?? index + 1}</td>
       <td className="text-center">
         <input
           type="date"
