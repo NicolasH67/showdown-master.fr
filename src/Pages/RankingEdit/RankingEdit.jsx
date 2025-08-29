@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import supabase from "../../Helpers/supabaseClient";
 
@@ -276,8 +276,10 @@ const RankingEdit = () => {
       const start = Number(g.highest_position) || 1;
       sorted.forEach((p, idx) => {
         const club = clubsById.get(p.club_id);
-        const prov = club
-          ? `${club.name}${club.abbreviation ? ` (${club.abbreviation})` : ""}`
+        const clubName = club?.name || "";
+        const clubAbbrev = club?.abbreviation || "";
+        const prov = clubName
+          ? `${clubName}${clubAbbrev ? ` (${clubAbbrev})` : ""}`
           : "—";
         allRows.push({
           playerId: p.id,
@@ -288,6 +290,9 @@ const RankingEdit = () => {
           groupType: g.group_type || "unknown",
           finalPosition: start + idx,
           provenance: prov,
+          clubId: club?.id || null,
+          clubName,
+          clubAbbrev,
         });
       });
     }
@@ -399,9 +404,25 @@ const RankingEdit = () => {
                   <tr key={`${gt}-${r.groupId}-${r.playerId}`}>
                     <td className="border px-3 py-2">{r.finalPosition}</td>
                     <td className="border px-3 py-2">
-                      {r.lastname?.toUpperCase()} {r.firstname}
+                      <Link
+                        to={`/tournament/${id}/players/${r.playerId}`}
+                        style={{ textDecoration: "none" }}
+                      >
+                        {r.lastname?.toUpperCase()} {r.firstname}
+                      </Link>
                     </td>
-                    <td className="border px-3 py-2">{r.provenance || "—"}</td>
+                    <td className="border px-3 py-2">
+                      {r.clubId ? (
+                        <Link
+                          to={`/tournament/${id}/provenance/${r.clubId}`}
+                          style={{ textDecoration: "none" }}
+                        >
+                          {r.provenance || "—"}
+                        </Link>
+                      ) : (
+                        r.provenance || "—"
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -437,9 +458,25 @@ const RankingEdit = () => {
                   <tr key={`${gt}-${r.groupId}-${r.playerId}`}>
                     <td className="border px-3 py-2">{r.finalPosition}</td>
                     <td className="border px-3 py-2">
-                      {r.lastname?.toUpperCase()} {r.firstname}
+                      <Link
+                        to={`/tournament/${id}/players/${r.playerId}`}
+                        style={{ textDecoration: "none" }}
+                      >
+                        {r.lastname?.toUpperCase()} {r.firstname}
+                      </Link>
                     </td>
-                    <td className="border px-3 py-2">{r.provenance || "—"}</td>
+                    <td className="border px-3 py-2">
+                      {r.clubId ? (
+                        <Link
+                          to={`/tournament/${id}/provenance/${r.clubId}`}
+                          style={{ textDecoration: "none" }}
+                        >
+                          {r.provenance || "—"}
+                        </Link>
+                      ) : (
+                        r.provenance || "—"
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
