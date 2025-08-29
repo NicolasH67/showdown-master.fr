@@ -24,8 +24,12 @@ const PlayerTableEdit = ({
     setSelectedPlayer(player);
     setFirstname(player.firstname || "");
     setLastname(player.lastname || "");
-    setClub(player.club?.id || "");
-    setGroup(player.group?.id || "");
+    setClub(player.club?.id ? String(player.club.id) : "");
+    const firstGroupId =
+      Array.isArray(player.group_id) && player.group_id.length > 0
+        ? String(player.group_id[0])
+        : "";
+    setGroup(firstGroupId);
     setShowModal(true);
   };
 
@@ -39,11 +43,14 @@ const PlayerTableEdit = ({
       return;
     }
 
+    const parsedClubId = club === "" ? null : Number(club);
+    const parsedGroupIdArray = group === "" ? [] : [Number(group)];
+
     const updatedData = {
-      firstname,
-      lastname,
-      club_id: club,
-      group_id: group,
+      firstname: firstname.trim(),
+      lastname: lastname.trim(),
+      club_id: parsedClubId,
+      group_id: parsedGroupIdArray,
     };
 
     onEdit(selectedPlayer.id, updatedData);
@@ -172,7 +179,7 @@ const PlayerTableEdit = ({
                       <option value="">{t("selectClub")}</option>
                       {Array.isArray(clubs) &&
                         clubs.map((clubItem) => (
-                          <option key={clubItem.id} value={clubItem.id}>
+                          <option key={clubItem.id} value={String(clubItem.id)}>
                             {clubItem.name}
                           </option>
                         ))}
@@ -185,8 +192,11 @@ const PlayerTableEdit = ({
                       value={group}
                       onChange={(e) => setGroup(e.target.value)}
                     >
+                      <option value="">
+                        {t("selectGroup", { defaultValue: "Select group" })}
+                      </option>
                       {groups.map((g) => (
-                        <option key={g.id} value={g.id}>
+                        <option key={g.id} value={String(g.id)}>
                           {g.name} - {t(g.group_type)}
                         </option>
                       ))}
