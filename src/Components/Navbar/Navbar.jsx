@@ -18,6 +18,41 @@ const Navbar = () => {
   const tournament = location.pathname.match(/\/tournament\/([^/]+)/);
   const id = tournament ? tournament[1] : null;
 
+  // --- Admin detection: always show admin nav when authenticated ---
+  const checkAdmin = () => {
+    try {
+      // Support either a boolean flag or a token saved by AdminLogin
+      const flag = localStorage.getItem("isAdmin");
+      const token =
+        localStorage.getItem("adminToken") ||
+        localStorage.getItem("jwt") ||
+        localStorage.getItem("admin_jwt");
+      if (flag === "true") return true;
+      if (typeof token === "string" && token.length > 10) return true;
+      return false;
+    } catch (_) {
+      return false;
+    }
+  };
+
+  const [isAdmin, setIsAdmin] = useState(checkAdmin());
+
+  // Keep admin state in sync when route changes or storage updates
+  useEffect(() => {
+    setIsAdmin(checkAdmin());
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const onStorage = () => setIsAdmin(checkAdmin());
+    window.addEventListener("storage", onStorage);
+    // Optional custom event if AdminLogin dispatches it
+    window.addEventListener("admin-status-changed", onStorage);
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener("admin-status-changed", onStorage);
+    };
+  }, []);
+
   /**
    * Changes the application language.
    *
@@ -42,11 +77,10 @@ const Navbar = () => {
    * @returns {JSX.Element} The list of navigation links.
    */
   const isTournamentPage = location.pathname.includes("/tournament");
-  const isTournamentAdminPage = location.pathname.includes("/admin");
 
   const renderNavbarLinks = () => {
     if (isTournamentPage) {
-      if (isTournamentAdminPage) {
+      if (isAdmin) {
         return (
           <>
             <li className="nav-item">

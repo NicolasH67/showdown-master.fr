@@ -26,13 +26,18 @@ const AdminLogin = () => {
 
   const handleLogin = (e) => {
     e.preventDefault();
-    if (storedPassword && password === storedPassword[0].admin_password) {
+    const adminPwd = storedPassword?.[0]?.admin_password;
+    if (adminPwd && password === adminPwd) {
       localStorage.setItem("isAdmin", "true");
+      // Inform the app (Navbar, etc.) that admin status changed
+      window.dispatchEvent(new Event("admin-status-changed"));
       setIsAdmin(true);
       setIsModalOpen(false);
       setPassword("");
       setModalMessage("");
-      navigate(`/tournament/${id}/admin/players`);
+      if (id) {
+        navigate(`/tournament/${id}/admin/players`);
+      }
     } else {
       setModalMessage(
         t("wrongPassword", { defaultValue: "Mot de passe incorrect." })
@@ -42,8 +47,12 @@ const AdminLogin = () => {
 
   const handleLogout = () => {
     localStorage.removeItem("isAdmin");
+    // Inform the app (Navbar, etc.) that admin status changed
+    window.dispatchEvent(new Event("admin-status-changed"));
     setIsAdmin(false);
-    navigate(`/tournament/${id}/players`);
+    if (id) {
+      navigate(`/tournament/${id}/players`);
+    }
   };
 
   return (
