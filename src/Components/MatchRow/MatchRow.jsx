@@ -187,7 +187,7 @@ const MatchRow = ({
       <td className="text-center">{formatResult(match.result)}</td>
       <td style={{ textAlign: "center" }}>
         <span role="text">
-          {match.referee_1?.firstname} {match.referee_1?.lastname}
+          {match.referee_1?.lastname} {match.referee_1?.firstname}
         </span>
         {match.referee_2 && (
           <>
@@ -199,7 +199,7 @@ const MatchRow = ({
               }}
             />
             <span role="text">
-              {match.referee_2?.firstname} {match.referee_2?.lastname}
+              {match.referee_2?.lastname} {match.referee_2?.firstname}
             </span>
           </>
         )}

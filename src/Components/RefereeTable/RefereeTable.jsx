@@ -42,7 +42,7 @@ const RefereeTable = ({ referees }) => {
                         to={`/tournament/${id}/referees/${referee.id}`}
                         style={{ textDecoration: "none" }}
                       >
-                        {referee.firstname} {referee.lastname}
+                        {referee.lastname} {referee.firstname}
                       </Link>
                     </td>
                     <td>{referee.club ? referee.club.name : t("noClub")}</td>

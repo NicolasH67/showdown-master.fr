@@ -69,7 +69,7 @@ const RefereeTableEdit = ({ referees, onDelete, onEdit, clubs }) => {
                       to={`/tournament/${id}/referees/${referee.id}`}
                       style={{ textDecoration: "none" }}
                     >
-                      {referee.firstname} {referee.lastname}
+                      {referee.lastname} {referee.firstname}
                     </Link>
                   </td>
                   <td>{referee.club?.name || "N/A"}</td>

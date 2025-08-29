@@ -871,7 +871,7 @@ const MatchRowResult = ({
           <option value="">{t("none")}</option>
           {referees.map((r) => (
             <option key={r.id} value={r.id}>
-              {r.firstname} {r.lastname}
+              {r.lastname} {r.firstname}
             </option>
           ))}
         </select>
@@ -891,7 +891,7 @@ const MatchRowResult = ({
           <option value="">{t("none")}</option>
           {referees.map((r) => (
             <option key={r.id} value={r.id}>
-              {r.firstname} {r.lastname}
+              {r.lastname} {r.firstname}
             </option>
           ))}
         </select>
