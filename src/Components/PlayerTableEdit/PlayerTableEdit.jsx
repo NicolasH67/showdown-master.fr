@@ -87,7 +87,14 @@ const PlayerTableEdit = ({
                       {player.firstname} {player.lastname}
                     </Link>
                   </td>
-                  <td>{player.club?.name || "N/A"}</td>
+                  <td>
+                    <Link
+                      to={`/tournament/${id}/provenance/${player.club?.id}`}
+                      style={{ textDecoration: "none" }}
+                    >
+                      {player.club?.name || "N/A"}
+                    </Link>
+                  </td>
                   <td>
                     {Array.isArray(player.group_id) &&
                     player.group_id.length > 0
@@ -95,7 +102,16 @@ const PlayerTableEdit = ({
                           const g = groups.find(
                             (grp) => grp.id === player.group_id[0]
                           );
-                          return g ? `${g.name} - ${t(g.group_type)}` : "N/A";
+                          return g ? (
+                            <Link
+                              to={`/tournament/${id}/groups/${player.group_id[0]}`}
+                              style={{ textDecoration: "none" }}
+                            >
+                              {g.name} - {t(g.group_type)}
+                            </Link>
+                          ) : (
+                            "N/A"
+                          );
                         })()
                       : "N/A"}
                   </td>
