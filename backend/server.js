@@ -37,6 +37,15 @@ const RAW_ALLOWED =
   process.env.CORS_ORIGIN ||
   "http://localhost:3000";
 const ALLOWED_ORIGINS = RAW_ALLOWED.split(",").map((s) => s.trim());
+// Auto-allow Vercel preview/prod URL if present
+if (process.env.VERCEL_URL) {
+  const vercelHost = `https://${process.env.VERCEL_URL}`;
+  if (!ALLOWED_ORIGINS.includes(vercelHost)) ALLOWED_ORIGINS.push(vercelHost);
+}
+if (process.env.NEXT_PUBLIC_SITE_URL) {
+  const site = process.env.NEXT_PUBLIC_SITE_URL.trim();
+  if (site && !ALLOWED_ORIGINS.includes(site)) ALLOWED_ORIGINS.push(site);
+}
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
@@ -749,10 +758,15 @@ const sixDigit = () => Math.floor(100000 + Math.random() * 900000).toString();
 const sha256 = (s) => crypto.createHash("sha256").update(s).digest("hex");
 const MAX_ATTEMPTS = 5;
 
-// Lancer le serveur
-const port = process.env.PORT || 3001;
-const host = process.env.HOST || "0.0.0.0";
-app.listen(port, host, () => {
-  console.log(`SMTP verification API running on ${host}:${port}`);
-  console.log(`Allowed origins: ${ALLOWED_ORIGINS.join(", ")}`);
-});
+// Export the Express app for serverless runtimes (e.g., Vercel)
+module.exports = app;
+
+// Start the server only when executed directly (local dev / standalone)
+if (require.main === module && !process.env.VERCEL) {
+  const port = process.env.PORT || 3001;
+  const host = process.env.HOST || "0.0.0.0";
+  app.listen(port, host, () => {
+    console.log(`SMTP verification API running on ${host}:${port}`);
+    console.log(`Allowed origins: ${ALLOWED_ORIGINS.join(", ")}`);
+  });
+}
