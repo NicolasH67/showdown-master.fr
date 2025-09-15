@@ -5,7 +5,7 @@ import usePlayers from "../../Hooks/usePlayers";
 import PlayerTable from "../../Components/PlayerTable/PlayerTable";
 import { useTranslation } from "react-i18next";
 import PlayerSelector from "../../Components/PlayerSelector/PlayerSelector";
-import useReferees from "../../Hooks/useReferee";
+import useReferee from "../../Hooks/useReferee";
 import RefereeTable from "../../Components/RefereeTable/RefereeTable";
 
 /**
@@ -28,7 +28,7 @@ const Players = () => {
     referees,
     loading: refereesLoading,
     error: refereesError,
-  } = useReferees(id);
+  } = useReferee(id);
   const [selectedGroup, setSelectedGroup] = useState(null);
   const { t } = useTranslation();
   const location = useLocation();
@@ -47,21 +47,22 @@ const Players = () => {
   if (playersError || refereesError)
     return (
       <div className="alert alert-danger">
-        {players.message} {refereesError.message}
+        {(playersError && playersError.message) || null}{" "}
+        {(refereesError && refereesError.message) || null}
       </div>
     );
 
   const malePlayers = players.filter(
-    (player) => player.group.group_type === "men"
+    (player) => player?.group?.group_type === "men"
   );
   const femalePlayers = players.filter(
-    (player) => player.group.group_type === "women"
+    (player) => player?.group?.group_type === "women"
   );
   const teamPlayers = players.filter(
-    (player) => player.group.group_type === "team"
+    (player) => player?.group?.group_type === "team"
   );
   const mixPlayers = players.filter(
-    (player) => player.group.group_type === "mix"
+    (player) => player?.group?.group_type === "mix"
   );
 
   const getAvailableGroups = () => {
@@ -76,8 +77,10 @@ const Players = () => {
   const availableGroups = getAvailableGroups();
 
   const filteredPlayers = selectedGroup
-    ? players.filter((player) => player.group.group_type === selectedGroup)
+    ? players.filter((player) => player?.group?.group_type === selectedGroup)
     : players;
+
+  console.log(filteredPlayers);
 
   return (
     <div className="container mt-4">
@@ -89,7 +92,14 @@ const Players = () => {
         selectedGroup={selectedGroup}
         onSelectGroup={setSelectedGroup}
       />
-      <PlayerTable players={filteredPlayers} groupType={t(selectedGroup)} />
+      <PlayerTable
+        players={filteredPlayers}
+        groupType={
+          selectedGroup
+            ? t(selectedGroup)
+            : t("allGroups", { defaultValue: "Tous" })
+        }
+      />
       <RefereeTable referees={referees} />
     </div>
   );

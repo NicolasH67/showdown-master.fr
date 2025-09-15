@@ -1,48 +1,68 @@
 // src/Hooks/useClub.js
 import { useState, useEffect } from "react";
-import supabase from "../Helpers/supabaseClient";
+import { useParams } from "react-router-dom";
+import { get } from "../Helpers/apiClient";
+
+// Try endpoints in order; return first successful JSON
+const firstOk = async (paths) => {
+  let lastErr = null;
+  for (const p of paths) {
+    try {
+      const json = await get(p);
+      return json;
+    } catch (e) {
+      lastErr = e;
+      // continue to next; 404 or other errors will fall through to the next path
+    }
+  }
+  throw lastErr || new Error("All endpoints failed");
+};
 
 /**
  * Hook to fetch the list of clubs for a given tournament.
  *
- * @param {string} tournamentId - The ID of the tournament to filter clubs.
- * @returns {Object}
- * - clubs: Array des clubs du tournoi.
- * - loading: Booléen indiquant si la requête est en cours.
- * - error: Objet d'erreur si la requête a échoué.
+ * @param {string|number} tournamentIdParam - Optional tournament id. If omitted, falls back to route param `id`.
+ * @returns {{ clubs: Array, loading: boolean, error: any }}
  */
-export default function useClub(tournamentId) {
+export default function useClub(tournamentIdParam) {
+  const { id: routeId } = useParams();
+  const tid = tournamentIdParam ?? routeId;
+
   const [clubs, setClubs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    setLoading(true);
-    setError(null);
+    let alive = true;
+    const load = async () => {
+      setLoading(true);
+      setError(null);
 
-    const fetchClubs = async () => {
-      try {
-        const { data, error } = await supabase
-          .from("club")
-          .select("*")
-          .eq("tournament_id", tournamentId);
-
-        if (error) throw error;
-        setClubs(data || []);
-      } catch (err) {
-        setError(err);
-      } finally {
+      const idNum = Number(tid);
+      if (!Number.isFinite(idNum) || idNum <= 0) {
+        setClubs([]);
         setLoading(false);
+        return;
+      }
+
+      try {
+        const data = await firstOk([`/api/tournaments/${idNum}/clubs`]);
+        if (!alive) return;
+        setClubs(Array.isArray(data) ? data : []);
+      } catch (e) {
+        if (!alive) return;
+        setError(e?.message || e);
+        setClubs([]);
+      } finally {
+        if (alive) setLoading(false);
       }
     };
 
-    if (tournamentId) {
-      fetchClubs();
-    } else {
-      setClubs([]);
-      setLoading(false);
-    }
-  }, [tournamentId]);
+    load();
+    return () => {
+      alive = false;
+    };
+  }, [tid]);
 
   return { clubs, loading, error };
 }

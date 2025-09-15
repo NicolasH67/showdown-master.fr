@@ -1,12 +1,13 @@
-import { React, useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import TournamentList from "../../Components/TournamentList/TournamentList";
 import TournamentModal from "../../Components/TournamentModal/TournamentModal";
 import { useTournaments } from "../../Hooks/useTournament";
 import { useTranslation } from "react-i18next";
-import { useLocation } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import { post } from "../../Helpers/apiClient";
 
 /**
- * Home component that displays past tournaments and handles tournament password protection.
+ * History component that displays past tournaments and handles password protection.
  *
  * @component
  * @example
@@ -16,6 +17,7 @@ import { useLocation } from "react-router-dom";
  */
 const History = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { tournaments, loading, error } = useTournaments(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTournament, setSelectedTournament] = useState(null);
@@ -29,12 +31,12 @@ const History = () => {
    * @param {Object} tournament - The selected tournament object.
    */
   const handleTournamentClick = (tournament) => {
-    if (tournament.user_password) {
+    if (tournament.is_private === true) {
       setSelectedTournament(tournament);
       setModalMessage("");
       setIsModalOpen(true);
     } else {
-      window.location.href = `/tournament/${tournament.id}/players`;
+      navigate(`/tournament/${tournament.id}/players`);
     }
   };
 
@@ -43,15 +45,19 @@ const History = () => {
    *
    * @param {Event} e - The form submit event.
    */
-  const handlePasswordSubmit = (e) => {
+  const handlePasswordSubmit = async (e) => {
     e.preventDefault();
-    if (password === selectedTournament.user_password) {
+    try {
+      await post("/auth/tournament/login", {
+        tournamentId: selectedTournament.id,
+        password,
+      });
       setModalMessage(
         t("passwordCorrect", { defaultValue: "Mot de passe correct." })
       );
       setIsModalOpen(false);
-      window.location.href = `/tournament/${selectedTournament.id}/players`;
-    } else {
+      navigate(`/tournament/${selectedTournament.id}/players`);
+    } catch (err) {
       setModalMessage(
         t("wrongPassword", { defaultValue: "Mot de passe incorrect." })
       );
@@ -69,13 +75,13 @@ const History = () => {
   };
 
   useEffect(() => {
-    if (tournaments.length > 0) {
+    if (!loading) {
       const title = document.getElementById("page-title");
       if (title) {
         title.focus();
       }
     }
-  }, [location.pathname, tournaments.length]);
+  }, [location.pathname, loading]);
 
   if (loading) return <div>{t("loading")}</div>;
   if (error) return <div>{t("errorFetchingTournaments")}</div>;

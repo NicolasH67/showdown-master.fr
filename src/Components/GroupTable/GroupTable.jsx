@@ -1,8 +1,57 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 
+// Normalize various result formats to a flat pairs array: [a1,b1,a2,b2,...]
+const toResultPairs = (res) => {
+  if (!res) return [];
+  // Already an array of numbers (or strings)
+  if (Array.isArray(res)) {
+    return res.map((n) => {
+      const v = Number(n);
+      return Number.isFinite(v) ? v : 0;
+    });
+  }
+  // Object form { sets: [{p1, p2}, ...] }
+  if (typeof res === "object" && Array.isArray(res.sets)) {
+    const pairs = [];
+    for (const s of res.sets) {
+      const a = Number(s?.p1);
+      const b = Number(s?.p2);
+      pairs.push(Number.isFinite(a) ? a : 0, Number.isFinite(b) ? b : 0);
+    }
+    return pairs;
+  }
+  // String form: try JSON, else parse patterns like "11-6;11-9" or "11-6, 11-9"
+  if (typeof res === "string") {
+    try {
+      const parsed = JSON.parse(res);
+      return toResultPairs(parsed);
+    } catch (_) {
+      const chunks = res
+        .split(/[;,]/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const pairs = [];
+      for (const ch of chunks) {
+        const m = ch.match(/^(\d+)\s*[-:\/]\s*(\d+)$/);
+        if (m) {
+          const a = Number(m[1]);
+          const b = Number(m[2]);
+          pairs.push(Number.isFinite(a) ? a : 0, Number.isFinite(b) ? b : 0);
+        }
+      }
+      return pairs;
+    }
+  }
+  return [];
+};
+
 const parseMatch = (match) => {
-  if (!match.player1?.id || !match.player2?.id) {
+  // Coerce player ids from either nested objects or flat *_id fields
+  const aId = Number(match.player1?.id ?? match.player1_id);
+  const bId = Number(match.player2?.id ?? match.player2_id);
+
+  if (!Number.isFinite(aId) || !Number.isFinite(bId)) {
     return {
       playerAId: -1,
       playerBId: -1,
@@ -17,7 +66,7 @@ const parseMatch = (match) => {
     setsB = 0,
     goalsA = 0,
     goalsB = 0;
-  const res = match.result || [];
+  const res = toResultPairs(match.result);
 
   for (let i = 0; i < res.length; i += 2) {
     const a = res[i];
@@ -29,8 +78,8 @@ const parseMatch = (match) => {
   }
 
   return {
-    playerAId: match.player1?.id,
-    playerBId: match.player2?.id,
+    playerAId: aId,
+    playerBId: bId,
     setsA,
     setsB,
     goalsA,
@@ -41,7 +90,9 @@ const parseMatch = (match) => {
 const computeStats = (players = [], rawMatches = []) => {
   const stats = {};
   players.forEach((p) => {
-    stats[p.id] = {
+    const pid = Number(p.id);
+    if (!Number.isFinite(pid)) return;
+    stats[pid] = {
       wins: 0,
       setsWon: 0,
       setsLost: 0,
@@ -75,32 +126,62 @@ const computeStats = (players = [], rawMatches = []) => {
 
 const GroupTable = ({ players, matches, group, allGroups }) => {
   const { t } = useTranslation();
+  console.log("[GroupTable] sample result:", matches?.[0]?.result);
   const stats = computeStats(players, matches);
 
   const getDirectStats = (playersSubset, matchesSubset) => {
-    const ids = playersSubset.map((p) => p.id);
+    const ids = playersSubset.map((p) => Number(p.id)).filter(Number.isFinite);
     const filteredMatches = matchesSubset.filter((m) => {
-      const a = m.player1?.id;
-      const b = m.player2?.id;
-      return ids.includes(a) && ids.includes(b);
+      const a = Number(m.player1?.id ?? m.player1_id);
+      const b = Number(m.player2?.id ?? m.player2_id);
+      return (
+        Number.isFinite(a) &&
+        Number.isFinite(b) &&
+        ids.includes(a) &&
+        ids.includes(b)
+      );
     });
     return computeStats(playersSubset, filteredMatches);
   };
 
-  const hasResults = matches.some((m) => (m.result || []).length > 0);
+  const hasResults = matches.some((m) => toResultPairs(m.result).length > 0);
 
   const sortedPlayers = [...players].sort((a, b) => {
     if (!hasResults) return a.id - b.id;
 
-    const pa = stats[a.id];
-    const pb = stats[b.id];
+    const pa = stats[Number(a.id)] || {
+      wins: 0,
+      setsWon: 0,
+      setsLost: 0,
+      goalsFor: 0,
+      goalsAgainst: 0,
+    };
+    const pb = stats[Number(b.id)] || {
+      wins: 0,
+      setsWon: 0,
+      setsLost: 0,
+      goalsFor: 0,
+      goalsAgainst: 0,
+    };
     if (pb.wins !== pa.wins) return pb.wins - pa.wins;
 
-    const tiedPlayers = players.filter((p) => stats[p.id].wins === pa.wins);
+    const tiedPlayers = players.filter(
+      (p) => (stats[Number(p.id)]?.wins || 0) === pa.wins
+    );
     if (tiedPlayers.length === 2 || tiedPlayers.length === 3) {
       const subStats = getDirectStats(tiedPlayers, matches);
-      const sa = subStats[a.id];
-      const sb = subStats[b.id];
+      const sa = subStats[Number(a.id)] || {
+        setsWon: 0,
+        setsLost: 0,
+        goalsFor: 0,
+        goalsAgainst: 0,
+      };
+      const sb = subStats[Number(b.id)] || {
+        setsWon: 0,
+        setsLost: 0,
+        goalsFor: 0,
+        goalsAgainst: 0,
+      };
 
       const setDiffA = sa.setsWon - sa.setsLost;
       const setDiffB = sb.setsWon - sb.setsLost;
@@ -128,7 +209,13 @@ const GroupTable = ({ players, matches, group, allGroups }) => {
       <tbody>
         {players.length > 0 ? (
           sortedPlayers.map((player, index) => {
-            const stat = stats[player.id];
+            const stat = stats[Number(player.id)] || {
+              wins: 0,
+              setsWon: 0,
+              setsLost: 0,
+              goalsFor: 0,
+              goalsAgainst: 0,
+            };
             const setDiff = stat.setsWon - stat.setsLost;
             const goalDiff = stat.goalsFor - stat.goalsAgainst;
 

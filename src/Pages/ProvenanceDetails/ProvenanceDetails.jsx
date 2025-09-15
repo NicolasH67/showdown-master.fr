@@ -3,7 +3,6 @@ import { useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import useClubMatches from "../../Hooks/useClubMatches"; // Hook pour récupérer les matchs du club
 import MatchRow from "../../Components/MatchRow/MatchRow";
-// import MatchCard from "../../Components/MatchCard/MatchCard";
 
 const ProvenanceDetails = () => {
   const { id, provenanceId } = useParams();

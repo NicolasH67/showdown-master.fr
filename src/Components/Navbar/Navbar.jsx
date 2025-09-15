@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
-import { NavLink, useLocation, useNavigate, useParams } from "react-router";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import AdminLogin from "../AdminLogin/AdminLogin";
+import useAuth from "../../auth/useAuth";
 
 /**
  * Navbar component that provides navigation links and language selection.
@@ -18,40 +19,30 @@ const Navbar = () => {
   const tournament = location.pathname.match(/\/tournament\/([^/]+)/);
   const id = tournament ? tournament[1] : null;
 
-  // --- Admin detection: always show admin nav when authenticated ---
-  const checkAdmin = () => {
-    try {
-      // Support either a boolean flag or a token saved by AdminLogin
-      const flag = localStorage.getItem("isAdmin");
-      const token =
-        localStorage.getItem("adminToken") ||
-        localStorage.getItem("jwt") ||
-        localStorage.getItem("admin_jwt");
-      if (flag === "true") return true;
-      if (typeof token === "string" && token.length > 10) return true;
-      return false;
-    } catch (_) {
-      return false;
-    }
-  };
-
-  const [isAdmin, setIsAdmin] = useState(checkAdmin());
-
-  // Keep admin state in sync when route changes or storage updates
-  useEffect(() => {
-    setIsAdmin(checkAdmin());
-  }, [location.pathname]);
+  // Auth state from cookie-backed session
+  const { loading, ok, scope, tournamentId, refresh } = useAuth();
+  const currentId = id ? Number(id) : null;
+  const sameTournament =
+    currentId == null || tournamentId == null
+      ? true
+      : Number(tournamentId) === currentId;
+  const isAdmin = ok && scope === "admin" && sameTournament;
 
   useEffect(() => {
-    const onStorage = () => setIsAdmin(checkAdmin());
-    window.addEventListener("storage", onStorage);
-    // Optional custom event if AdminLogin dispatches it
-    window.addEventListener("admin-status-changed", onStorage);
-    return () => {
-      window.removeEventListener("storage", onStorage);
-      window.removeEventListener("admin-status-changed", onStorage);
-    };
-  }, []);
+    const lang = localStorage.getItem("language") || "en";
+    document.documentElement.lang = lang;
+  }, [i18n.language]);
+
+  if (loading) {
+    // During auth resolution, show a neutral navbar
+    return (
+      <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div className="container-fluid">
+          <span className="navbar-brand">Showdown</span>
+        </div>
+      </nav>
+    );
+  }
 
   /**
    * Changes the application language.
@@ -163,7 +154,39 @@ const Navbar = () => {
                 {t("tournamentEdit")}
               </NavLink>
             </li>
-            <AdminLogin />
+            <li className="nav-item">
+              <button
+                className="btn btn-link nav-link"
+                onClick={async () => {
+                  try {
+                    await fetch("http://localhost:3001/auth/logout", {
+                      method: "POST",
+                      credentials: "include",
+                    });
+                  } catch (_) {}
+                  // Met à jour le contexte d'auth pour que la navbar repasse en mode user
+                  try {
+                    await refresh?.();
+                  } catch (_) {}
+
+                  // Si on est sur une page tournoi, renvoyer vers la vue utilisateur du même tournoi
+                  const isTournamentPage =
+                    location.pathname.includes("/tournament/");
+                  if (isTournamentPage && id) {
+                    navigate(`/tournament/${id}/players`, { replace: true });
+                  } else {
+                    navigate("/", { replace: true });
+                  }
+
+                  // Replier la navbar en mobile
+                  try {
+                    setIsNavbarCollapsed(true);
+                  } catch (_) {}
+                }}
+              >
+                {t("logout", { defaultValue: "Logout" })}
+              </button>
+            </li>
           </>
         );
       } else {
@@ -280,11 +303,6 @@ const Navbar = () => {
       );
     }
   };
-
-  useEffect(() => {
-    const lang = localStorage.getItem("language") || "en";
-    document.documentElement.lang = lang;
-  }, [i18n.language]);
 
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-dark">

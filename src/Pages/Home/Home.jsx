@@ -5,6 +5,7 @@ import { useTournaments } from "../../Hooks/useTournament";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { useLocation } from "react-router-dom";
+import { post } from "../../Helpers/apiClient";
 
 /**
  * Home component that displays upcoming tournaments and handles password protection.
@@ -51,7 +52,7 @@ const Home = () => {
    * @param {Object} tournament - The selected tournament object.
    */
   const handleTournamentClick = (tournament) => {
-    if (tournament.user_password) {
+    if (tournament.is_private === true) {
       setSelectedTournament(tournament);
       setModalMessage("");
       setIsModalOpen(true);
@@ -65,15 +66,19 @@ const Home = () => {
    *
    * @param {Event} e - The form submit event.
    */
-  const handlePasswordSubmit = (e) => {
+  const handlePasswordSubmit = async (e) => {
     e.preventDefault();
-    if (password === selectedTournament.user_password) {
+    try {
+      await post("/auth/tournament/login", {
+        tournamentId: selectedTournament.id,
+        password,
+      });
       setModalMessage(
         t("passwordCorrect", { defaultValue: "Mot de passe correct." })
       );
       setIsModalOpen(false);
       navigate(`/tournament/${selectedTournament.id}/players`);
-    } else {
+    } catch (err) {
       setModalMessage(
         t("wrongPassword", { defaultValue: "Mot de passe incorrect." })
       );
@@ -92,6 +97,8 @@ const Home = () => {
 
   if (loading) return <div>{t("loading")}</div>;
   if (error) return <div>{t("errorFetchingTournaments")}</div>;
+
+  console.log(tournaments);
 
   return (
     <div className="container mt-4">

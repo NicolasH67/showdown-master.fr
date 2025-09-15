@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import supabase from "../Helpers/supabaseClient";
+import { get, ApiError } from "../Helpers/apiClient";
 import usePlayers from "./usePlayers";
 
 /**
@@ -8,6 +8,25 @@ import usePlayers from "./usePlayers";
  * @param {string} tournamentId - ID du tournoi.
  * @returns {Object} - Données des groupes et joueurs associés.
  */
+
+// Try a list of endpoints in order and return the first successful JSON
+const firstOk = async (paths) => {
+  let lastErr = null;
+  for (const p of paths) {
+    try {
+      const json = await get(p);
+      return json;
+    } catch (e) {
+      // If 404, try next; if other error, remember and continue
+      lastErr = e;
+      if (e?.status !== 404) {
+        // non-404 errors might be transient; continue to next fallback
+      }
+    }
+  }
+  throw lastErr || new Error("All endpoints failed");
+};
+
 const useGroupsData = () => {
   const { id } = useParams();
   const [groups, setGroups] = useState([]);
@@ -28,22 +47,20 @@ const useGroupsData = () => {
 
     const fetchGroups = async () => {
       try {
-        let { data: groupsData, error: groupsError } = await supabase
-          .from("group")
-          .select(
-            "id, name, round_type, group_type, tournament_id, group_former, highest_position"
-          );
-
-        if (groupsError) {
-          throw groupsError;
+        const idNum = Number(id);
+        if (!Number.isFinite(idNum) || idNum <= 0) {
+          throw new Error("Invalid tournament id");
         }
 
-        const parsedTournamentId = parseInt(id, 10);
-        const filteredGroups = groupsData.filter(
-          (group) => group.tournament_id === parsedTournamentId
-        );
+        // Try public first, then protected
+        const groupsData = await firstOk([`/api/tournaments/${idNum}/groups`]);
 
-        setGroups(filteredGroups);
+        // Ensure array and, if needed, filter by tournament_id to keep same behavior
+        const arr = Array.isArray(groupsData) ? groupsData : [];
+        const filtered = arr.filter(
+          (g) => g?.tournament_id === idNum || g?.tournament_id == null
+        );
+        setGroups(filtered);
       } catch (error) {
         console.error("Erreur lors de la récupération des données :", error);
         setError(error);

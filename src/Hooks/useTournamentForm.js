@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import supabase from "../Helpers/supabaseClient";
+import { post } from "../Helpers/apiClient";
 import { useNavigate } from "react-router-dom";
 
 /**
@@ -54,23 +54,28 @@ const useTournamentForm = () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase.from("tournament").insert([
-        {
-          title,
-          startday,
-          endday,
-          user_password: adminPassword,
-          admin_password: adminPassword,
-          email,
-          table_count: 1,
-          match_duration: 30,
-        },
-      ]);
+      // Appelle l'API backend sécurisée
+      await post("/api/tournaments", {
+        title,
+        startday,
+        endday,
+        adminPassword,
+        email,
+        table_count: 1,
+        match_duration: 30,
+      });
 
-      if (error) throw error;
+      // Succès → retour accueil
       navigate("/");
-    } catch (error) {
-      setError(t("errorCreatingTournament"));
+    } catch (err) {
+      // Affiche un message explicite si le backend renvoie une erreur 400
+      const msg =
+        err?.body?.error || err?.message || t("errorCreatingTournament");
+      setError(
+        msg === "missing_fields"
+          ? t("allFieldsRequired")
+          : t("errorCreatingTournament")
+      );
     } finally {
       setLoading(false);
     }

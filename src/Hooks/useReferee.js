@@ -1,14 +1,13 @@
 import { useEffect, useState } from "react";
-import supabase from "../Helpers/supabaseClient";
+import { get, ApiError } from "../Helpers/apiClient";
 
 /**
- * Custom hook to fetch referees for a specific tournament.
+ * Fetch referees of a tournament without requiring auth on this page.
  *
- * @param {string} tournamentId - The ID of the tournament to filter referees by.
- * @returns {Object}
- * - referees: The list of referees associated with the given tournament.
- * - loading: A boolean indicating if the data is still being fetched.
- * - error: An error object if an error occurred during fetching.
+ * Strategy:
+ *  - Try PUBLIC endpoints first (if you later expose them), otherwise use protected.
+ *  - Gracefully fall back on 401/403/404 to the next endpoint.
+ *  - If club info is missing on rows, fetch clubs and enrich.
  */
 const useReferees = (tournamentId) => {
   const [referees, setReferees] = useState([]);
@@ -16,34 +15,96 @@ const useReferees = (tournamentId) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!tournamentId) {
-      console.error("Tournament ID is not defined!");
-      return;
-    }
+    let cancelled = false;
 
-    const fetchReferees = async () => {
+    const run = async () => {
+      setLoading(true);
+      setError(null);
+      setReferees([]);
+
+      const idNum = Number(tournamentId);
+      if (!Number.isFinite(idNum) || idNum <= 0) {
+        if (!cancelled) {
+          setError(new Error("Invalid tournament id"));
+          setLoading(false);
+        }
+        return;
+      }
+
+      // helper that tries a list of endpoints in order and returns the first successful JSON
+      const firstOk = async (paths) => {
+        for (const p of paths) {
+          try {
+            const r = await get(p);
+            return r;
+          } catch (e) {
+            if (e instanceof ApiError) {
+              if ([401, 403, 404].includes(e.status)) continue;
+            }
+            throw e;
+          }
+        }
+        throw new ApiError("not_found", { status: 404, body: null });
+      };
+
       try {
-        let { data, error } = await supabase
-          .from("referee")
-          .select(
-            `
-            id, firstname, lastname, tournament_id,
-            club:club_id (id, name)
-          `
-          )
-          .eq("tournament_id", tournamentId);
+        // 1) Referees (public first if exists, then protected)
+        const refereesResp = await firstOk([
+          `/api/tournaments/${idNum}/referees`,
+        ]);
 
-        if (error) throw error;
+        const rows = Array.isArray(refereesResp)
+          ? refereesResp
+          : Array.isArray(refereesResp?.referees)
+          ? refereesResp.referees
+          : [];
 
-        setReferees(data);
-      } catch (error) {
-        setError(error);
+        // If club info already present, we're done
+        const hasClub =
+          rows.length > 0 &&
+          ("club" in rows[0] || "club_abbreviation" in rows[0]);
+        if (hasClub) {
+          if (!cancelled) setReferees(rows);
+          return;
+        }
+
+        // 2) Clubs (to enrich display with club abbreviation if not provided on referee)
+        let clubsById = new Map();
+        try {
+          const clubsResp = await firstOk([`/api/tournaments/${idNum}/clubs`]);
+          const clubs = Array.isArray(clubsResp)
+            ? clubsResp
+            : Array.isArray(clubsResp?.clubs)
+            ? clubsResp.clubs
+            : [];
+          clubsById = new Map(clubs.map((c) => [c.id, c]));
+        } catch (_) {
+          // If clubs endpoints don't exist, keep referees as-is
+        }
+
+        const enriched = rows.map((r) => {
+          // If "club" is already embedded, keep it; otherwise add from clubs
+          if (!r.club && r.club_id != null) {
+            const club = clubsById.get(r.club_id) || null;
+            if (club) {
+              return { ...r, club };
+            }
+          }
+          return r;
+        });
+
+        if (!cancelled) setReferees(enriched);
+      } catch (e) {
+        if (!cancelled) setError(e);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
-    fetchReferees();
+    run();
+    return () => {
+      cancelled = true;
+    };
   }, [tournamentId]);
 
   return { referees, loading, error };

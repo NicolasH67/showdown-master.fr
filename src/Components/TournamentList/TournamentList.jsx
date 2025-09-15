@@ -40,7 +40,7 @@ const TournamentList = ({ tournaments, onTournamentClick }) => {
                   >
                     {tournament.title}
                   </a>
-                  {tournament.user_password && (
+                  {tournament.is_private === true && (
                     <span className="badge bg-danger ms-2">{t("private")}</span>
                   )}
                 </td>

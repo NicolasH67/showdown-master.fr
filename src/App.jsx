@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Navbar from "./Components/Navbar/Navbar";
 import "./i18n";
 
+import { AdminGuard, ViewerGuard } from "./auth/Guard";
+
 import Home from "./Pages/Home/Home";
 import History from "./Pages/History/History";
 import CreateTournament from "./Pages/CreateTournament/CreateTournament";
@@ -22,6 +24,27 @@ import RankingPage from "./Pages/RankingPage/RankingPage";
 import RankingEdit from "./Pages/RankingEdit/RankingEdit";
 import GroupsDetails from "./Pages/GoupsDetails/GroupsDetails";
 
+// --- Temporary minimal login pages (replace later with real pages) ---
+function AdminLogin() {
+  return (
+    <div className="p-4">
+      <h1 className="text-xl font-semibold">Connexion Admin</h1>
+      <p>Implémente la page de login admin ici (POST /auth/admin/login).</p>
+    </div>
+  );
+}
+
+function TournamentLogin() {
+  return (
+    <div className="p-4">
+      <h1 className="text-xl font-semibold">Accès Tournoi</h1>
+      <p>
+        Implémente la page de login tournoi ici (POST /auth/tournament/login).
+      </p>
+    </div>
+  );
+}
+
 /**
  * Main App component that contains routing logic using react-router-dom.
  *
@@ -40,37 +63,119 @@ function App() {
         <Route path="/history" element={<History />} />
         <Route path="/createTournament" element={<CreateTournament />} />
         <Route path="/contact" element={<Contact />} />
-        <Route path="/tournament/:id/players" element={<Players />} />
+        <Route path="/tournament/:id/login" element={<TournamentLogin />} />
+        <Route path="/tournament/:id/admin/login" element={<AdminLogin />} />
+        <Route
+          path="/tournament/:id/players"
+          element={
+            <ViewerGuard>
+              <Players />
+            </ViewerGuard>
+          }
+        />
         <Route
           path="/tournament/:id/players/:playerId"
-          element={<PlayerDetails />}
+          element={
+            <ViewerGuard>
+              <PlayerDetails />
+            </ViewerGuard>
+          }
         />
         <Route
           path="/tournament/:id/groups/:groupId"
-          element={<GroupsDetails />}
+          element={
+            <ViewerGuard>
+              <GroupsDetails />
+            </ViewerGuard>
+          }
         />
         <Route
           path="/tournament/:id/referees/:refereeId"
-          element={<RefereeDetails />}
+          element={
+            <ViewerGuard>
+              <RefereeDetails />
+            </ViewerGuard>
+          }
         />
         <Route
           path="/tournament/:id/provenance/:provenanceId"
-          element={<ProvenanceDetails />}
+          element={
+            <ViewerGuard>
+              <ProvenanceDetails />
+            </ViewerGuard>
+          }
         />
-        <Route path="/tournament/:id/groups" element={<GroupsPage />} />
-        <Route path="/tournament/:id/ranking" element={<RankingPage />} />
-        <Route path="/tournament/:id/schedule" element={<Schedule />} />
-        <Route path="/tournament/:id/admin/players" element={<PlayersEdit />} />
-        <Route path="/tournament/:id/admin/groups" element={<GroupsEdit />} />
+        <Route
+          path="/tournament/:id/groups"
+          element={
+            <ViewerGuard>
+              <GroupsPage />
+            </ViewerGuard>
+          }
+        />
+        <Route
+          path="/tournament/:id/ranking"
+          element={
+            <ViewerGuard>
+              <RankingPage />
+            </ViewerGuard>
+          }
+        />
+        <Route
+          path="/tournament/:id/schedule"
+          element={
+            <ViewerGuard>
+              <Schedule />
+            </ViewerGuard>
+          }
+        />
+        <Route
+          path="/tournament/:id/admin/players"
+          element={
+            <AdminGuard>
+              <PlayersEdit />
+            </AdminGuard>
+          }
+        />
+        <Route
+          path="/tournament/:id/admin/groups"
+          element={
+            <AdminGuard>
+              <GroupsEdit />
+            </AdminGuard>
+          }
+        />
         <Route
           path="/tournament/:id/admin/schedule"
-          element={<ScheduleEdit />}
+          element={
+            <AdminGuard>
+              <ScheduleEdit />
+            </AdminGuard>
+          }
         />
-        <Route path="/tournament/:id/admin/result" element={<ResultEdit />} />
-        <Route path="/tournament/:id/admin/ranking" element={<RankingEdit />} />
+        <Route
+          path="/tournament/:id/admin/result"
+          element={
+            <AdminGuard>
+              <ResultEdit />
+            </AdminGuard>
+          }
+        />
+        <Route
+          path="/tournament/:id/admin/ranking"
+          element={
+            <AdminGuard>
+              <RankingEdit />
+            </AdminGuard>
+          }
+        />
         <Route
           path="/tournament/:id/admin/tournamentEdit"
-          element={<AdminEditPage />}
+          element={
+            <AdminGuard>
+              <AdminEditPage />
+            </AdminGuard>
+          }
         />
       </Routes>
     </BrowserRouter>

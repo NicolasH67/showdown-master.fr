@@ -1,6 +1,23 @@
 import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import supabase from "../Helpers/supabaseClient";
+import { get, ApiError } from "../Helpers/apiClient";
+
+// Try a list of endpoints in order and return the first successful JSON
+const firstOk = async (paths) => {
+  let lastErr = null;
+  for (const p of paths) {
+    try {
+      const json = await get(p);
+      return json;
+    } catch (e) {
+      lastErr = e;
+      if (e?.status !== 404) {
+        // continue to next fallback
+      }
+    }
+  }
+  throw lastErr || new Error("All endpoints failed");
+};
 
 /**
  * `useMatches` Hook
@@ -20,35 +37,23 @@ const useMatches = () => {
   useEffect(() => {
     const fetchMatches = async () => {
       try {
-        let { data, error } = await supabase
-          .from("match")
-          .select(
-            `
-            id,
-            player1:player1_id(id, firstname, lastname, club_id),
-            player2:player2_id(id, firstname, lastname, club_id),
-            group:group_id(id, name, group_type, group_former),
-            match_day,
-            match_time,
-            table_number,
-            referee_1:referee1_id(id, firstname, lastname),
-            referee_2:referee2_id(id, firstname, lastname),
-            player1_group_position,
-            player2_group_position,
-            result
-          `
-          )
-          .eq("tournament_id", id);
+        const idNum = Number(id);
+        if (!Number.isFinite(idNum) || idNum <= 0) {
+          throw new Error("Invalid tournament id");
+        }
 
-        if (error) throw error;
+        // Try public first, then protected
+        const data = await firstOk([`/api/tournaments/${idNum}/matches`]);
 
-        data.sort((a, b) => {
+        const arr = Array.isArray(data) ? data : [];
+
+        arr.sort((a, b) => {
           const dateA = new Date(`${a.match_day}T${a.match_time}`);
           const dateB = new Date(`${b.match_day}T${b.match_time}`);
           return dateA - dateB || a.table_number - b.table_number;
         });
 
-        setMatches(data);
+        setMatches(arr);
       } catch (error) {
         setError(error);
       } finally {

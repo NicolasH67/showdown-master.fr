@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import supabase from "../Helpers/supabaseClient";
+import { get } from "../Helpers/apiClient";
 
 /**
  * Custom hook to fetch tournaments from the database (either past or upcoming).
@@ -21,26 +21,15 @@ export const useTournaments = (isPast) => {
      */
     const fetchTournaments = async () => {
       try {
-        let { data, error } = await supabase
-          .from("tournament")
-          .select("id, title, startday, endday, user_password, admin_password");
-
-        if (error) throw error;
-
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        const filteredTournaments = data
-          .filter((tournament) => {
-            if (isPast) {
-              return new Date(tournament.endday) <= today;
-            } else {
-              return new Date(tournament.endday) >= today;
-            }
-          })
-          .sort((a, b) => new Date(a.startday) - new Date(b.startday));
-
-        setTournaments(filteredTournaments);
+        const list = await get(
+          `/api/public/tournaments?past=${isPast ? 1 : 0}`
+        );
+        const data = Array.isArray(list) ? list : [];
+        // Optionnel: re-trier côté client par startday croissant
+        const sorted = data.sort(
+          (a, b) => new Date(a.startday) - new Date(b.startday)
+        );
+        setTournaments(sorted);
       } catch (error) {
         setError(error);
       } finally {

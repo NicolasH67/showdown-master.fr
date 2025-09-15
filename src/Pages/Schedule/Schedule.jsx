@@ -7,31 +7,18 @@ import { useTranslation } from "react-i18next";
 import DateSelector from "../../Components/DateSelector/DateSelector";
 import supabase from "../../Helpers/supabaseClient";
 import TableSelector from "../../Components/TableSelector/TableSelector";
+import useGroupsData from "../../Hooks/useGroupsData";
 
 const Schedule = () => {
   const { id } = useParams();
   const { matches, loading, error } = useMatches();
+  const { groups, players, lowading, errorGroups } = useGroupsData();
   const { t } = useTranslation();
   const location = useLocation();
-  const [allGroups, setAllgroups] = useState([]);
   const [allClubs, setAllClubs] = useState([]);
   const [selectedTable, setSelectedTable] = useState(null);
 
   useEffect(() => {
-    const fetchGroups = async () => {
-      const { data: group, error: groupsError } = await supabase
-        .from("group")
-        .select("*")
-        .eq("tournament_id", id);
-      if (groupsError) {
-        console.error(
-          "Erreur de chargement des groupes :",
-          groupsError.message
-        );
-      } else {
-        setAllgroups(group);
-      }
-    };
     const fetchClubs = async () => {
       const { data: clubs, error: clubsError } = await supabase
         .from("club")
@@ -43,7 +30,6 @@ const Schedule = () => {
       }
     };
     if (id) {
-      fetchGroups();
       fetchClubs();
     }
   }, [id]);
@@ -153,7 +139,7 @@ const Schedule = () => {
                   match={match}
                   index={index}
                   formatResult={formatResult}
-                  allgroups={allGroups}
+                  allgroups={groups}
                   allclubs={allClubs}
                   tournamentId={id}
                 />
