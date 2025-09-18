@@ -1,96 +1,76 @@
-app.get("/api/public/tournaments", async (req, res) => {
-  try {
-    dbg("→ [GET] /api/public/tournaments called", { query: req.query });
-    const { past } = req.query;
-    const { data, error } = await supabase
-      .from("tournament")
-      .select("id, title, startday, endday, is_private")
-      .order("startday", { ascending: true });
+// backend/server.js
 
-    if (error) return res.status(500).json({ error: error.message });
-
-    let out = Array.isArray(data) ? data : [];
-    const wantFilter =
-      past === "0" || past === "1" || past === "true" || past === "false";
-
-    if (wantFilter) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayTs = today.getTime();
-      const isPast = past === "1" || past === "true";
-
-      const filtered = out.filter((t) => {
-        const s = t?.startday ? Date.parse(t.startday) : NaN;
-        const e = t?.endday ? Date.parse(t.endday) : NaN;
-        const isCurrent =
-          (Number.isFinite(s) ? s <= todayTs : true) &&
-          (Number.isFinite(e) ? todayTs <= e : true);
-        const isFuture = Number.isFinite(s)
-          ? s > todayTs
-          : Number.isFinite(e)
-          ? e > todayTs
-          : true;
-        const isPastTournament = Number.isFinite(e) ? e < todayTs : false;
-        return isPast ? isPastTournament : isCurrent || isFuture;
-      });
-
-      out = filtered.length ? filtered : out; // fallback to all if empty
-    }
-
-    console.log("[GET] /api/public/tournaments", {
-      past,
-      count: out.length,
-    });
-    res.json(out);
-  } catch (e) {
-    console.error("/api/public/tournaments error", e);
-    res.status(500).json({ error: "server_error" });
-  }
-});
+// ... other imports and code ...
 
 app.get("/api/tournaments", async (req, res) => {
   try {
     dbg("→ [GET] /api/tournaments called", { query: req.query });
-    const { past } = req.query;
-    const { data, error } = await supabase
-      .from("tournament")
-      .select("id, title, startday, endday, is_private")
-      .order("startday", { ascending: true });
 
-    if (error) return res.status(500).json({ error: error.message });
-
-    let out = Array.isArray(data) ? data : [];
-    const wantFilter =
-      past === "0" || past === "1" || past === "true" || past === "false";
-
-    if (wantFilter) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const todayTs = today.getTime();
-      const isPast = past === "1" || past === "true";
-
-      const filtered = out.filter((t) => {
-        const s = t?.startday ? Date.parse(t.startday) : NaN;
-        const e = t?.endday ? Date.parse(t.endday) : NaN;
-        const isCurrent =
-          (Number.isFinite(s) ? s <= todayTs : true) &&
-          (Number.isFinite(e) ? todayTs <= e : true);
-        const isFuture = Number.isFinite(s)
-          ? s > todayTs
-          : Number.isFinite(e)
-          ? e > todayTs
-          : true;
-        const isPastTournament = Number.isFinite(e) ? e < todayTs : false;
-        return isPast ? isPastTournament : isCurrent || isFuture;
-      });
-
-      out = filtered.length ? filtered : out;
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
+      return res.status(500).json({ error: "supabase_env_missing" });
     }
 
-    console.log("[GET] /api/tournaments", { count: out.length });
-    return res.json(out);
+    let { data, error } = await supabase
+      .from("tournament")
+      .select("*")
+      .order("id", { ascending: true });
+
+    if (error) {
+      console.error("/api/tournaments select tournament error:", error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    // Fallback: try alternate table name if empty
+    if (!data || (Array.isArray(data) && data.length === 0)) {
+      const alt = await supabase
+        .from("tournaments")
+        .select("*")
+        .order("id", { ascending: true });
+      if (!alt.error && alt.data && alt.data.length) {
+        data = alt.data;
+      }
+    }
+
+    console.log(
+      "[GET] /api/tournaments count=",
+      Array.isArray(data) ? data.length : 0
+    );
+    return res.json(data || []);
   } catch (e) {
     console.error("/api/tournaments error", e);
+    return res.status(500).json({ error: "server_error" });
+  }
+});
+
+// TEMP diagnostic endpoint (do not expose secrets) — helps verify prod DB connectivity
+app.get("/api/tournaments/debug", async (req, res) => {
+  try {
+    const flags = {
+      hasSUPABASE_URL: !!process.env.SUPABASE_URL,
+      hasSERVICE_KEY: !!process.env.SUPABASE_SERVICE_KEY,
+      nodeEnv: process.env.NODE_ENV,
+      vercel: !!process.env.VERCEL,
+    };
+    const out = { flags };
+
+    const t1 = await supabase.from("tournament").select("id").order("id");
+    out.table_tournament = {
+      error: t1.error ? t1.error.message : null,
+      count: Array.isArray(t1.data) ? t1.data.length : 0,
+      sample: Array.isArray(t1.data) && t1.data[0] ? t1.data.slice(0, 3) : [],
+    };
+
+    if (!out.table_tournament.count) {
+      const t2 = await supabase.from("tournaments").select("id").order("id");
+      out.table_tournaments = {
+        error: t2.error ? t2.error.message : null,
+        count: Array.isArray(t2.data) ? t2.data.length : 0,
+        sample: Array.isArray(t2.data) && t2.data[0] ? t2.data.slice(0, 3) : [],
+      };
+    }
+
+    return res.json(out);
+  } catch (e) {
     return res.status(500).json({ error: "server_error" });
   }
 });
