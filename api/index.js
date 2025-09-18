@@ -1,7 +1,8 @@
-// api/index.js — Vercel serverless entry point
+// api/index.js — Vercel serverless entry point (ESM-friendly)
 // Délègue tout à l'app Express définie dans backend/server.js
 
-const app = require("../backend/server");
+import app from "../backend/server.js";
 
-module.exports = (req, res) => app(req, res);
-module.exports.default = module.exports;
+export default function handler(req, res) {
+  return app(req, res);
+}
