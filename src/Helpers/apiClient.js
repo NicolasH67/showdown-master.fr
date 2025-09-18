@@ -2,15 +2,60 @@
  * src/Helpers/apiClient.js
  *
  * Client HTTP minimaliste pour parler au backend en envoyant les cookies httpOnly.
- * - Utilise VITE_API_BASE si défini, sinon fallback localhost:3001
- * - Ajoute credentials: 'include' pour que le cookie de session soit envoyé
- * - Sérialise/désérialise JSON
- * - Lève des erreurs explicites sur 401/403 afin que le front redirige si besoin
+ * Sélection automatique du BASE URL :
+ *  - En prod (Vercel / non-localhost) → chemins relatifs ("/api")
+ *  - En dev (localhost) → http://localhost:3001/api
+ *  - VITE_API_BASE / REACT_APP_API_BASE / NEXT_PUBLIC_API_BASE priment si définies
  */
 
-const API_BASE = (
-  import.meta?.env?.VITE_API_BASE ?? "http://localhost:3001"
-).replace(/\/$/, "");
+const ABSOLUTE = /^https?:\/\//i;
+
+function resolveBase() {
+  const explicit =
+    (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE) ||
+    process.env.NEXT_PUBLIC_API_BASE ||
+    process.env.REACT_APP_API_BASE ||
+    null;
+
+  if (explicit) {
+    const trimmed = explicit.replace(/\/$/, "");
+    // Si explicit vaut "/api", on laisse le BASE vide pour utiliser des chemins relatifs
+    if (trimmed === "/api") return "";
+    return trimmed; // peut être absolu (https://...) ou relatif ("/api")
+  }
+
+  // Si on est dans le navigateur et pas en localhost → utiliser chemins relatifs (serverless)
+  if (typeof window !== "undefined") {
+    const host = window.location.hostname;
+    if (host !== "localhost" && host !== "127.0.0.1") {
+      return ""; // ex: requêtes vers "/api/..."
+    }
+  }
+
+  // Fallback dev local
+  return "http://localhost:3001/api";
+}
+
+const BASE = resolveBase();
+
+function buildUrl(path) {
+  if (ABSOLUTE.test(path)) return path; // on nous a donné une URL absolue
+
+  // Normaliser le path (sans doubles /)
+  const p = path.startsWith("/") ? path : `/${path}`;
+
+  if (!BASE) {
+    // BASE == "" → on veut des chemins relatifs côté Vercel (ex: "/api/public/...")
+    return p;
+  }
+
+  // Si BASE contient déjà "/api" ET le path commence par "/api", ne pas dupliquer
+  if (BASE.endsWith("/api") && p.startsWith("/api/")) {
+    return `${BASE}${p.replace(/^\/api/, "")}`; // ex: http://.../api + /public/... ⇒ http://.../api/public/...
+  }
+
+  return `${BASE}${p}`;
+}
 
 export class ApiError extends Error {
   constructor(message, { status, body } = {}) {
@@ -22,7 +67,7 @@ export class ApiError extends Error {
 }
 
 export async function api(path, { method = "GET", body, headers } = {}) {
-  const url = `${API_BASE}${path.startsWith("/") ? "" : "/"}${path}`;
+  const url = buildUrl(path);
   const res = await fetch(url, {
     method,
     headers: {
@@ -33,7 +78,6 @@ export async function api(path, { method = "GET", body, headers } = {}) {
     body: body != null ? JSON.stringify(body) : undefined,
   });
 
-  // Gestion des réponses non-OK
   if (!res.ok) {
     let payload = null;
     const ct = res.headers.get("content-type") || "";
@@ -43,7 +87,6 @@ export async function api(path, { method = "GET", body, headers } = {}) {
         : await res.text();
     } catch (_) {}
 
-    // Cas particulier: 401/403 => le caller pourra rediriger (login)
     if (res.status === 401 || res.status === 403) {
       throw new ApiError("unauthorized", { status: res.status, body: payload });
     }
@@ -57,12 +100,8 @@ export async function api(path, { method = "GET", body, headers } = {}) {
     );
   }
 
-  // Réponses OK
   const contentType = res.headers.get("content-type") || "";
-  if (contentType.includes("application/json")) {
-    return await res.json();
-  }
-  // Si ce n'est pas du JSON, renvoyer le texte brut
+  if (contentType.includes("application/json")) return await res.json();
   return await res.text();
 }
 
@@ -78,12 +117,17 @@ export const put = (path, body, opts) =>
 export const del = (path, opts) =>
   api(path, { ...(opts || {}), method: "DELETE" });
 
-// Petit util: ping session
+// Ping session avec fallback de chemin (prod: /api/auth/me, dev legacy: /auth/me)
 export async function me() {
   try {
-    const r = await get("/auth/me");
+    const r = await get("/api/auth/me");
     return r;
-  } catch (e) {
-    return { ok: false };
+  } catch (_) {
+    try {
+      const r2 = await get("/auth/me");
+      return r2;
+    } catch (e) {
+      return { ok: false };
+    }
   }
 }
