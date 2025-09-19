@@ -1,90 +1,41 @@
-// api/tournaments/debug.js — debug REST direct (aucune dépendance)
-export default async function handler(req, res) {
+// =========================
+// API: tournaments list & detail (same shape as public)
+// GET /api/tournaments — list all tournaments
+app.get("/api/tournaments", async (req, res) => {
   try {
-    const SUPABASE_URL = process.env.SUPABASE_URL;
-    const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
-
-    const flags = {
-      hasSUPABASE_URL: !!SUPABASE_URL,
-      hasSERVICE_KEY: !!SERVICE_KEY,
-      nodeEnv: process.env.NODE_ENV,
-      vercel: !!process.env.VERCEL,
-    };
-
-    if (!SUPABASE_URL || !SERVICE_KEY) {
-      res.status(500).json({ ok: false, error: "supabase_env_missing", flags });
-      return;
-    }
-
-    const out = { ok: true, flags, requests: {} };
-
-    // Test table 'tournament'
-    const r1 = await fetch(
-      `${SUPABASE_URL}/rest/v1/tournament?select=id&limit=3`,
-      {
-        headers: {
-          apikey: SERVICE_KEY,
-          Authorization: `Bearer ${SERVICE_KEY}`,
-        },
-      }
-    );
-
-    if (!r1.ok) {
-      out.requests.tournament = {
-        status: r1.status,
-        statusText: r1.statusText,
-        error: await safeText(r1),
-      };
-    } else {
-      const data = await r1.json();
-      out.requests.tournament = {
-        status: r1.status,
-        count: Array.isArray(data) ? data.length : 0,
-        sample: Array.isArray(data) ? data : [],
-      };
-    }
-
-    // Si vide, tester 'tournaments' (pluriel)
-    if (!out.requests.tournament.count) {
-      const r2 = await fetch(
-        `${SUPABASE_URL}/rest/v1/tournaments?select=id&limit=3`,
-        {
-          headers: {
-            apikey: SERVICE_KEY,
-            Authorization: `Bearer ${SERVICE_KEY}`,
-          },
-        }
-      );
-      if (!r2.ok) {
-        out.requests.tournaments = {
-          status: r2.status,
-          statusText: r2.statusText,
-          error: await safeText(r2),
-        };
-      } else {
-        const data2 = await r2.json();
-        out.requests.tournaments = {
-          status: r2.status,
-          count: Array.isArray(data2) ? data2.length : 0,
-          sample: Array.isArray(data2) ? data2 : [],
-        };
-      }
-    }
-
-    res.setHeader("Content-Type", "application/json");
-    res.status(200).end(JSON.stringify(out));
+    dbg("→ [GET] /api/tournaments called", { query: req.query });
+    const { data, error } = await supabase
+      .from("tournament")
+      .select("id, title, startday, endday, is_private")
+      .order("id", { ascending: true });
+    if (error) return res.status(500).json({ error: error.message });
+    return res.json(data || []);
   } catch (e) {
-    res
-      .status(500)
-      .end(JSON.stringify({ ok: false, error: e?.message || "server_error" }));
+    console.error("GET /api/tournaments error", e);
+    return res.status(500).json({ error: "server_error" });
   }
-}
+});
 
-async function safeText(res) {
+// GET /api/tournaments/:id — tournament detail
+app.get("/api/tournaments/:id", async (req, res) => {
   try {
-    const t = await res.text();
-    return t;
-  } catch {
-    return null;
+    dbg("→ [GET] /api/tournaments/:id called", { params: req.params });
+    const idNum = Number(req.params.id);
+    if (!Number.isFinite(idNum) || idNum <= 0) {
+      return res.status(400).json({ error: "invalid_tournament_id" });
+    }
+    const { data, error } = await supabase
+      .from("tournament")
+      .select("id, title, startday, endday, is_private")
+      .eq("id", idNum)
+      .single();
+    if (error) return res.status(404).json({ error: "not_found" });
+    return res.json(data || null);
+  } catch (e) {
+    console.error("GET /api/tournaments/:id error", e);
+    return res.status(500).json({ error: "server_error" });
   }
-}
+});
+
+// =========================
+// PUBLIC API: list tournaments (no secrets)
