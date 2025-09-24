@@ -21,9 +21,7 @@ export const useTournaments = (isPast) => {
      */
     const fetchTournaments = async () => {
       try {
-        const list = await get(
-          `/api/public/tournaments?past=${isPast ? 1 : 0}`
-        );
+        const list = await get(`/api/tournaments?past=${isPast ? 1 : 0}`);
         const data = Array.isArray(list) ? list : [];
         // Optionnel: re-trier côté client par startday croissant
         const sorted = data.sort(
