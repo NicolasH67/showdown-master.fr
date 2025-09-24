@@ -646,16 +646,33 @@ app.patch(
 // GET /api/tournaments — list
 app.get("/api/tournaments", async (req, res) => {
   try {
-    dbg("→ [GET] /api/tournaments called", { query: req.query });
+    dbg("→ [GET] /api/public/tournaments called", { query: req.query });
+    const { past } = req.query;
     const { data, error } = await supabase
       .from("tournament")
       .select("id, title, startday, endday, is_private")
-      .order("id", { ascending: true });
+      .order("startday", { ascending: true });
+
     if (error) return res.status(500).json({ error: error.message });
-    return res.json(data || []);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const isPast = String(past) === "1" || String(past) === "true";
+
+    const filtered = (data || []).filter((t) => {
+      const end = new Date(t.endday);
+      end.setHours(0, 0, 0, 0);
+      return isPast ? end <= today : end >= today;
+    });
+
+    console.log("[GET] /api/public/tournaments", {
+      past,
+      count: filtered.length,
+    });
+    res.json(filtered);
   } catch (e) {
-    console.error("GET /api/tournaments error", e);
-    return res.status(500).json({ error: "server_error" });
+    console.error("/api/public/tournaments error", e);
+    res.status(500).json({ error: "server_error" });
   }
 });
 
