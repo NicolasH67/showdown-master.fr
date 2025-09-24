@@ -2,7 +2,7 @@
 // Permet d'exposer TOUTES les routes définies dans backend/server.js
 // via /api/tournaments (et sous-chemins) sur Vercel.
 
-import app from "../../backend/server";
+import app from "../../backend/server.js";
 
 export default function handler(req, res) {
   // Vercel passe l'URL complète (ex: /api/tournaments/19/matches),
