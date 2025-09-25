@@ -2,6 +2,11 @@
 // Regroupe les principales routes du backend (tournaments, players, groups, clubs, matches, referees)
 // en interrogeant directement Supabase REST. Compatible Vercel Serverless.
 
+const isOptions = (req) => req.method === "OPTIONS";
+function setNoCache(res) {
+  res.setHeader("Cache-Control", "no-store");
+}
+
 async function readJson(req) {
   return new Promise((resolve) => {
     let data = "";
@@ -19,6 +24,7 @@ async function readJson(req) {
 function json(res, status, payload) {
   res.statusCode = status;
   res.setHeader("Content-Type", "application/json");
+  setNoCache(res);
   res.end(JSON.stringify(payload));
 }
 
@@ -43,6 +49,20 @@ async function sFetch(path, init) {
 
 export default async function handler(req, res) {
   console.log("[api/tournaments]", req.method, req.url);
+  if (isOptions(req)) {
+    res.statusCode = 204;
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader(
+      "Access-Control-Allow-Methods",
+      "GET,POST,PATCH,PUT,DELETE,OPTIONS"
+    );
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "Content-Type, Authorization"
+    );
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    return res.end();
+  }
   try {
     const SUPABASE_URL = process.env.SUPABASE_URL;
     const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -58,7 +78,10 @@ export default async function handler(req, res) {
         `/rest/v1/tournament?select=id,title,startday,endday,is_private&order=startday.asc`,
         { headers: headers(SERVICE_KEY) }
       );
-      if (!ok) return res.status(status).end(text);
+      if (!ok) {
+        res.setHeader("Content-Type", "application/json");
+        return res.status(status).end(text);
+      }
       let data = [];
       try {
         data = JSON.parse(text);
@@ -126,11 +149,16 @@ export default async function handler(req, res) {
     const mId = pathname.match(/^\/api\/tournaments\/(\d+)\/?$/);
     if (req.method === "GET" && mId) {
       const id = Number(mId[1]);
+      if (!Number.isFinite(id) || id <= 0)
+        return json(res, 400, { error: "invalid_tournament_id" });
       const { ok, status, text } = await sFetch(
         `/rest/v1/tournament?id=eq.${id}&select=id,title,startday,endday,is_private`,
         { headers: headers(SERVICE_KEY) }
       );
-      if (!ok) return res.status(status).end(text);
+      if (!ok) {
+        res.setHeader("Content-Type", "application/json");
+        return res.status(status).end(text);
+      }
       let arr = [];
       try {
         arr = JSON.parse(text);
@@ -147,6 +175,8 @@ export default async function handler(req, res) {
     if (req.method === "GET" && mPlayers) {
       try {
         const id = Number(mPlayers[1]);
+        if (!Number.isFinite(id) || id <= 0)
+          return json(res, 400, { error: "invalid_tournament_id" });
         console.log("→ [GET] /api/tournaments/:id/players called", {
           params: { id },
         });
@@ -160,6 +190,7 @@ export default async function handler(req, res) {
 
         if (!ok) {
           // Pass-through Supabase error body/status
+          res.setHeader("Content-Type", "application/json");
           res.status(status).end(text);
           return;
         }
@@ -206,11 +237,16 @@ export default async function handler(req, res) {
     const mGroups = pathname.match(/^\/api\/tournaments\/(\d+)\/groups\/?$/);
     if (req.method === "GET" && mGroups) {
       const id = Number(mGroups[1]);
+      if (!Number.isFinite(id) || id <= 0)
+        return json(res, 400, { error: "invalid_tournament_id" });
       const { ok, status, text } = await sFetch(
         `/rest/v1/group?tournament_id=eq.${id}&select=id,name,group_type,round_type,tournament_id,highest_position&order=name.asc`,
         { headers: headers(SERVICE_KEY) }
       );
-      if (!ok) return res.status(status).end(text);
+      if (!ok) {
+        res.setHeader("Content-Type", "application/json");
+        return res.status(status).end(text);
+      }
       let data = [];
       try {
         data = JSON.parse(text);
@@ -224,11 +260,16 @@ export default async function handler(req, res) {
     const mClubs = pathname.match(/^\/api\/tournaments\/(\d+)\/clubs?\/?$/);
     if (req.method === "GET" && mClubs) {
       const id = Number(mClubs[1]);
+      if (!Number.isFinite(id) || id <= 0)
+        return json(res, 400, { error: "invalid_tournament_id" });
       const { ok, status, text } = await sFetch(
         `/rest/v1/club?tournament_id=eq.${id}&select=id,name,abbreviation,tournament_id,created_at,updated_at&order=name.asc`,
         { headers: headers(SERVICE_KEY) }
       );
-      if (!ok) return res.status(status).end(text);
+      if (!ok) {
+        res.setHeader("Content-Type", "application/json");
+        return res.status(status).end(text);
+      }
       let data = [];
       try {
         data = JSON.parse(text);
@@ -242,11 +283,16 @@ export default async function handler(req, res) {
     const mRefs = pathname.match(/^\/api\/tournaments\/(\d+)\/referees?\/?$/);
     if (req.method === "GET" && mRefs) {
       const id = Number(mRefs[1]);
+      if (!Number.isFinite(id) || id <= 0)
+        return json(res, 400, { error: "invalid_tournament_id" });
       const { ok, status, text } = await sFetch(
         `/rest/v1/referee?tournament_id=eq.${id}&select=id,firstname,lastname,tournament_id,club_id,created_at,updated_at,club:club_id(id,name,abbreviation)&order=lastname.asc&order=firstname.asc`,
         { headers: headers(SERVICE_KEY) }
       );
-      if (!ok) return res.status(status).end(text);
+      if (!ok) {
+        res.setHeader("Content-Type", "application/json");
+        return res.status(status).end(text);
+      }
       let data = [];
       try {
         data = JSON.parse(text);
@@ -260,11 +306,16 @@ export default async function handler(req, res) {
     const mMatches = pathname.match(/^\/api\/tournaments\/(\d+)\/matches\/?$/);
     if (req.method === "GET" && mMatches) {
       const id = Number(mMatches[1]);
+      if (!Number.isFinite(id) || id <= 0)
+        return json(res, 400, { error: "invalid_tournament_id" });
       const { ok, status, text } = await sFetch(
         `/rest/v1/match?tournament_id=eq.${id}&select=id,tournament_id,group_id,match_day,match_time,table_number,player1:player1_id(id,firstname,lastname,club_id),player2:player2_id(id,firstname,lastname,club_id),group:group_id(id,name,group_type,group_former,highest_position),referee_1:referee1_id(id,firstname,lastname),referee_2:referee2_id(id,firstname,lastname),player1_group_position,player2_group_position,result&order=match_day.asc&order=match_time.asc&order=table_number.asc`,
         { headers: headers(SERVICE_KEY) }
       );
-      if (!ok) return res.status(status).end(text);
+      if (!ok) {
+        res.setHeader("Content-Type", "application/json");
+        return res.status(status).end(text);
+      }
       let data = [];
       try {
         data = JSON.parse(text);
