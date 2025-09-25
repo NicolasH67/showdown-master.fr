@@ -72,6 +72,154 @@ export default async function handler(req, res) {
     const { pathname, searchParams } = url;
 
     // --- ROUTING ---
+    // --- COLLECTION-LEVEL SHORTCUTS WITH QUERY PARAM ---
+    // GET /api/tournaments/players?id=123
+    if (
+      req.method === "GET" &&
+      /^\/api\/tournaments\/players\/?$/.test(pathname)
+    ) {
+      const idStr =
+        searchParams.get("id") ||
+        searchParams.get("t") ||
+        searchParams.get("tid");
+      const id = Number(idStr);
+      if (!Number.isFinite(id) || id <= 0)
+        return json(res, 400, { error: "invalid_tournament_id" });
+      const { ok, status, text } = await sFetch(
+        `/rest/v1/player?tournament_id=eq.${id}` +
+          `&select=id,firstname,lastname,tournament_id,group_id,club:club_id(id,name,abbreviation)` +
+          `&order=lastname.asc&order=firstname.asc`,
+        { headers: headers(SERVICE_KEY) }
+      );
+      if (!ok) {
+        res.setHeader("Content-Type", "application/json");
+        return res.status(status).end(text);
+      }
+      let data = [];
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = [];
+      }
+      return json(res, 200, data);
+    }
+
+    // GET /api/tournaments/groups?id=123
+    if (
+      req.method === "GET" &&
+      /^\/api\/tournaments\/groups\/?$/.test(pathname)
+    ) {
+      const idStr =
+        searchParams.get("id") ||
+        searchParams.get("t") ||
+        searchParams.get("tid");
+      const id = Number(idStr);
+      if (!Number.isFinite(id) || id <= 0)
+        return json(res, 400, { error: "invalid_tournament_id" });
+      const { ok, status, text } = await sFetch(
+        `/rest/v1/group?tournament_id=eq.${id}&select=id,name,group_type,round_type,tournament_id,highest_position&order=name.asc`,
+        { headers: headers(SERVICE_KEY) }
+      );
+      if (!ok) {
+        res.setHeader("Content-Type", "application/json");
+        return res.status(status).end(text);
+      }
+      let data = [];
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = [];
+      }
+      return json(res, 200, data);
+    }
+
+    // GET /api/tournaments/matches?id=123
+    if (
+      req.method === "GET" &&
+      /^\/api\/tournaments\/matches\/?$/.test(pathname)
+    ) {
+      const idStr =
+        searchParams.get("id") ||
+        searchParams.get("t") ||
+        searchParams.get("tid");
+      const id = Number(idStr);
+      if (!Number.isFinite(id) || id <= 0)
+        return json(res, 400, { error: "invalid_tournament_id" });
+      const { ok, status, text } = await sFetch(
+        `/rest/v1/match?tournament_id=eq.${id}&select=id,tournament_id,group_id,match_day,match_time,table_number,player1:player1_id(id,firstname,lastname,club_id),player2:player2_id(id,firstname,lastname,club_id),group:group_id(id,name,group_type,group_former,highest_position),referee_1:referee1_id(id,firstname,lastname),referee_2:referee2_id(id,firstname,lastname),player1_group_position,player2_group_position,result&order=match_day.asc&order=match_time.asc&order=table_number.asc`,
+        { headers: headers(SERVICE_KEY) }
+      );
+      if (!ok) {
+        res.setHeader("Content-Type", "application/json");
+        return res.status(status).end(text);
+      }
+      let data = [];
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = [];
+      }
+      return json(res, 200, data);
+    }
+
+    // GET /api/tournaments/clubs?id=123
+    if (
+      req.method === "GET" &&
+      /^\/api\/tournaments\/clubs\/?$/.test(pathname)
+    ) {
+      const idStr =
+        searchParams.get("id") ||
+        searchParams.get("t") ||
+        searchParams.get("tid");
+      const id = Number(idStr);
+      if (!Number.isFinite(id) || id <= 0)
+        return json(res, 400, { error: "invalid_tournament_id" });
+      const { ok, status, text } = await sFetch(
+        `/rest/v1/club?tournament_id=eq.${id}&select=id,name,abbreviation,tournament_id,created_at,updated_at&order=name.asc`,
+        { headers: headers(SERVICE_KEY) }
+      );
+      if (!ok) {
+        res.setHeader("Content-Type", "application/json");
+        return res.status(status).end(text);
+      }
+      let data = [];
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = [];
+      }
+      return json(res, 200, data);
+    }
+
+    // GET /api/tournaments/referees?id=123
+    if (
+      req.method === "GET" &&
+      /^\/api\/tournaments\/referees\/?$/.test(pathname)
+    ) {
+      const idStr =
+        searchParams.get("id") ||
+        searchParams.get("t") ||
+        searchParams.get("tid");
+      const id = Number(idStr);
+      if (!Number.isFinite(id) || id <= 0)
+        return json(res, 400, { error: "invalid_tournament_id" });
+      const { ok, status, text } = await sFetch(
+        `/rest/v1/referee?tournament_id=eq.${id}&select=id,firstname,lastname,tournament_id,club_id,created_at,updated_at,club:club_id(id,name,abbreviation)&order=lastname.asc&order=firstname.asc`,
+        { headers: headers(SERVICE_KEY) }
+      );
+      if (!ok) {
+        res.setHeader("Content-Type", "application/json");
+        return res.status(status).end(text);
+      }
+      let data = [];
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = [];
+      }
+      return json(res, 200, data);
+    }
+
     // /api/tournaments
     if (req.method === "GET" && /^\/api\/tournaments\/?$/.test(pathname)) {
       const { ok, status, text } = await sFetch(
