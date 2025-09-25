@@ -7,7 +7,11 @@ async function readJson(req) {
     let data = "";
     req.on("data", (chunk) => (data += chunk));
     req.on("end", () => {
-      try { resolve(JSON.parse(data || "{}")); } catch { resolve({}); }
+      try {
+        resolve(JSON.parse(data || "{}"));
+      } catch {
+        resolve({});
+      }
     });
   });
 }
@@ -55,20 +59,31 @@ export default async function handler(req, res) {
       );
       if (!ok) return res.status(status).end(text);
       let data = [];
-      try { data = JSON.parse(text); } catch { data = []; }
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = [];
+      }
 
       const past = searchParams.get("past");
       if (past !== null) {
         const isPast = past === "1" || past === "true";
-        const today = new Date(); today.setHours(0,0,0,0);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
         const ts = today.getTime();
         data = data.filter((t) => {
           const s = t?.startday ? Date.parse(t.startday) : NaN;
           const e = t?.endday ? Date.parse(t.endday) : NaN;
-          const current = (Number.isFinite(s) ? s <= ts : true) && (Number.isFinite(e) ? ts <= e : true);
-          const future = Number.isFinite(s) ? s > ts : (Number.isFinite(e) ? e > ts : true);
-          const pastT  = Number.isFinite(e) ? e < ts : false;
-          return isPast ? pastT : (current || future);
+          const current =
+            (Number.isFinite(s) ? s <= ts : true) &&
+            (Number.isFinite(e) ? ts <= e : true);
+          const future = Number.isFinite(s)
+            ? s > ts
+            : Number.isFinite(e)
+            ? e > ts
+            : true;
+          const pastT = Number.isFinite(e) ? e < ts : false;
+          return isPast ? pastT : current || future;
         });
       }
       return json(res, 200, data);
@@ -93,7 +108,11 @@ export default async function handler(req, res) {
         `/rest/v1/tournament?select=id,title,startday,endday,is_private`,
         {
           method: "POST",
-          headers: { ...headers(SERVICE_KEY), "Content-Type": "application/json", Prefer: "return=representation" },
+          headers: {
+            ...headers(SERVICE_KEY),
+            "Content-Type": "application/json",
+            Prefer: "return=representation",
+          },
           body: JSON.stringify(payload),
         }
       );
@@ -112,7 +131,11 @@ export default async function handler(req, res) {
       );
       if (!ok) return res.status(status).end(text);
       let arr = [];
-      try { arr = JSON.parse(text); } catch { arr = []; }
+      try {
+        arr = JSON.parse(text);
+      } catch {
+        arr = [];
+      }
       const obj = Array.isArray(arr) ? arr[0] : null;
       if (!obj) return json(res, 404, { error: "not_found" });
       return json(res, 200, obj);
@@ -128,4 +151,137 @@ export default async function handler(req, res) {
       );
       if (!ok) return res.status(status).end(text);
       let data = [];
-      try { data = JSON.parse(text); } catch {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = [];
+      }
+      return json(res, 200, data);
+    }
+
+    // PATCH /api/tournaments/:id/players/:playerId
+    const mPatchPlayer = pathname.match(
+      /^\/api\/tournaments\/(\d+)\/players\/(\d+)\/?$/
+    );
+    if (req.method === "PATCH" && mPatchPlayer) {
+      const playerId = Number(mPatchPlayer[2]);
+      const body = await readJson(req);
+      const { ok, status, text } = await sFetch(
+        `/rest/v1/player?id=eq.${playerId}&select=*`,
+        {
+          method: "PATCH",
+          headers: {
+            ...headers(SERVICE_KEY),
+            "Content-Type": "application/json",
+            Prefer: "return=representation",
+          },
+          body: JSON.stringify(body),
+        }
+      );
+      res.statusCode = status;
+      res.setHeader("Content-Type", "application/json");
+      return res.end(text);
+    }
+
+    // GET /api/tournaments/:id/groups
+    const mGroups = pathname.match(/^\/api\/tournaments\/(\d+)\/groups\/?$/);
+    if (req.method === "GET" && mGroups) {
+      const id = Number(mGroups[1]);
+      const { ok, status, text } = await sFetch(
+        `/rest/v1/group?tournament_id=eq.${id}&select=id,name,group_type,round_type,tournament_id,highest_position&order=name.asc`,
+        { headers: headers(SERVICE_KEY) }
+      );
+      if (!ok) return res.status(status).end(text);
+      let data = [];
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = [];
+      }
+      return json(res, 200, data);
+    }
+
+    // GET /api/tournaments/:id/clubs
+    const mClubs = pathname.match(/^\/api\/tournaments\/(\d+)\/clubs?\/?$/);
+    if (req.method === "GET" && mClubs) {
+      const id = Number(mClubs[1]);
+      const { ok, status, text } = await sFetch(
+        `/rest/v1/club?tournament_id=eq.${id}&select=id,name,abbreviation,tournament_id,created_at,updated_at&order=name.asc`,
+        { headers: headers(SERVICE_KEY) }
+      );
+      if (!ok) return res.status(status).end(text);
+      let data = [];
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = [];
+      }
+      return json(res, 200, data);
+    }
+
+    // GET /api/tournaments/:id/referees
+    const mRefs = pathname.match(/^\/api\/tournaments\/(\d+)\/referees?\/?$/);
+    if (req.method === "GET" && mRefs) {
+      const id = Number(mRefs[1]);
+      const { ok, status, text } = await sFetch(
+        `/rest/v1/referee?tournament_id=eq.${id}&select=id,firstname,lastname,tournament_id,club_id,created_at,updated_at,club:club_id(id,name,abbreviation)&order=lastname.asc&order=firstname.asc`,
+        { headers: headers(SERVICE_KEY) }
+      );
+      if (!ok) return res.status(status).end(text);
+      let data = [];
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = [];
+      }
+      return json(res, 200, data);
+    }
+
+    // GET /api/tournaments/:id/matches
+    const mMatches = pathname.match(/^\/api\/tournaments\/(\d+)\/matches\/?$/);
+    if (req.method === "GET" && mMatches) {
+      const id = Number(mMatches[1]);
+      const { ok, status, text } = await sFetch(
+        `/rest/v1/match?tournament_id=eq.${id}&select=id,tournament_id,group_id,match_day,match_time,table_number,player1:player1_id(id,firstname,lastname,club_id),player2:player2_id(id,firstname,lastname,club_id),group:group_id(id,name,group_type,group_former,highest_position),referee_1:referee1_id(id,firstname,lastname),referee_2:referee2_id(id,firstname,lastname),player1_group_position,player2_group_position,result&order=match_day.asc&order=match_time.asc&order=table_number.asc`,
+        { headers: headers(SERVICE_KEY) }
+      );
+      if (!ok) return res.status(status).end(text);
+      let data = [];
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = [];
+      }
+      return json(res, 200, data);
+    }
+
+    // PATCH /api/tournaments/:id/matches/:matchId
+    const mPatchMatch = pathname.match(
+      /^\/api\/tournaments\/(\d+)\/matches\/(\d+)\/?$/
+    );
+    if (req.method === "PATCH" && mPatchMatch) {
+      const matchId = Number(mPatchMatch[2]);
+      const body = await readJson(req);
+      const { ok, status, text } = await sFetch(
+        `/rest/v1/match?id=eq.${matchId}&select=*`,
+        {
+          method: "PATCH",
+          headers: {
+            ...headers(SERVICE_KEY),
+            "Content-Type": "application/json",
+            Prefer: "return=representation",
+          },
+          body: JSON.stringify(body),
+        }
+      );
+      res.statusCode = status;
+      res.setHeader("Content-Type", "application/json");
+      return res.end(text);
+    }
+
+    // Fallback
+    json(res, 404, { error: "route_not_found", path: pathname });
+  } catch (e) {
+    json(res, 500, { error: e?.message || "server_error" });
+  }
+}
