@@ -42,6 +42,7 @@ async function sFetch(path, init) {
 }
 
 export default async function handler(req, res) {
+  console.log("[api/tournaments]", req.method, req.url);
   try {
     const SUPABASE_URL = process.env.SUPABASE_URL;
     const SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
