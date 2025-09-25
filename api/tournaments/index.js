@@ -144,19 +144,37 @@ export default async function handler(req, res) {
     // GET /api/tournaments/:id/players
     const mPlayers = pathname.match(/^\/api\/tournaments\/(\d+)\/players\/?$/);
     if (req.method === "GET" && mPlayers) {
-      const id = Number(mPlayers[1]);
-      const { ok, status, text } = await sFetch(
-        `/rest/v1/player?tournament_id=eq.${id}&select=id,firstname,lastname,tournament_id,group_id,club:club_id(id,name,abbreviation)&order=lastname.asc`,
-        { headers: headers(SERVICE_KEY) }
-      );
-      if (!ok) return res.status(status).end(text);
-      let data = [];
       try {
-        data = JSON.parse(text);
-      } catch {
-        data = [];
+        const id = Number(mPlayers[1]);
+        console.log("→ [GET] /api/tournaments/:id/players called", {
+          params: { id },
+        });
+
+        const { ok, status, text } = await sFetch(
+          `/rest/v1/player?tournament_id=eq.${id}` +
+            `&select=id,firstname,lastname,tournament_id,group_id,club:club_id(id,name,abbreviation)` +
+            `&order=lastname.asc&order=firstname.asc`,
+          { headers: headers(SERVICE_KEY) }
+        );
+
+        if (!ok) {
+          // Pass-through Supabase error body/status
+          res.status(status).end(text);
+          return;
+        }
+
+        let data = [];
+        try {
+          data = JSON.parse(text);
+        } catch {
+          data = [];
+        }
+
+        return json(res, 200, data || []);
+      } catch (e) {
+        console.error("GET /api/tournaments/:id/players", e);
+        return json(res, 500, { error: "server_error" });
       }
-      return json(res, 200, data);
     }
 
     // PATCH /api/tournaments/:id/players/:playerId
