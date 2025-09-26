@@ -52,8 +52,11 @@ const useGroupsData = () => {
           throw new Error("Invalid tournament id");
         }
 
-        // Try public first, then protected
-        const groupsData = await firstOk([`/api/tournaments/${idNum}/groups`]);
+        // Try Vercel endpoint first, then local endpoint
+        const groupsData = await firstOk([
+          `/api/tournaments/groups?id=${idNum}`,
+          `/api/tournaments/${idNum}/groups`,
+        ]);
 
         // Ensure array and, if needed, filter by tournament_id to keep same behavior
         const arr = Array.isArray(groupsData) ? groupsData : [];
