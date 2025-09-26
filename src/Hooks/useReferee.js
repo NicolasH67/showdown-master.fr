@@ -33,25 +33,30 @@ const useReferees = (tournamentId) => {
 
       // helper that tries a list of endpoints in order and returns the first successful JSON
       const firstOk = async (paths) => {
+        const errors = [];
         for (const p of paths) {
           try {
             const r = await get(p);
-            return r;
+            if (r !== undefined && r !== null) return r; // accept any JSON-ish
           } catch (e) {
-            if (e instanceof ApiError) {
-              if ([401, 403, 404].includes(e.status)) continue;
-            }
-            throw e;
+            console.warn(
+              "[useReferees] endpoint failed:",
+              p,
+              e?.status || e?.message || e
+            );
+            errors.push(e);
+            continue; // try next path regardless of error type
           }
         }
+        if (errors.length) throw errors[errors.length - 1];
         throw new ApiError("not_found", { status: 404, body: null });
       };
 
       try {
         // 1) Referees (public first if exists, then protected)
         const refereesResp = await firstOk([
-          `/api/tournaments/${idNum}/referees`,
           `/api/tournaments/referees?id=${idNum}`,
+          `/api/tournaments/${idNum}/referees`,
         ]);
 
         const rows = Array.isArray(refereesResp)
@@ -73,8 +78,9 @@ const useReferees = (tournamentId) => {
         let clubsById = new Map();
         try {
           const clubsResp = await firstOk([
+            `/api/tournaments/clubs?id=${idNum}`,
             `/api/tournaments/${idNum}/clubs`,
-            `/api/tournaments/players?id=${idNum}`,
+            `/api/tournaments/${idNum}/club`,
           ]);
           const clubs = Array.isArray(clubsResp)
             ? clubsResp

@@ -42,10 +42,12 @@ const useMatches = () => {
           throw new Error("Invalid tournament id");
         }
 
-        // Try public first, then protected
+        // Try all possible endpoints for both local and Vercel environments
         const data = await firstOk([
-          `/api/tournaments/${idNum}/matches`,
           `/api/tournaments/matches?id=${idNum}`,
+          `/api/tournaments/${idNum}/matches`,
+          `/api/tournaments/match?id=${idNum}`,
+          `/api/tournaments/${idNum}/match`,
         ]);
 
         const arr = Array.isArray(data) ? data : [];
