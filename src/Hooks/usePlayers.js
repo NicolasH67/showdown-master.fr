@@ -61,6 +61,8 @@ const usePlayers = (tournamentId) => {
           `/api/tournaments/${idNum}/players`,
         ]);
 
+        console.log(playersResp);
+
         const rows = Array.isArray(playersResp)
           ? playersResp
           : Array.isArray(playersResp?.players)
