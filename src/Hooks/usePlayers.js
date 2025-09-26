@@ -32,19 +32,25 @@ const usePlayers = (tournamentId) => {
 
       // helper that tries a list of endpoints in order and returns the first successful JSON
       const firstOk = async (paths) => {
+        const errors = [];
         for (const p of paths) {
           try {
             const r = await get(p);
-            return r;
+            // Any non-null/undefined JSON is considered OK
+            if (r !== undefined && r !== null) return r;
           } catch (e) {
-            // If it's a 401/403/404, try the next path; otherwise bubble up
-            if (e instanceof ApiError) {
-              if ([401, 403, 404].includes(e.status)) continue;
-            }
-            throw e;
+            // Log and try the next path regardless of error type/status
+            console.warn(
+              "[usePlayers] endpoint failed:",
+              p,
+              e?.status || e?.message || e
+            );
+            errors.push(e);
+            continue;
           }
         }
-        // nothing worked → throw a 404-like error
+        // If none succeeded, throw the last error if we have one, else a 404-like ApiError
+        if (errors.length) throw errors[errors.length - 1];
         throw new ApiError("not_found", { status: 404, body: null });
       };
 
@@ -54,8 +60,6 @@ const usePlayers = (tournamentId) => {
           `/api/tournaments/players?id=${idNum}`,
           `/api/tournaments/${idNum}/players`,
         ]);
-
-        console.log(playersResp);
 
         const rows = Array.isArray(playersResp)
           ? playersResp
