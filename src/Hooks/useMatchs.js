@@ -43,7 +43,10 @@ const useMatches = () => {
         }
 
         // Try public first, then protected
-        const data = await firstOk([`/api/tournaments/${idNum}/matches`]);
+        const data = await firstOk([
+          `/api/tournaments/${idNum}/matches`,
+          `/api/tournaments/matches?id=${idNum}`,
+        ]);
 
         const arr = Array.isArray(data) ? data : [];
 

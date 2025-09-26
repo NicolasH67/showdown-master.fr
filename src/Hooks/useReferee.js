@@ -51,6 +51,7 @@ const useReferees = (tournamentId) => {
         // 1) Referees (public first if exists, then protected)
         const refereesResp = await firstOk([
           `/api/tournaments/${idNum}/referees`,
+          `/api/tournaments/referees?id=${idNum}`,
         ]);
 
         const rows = Array.isArray(refereesResp)
@@ -71,7 +72,10 @@ const useReferees = (tournamentId) => {
         // 2) Clubs (to enrich display with club abbreviation if not provided on referee)
         let clubsById = new Map();
         try {
-          const clubsResp = await firstOk([`/api/tournaments/${idNum}/clubs`]);
+          const clubsResp = await firstOk([
+            `/api/tournaments/${idNum}/clubs`,
+            `/api/tournaments/players?id=${idNum}`,
+          ]);
           const clubs = Array.isArray(clubsResp)
             ? clubsResp
             : Array.isArray(clubsResp?.clubs)

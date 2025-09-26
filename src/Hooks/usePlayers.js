@@ -52,6 +52,7 @@ const usePlayers = (tournamentId) => {
         // 1) Players (public first, then protected)
         const playersResp = await firstOk([
           `/api/tournaments/${idNum}/players`,
+          `/api/tournaments/players?id=${idNum}`,
         ]);
 
         const rows = Array.isArray(playersResp)

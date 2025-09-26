@@ -46,7 +46,11 @@ export default function useClub(tournamentIdParam) {
       }
 
       try {
-        const data = await firstOk([`/api/tournaments/${idNum}/clubs`]);
+        const data = await firstOk([
+          `
+          /api/tournaments/${idNum}/clubs`,
+          `/api/tournaments/clubs?id=${idNum}`,
+        ]);
         if (!alive) return;
         setClubs(Array.isArray(data) ? data : []);
       } catch (e) {
