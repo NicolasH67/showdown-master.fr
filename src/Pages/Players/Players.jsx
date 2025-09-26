@@ -80,8 +80,6 @@ const Players = () => {
     ? players.filter((player) => player?.group?.group_type === selectedGroup)
     : players;
 
-  console.log(filteredPlayers);
-
   return (
     <div className="container mt-4">
       <h1 className="mb-4" id="page-title" tabIndex="-1">
