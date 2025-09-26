@@ -194,7 +194,7 @@ export default async function handler(req, res) {
     // GET /api/tournaments/referees?id=123
     if (
       req.method === "GET" &&
-      /^\/api\/tournaments\/referees\/?$/.test(pathname)
+      /^\/api\/tournaments\/referees?\/?$/.test(pathname)
     ) {
       const idStr =
         searchParams.get("id") ||
@@ -203,8 +203,12 @@ export default async function handler(req, res) {
       const id = Number(idStr);
       if (!Number.isFinite(id) || id <= 0)
         return json(res, 400, { error: "invalid_tournament_id" });
+
       const { ok, status, text } = await sFetch(
-        `/rest/v1/referee?tournament_id=eq.${id}&select=id,firstname,lastname,tournament_id,club_id,created_at,updated_at,club:club_id(id,name,abbreviation)&order=lastname.asc&order=firstname.asc`,
+        `/rest/v1/referee?tournament_id=eq.${id}` +
+          `&select=id,firstname,lastname,tournament_id,club_id,created_at,updated_at,` +
+          `club:club_id(id,name,abbreviation)` +
+          `&order=lastname.asc&order=firstname.asc`,
         { headers: headers(SERVICE_KEY) }
       );
       if (!ok) {
