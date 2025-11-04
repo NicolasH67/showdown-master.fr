@@ -3,7 +3,6 @@ import usePlayers from "./usePlayers";
 import useGroupsData from "./useGroupsData";
 import useClub from "./useClub";
 import useMatches from "./useMatchs";
-import useTournamentId from "../utils/useTournamentId";
 
 // Re-expose the parser in case consumers still use it somewhere
 const toResultPairs = (res) => {
