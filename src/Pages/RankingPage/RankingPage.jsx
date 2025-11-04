@@ -144,7 +144,6 @@ const RankingPage = () => {
   const { id } = useParams();
 
   const { groups, players, clubs, matches, loading, error } = useRankingData();
-  console.log(id);
 
   const clubsById = useMemo(() => {
     const m = new Map();
@@ -163,6 +162,8 @@ const RankingPage = () => {
       if (!matchesByGroup.has(gid)) matchesByGroup.set(gid, []);
       matchesByGroup.get(gid).push(m);
     }
+
+    console.log(matchesByGroup);
 
     const allRows = [];
 
