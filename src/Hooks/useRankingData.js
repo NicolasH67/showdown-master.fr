@@ -75,8 +75,14 @@ export default function useRankingData() {
   // Compose des états globaux
   const loading =
     loadingPlayers || loadingGroups || loadingClubs || loadingMatches;
-  const error =
+  // Normalise l'erreur en chaîne pour éviter "Objects are not valid as a React child"
+  const firstErr =
     errorPlayers || errorGroups || errorClubs || errorMatches || null;
+  const errorMessage = firstErr
+    ? typeof firstErr === "string"
+      ? firstErr
+      : firstErr?.message || firstErr?.toString?.() || "Unknown error"
+    : null;
 
   const refresh = useCallback(async () => {
     // Lance les refresh en parallèle; on ne bloque pas si l'un échoue
@@ -96,11 +102,12 @@ export default function useRankingData() {
       clubs: clubs || [],
       matches: matches || [],
       loading,
-      error,
+      error: errorMessage,
+      errorMessage,
       refresh,
       toResultPairs, // exposé pour compatibilité
     }),
-    [groups, players, clubs, matches, loading, error, refresh]
+    [groups, players, clubs, matches, loading, errorMessage, refresh]
   );
 
   return value;
