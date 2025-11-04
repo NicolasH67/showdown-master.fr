@@ -3,6 +3,7 @@ import usePlayers from "./usePlayers";
 import useGroupsData from "./useGroupsData";
 import useClub from "./useClub";
 import useMatches from "./useMatchs";
+import useTournamentId from "../utils/useTournamentId";
 
 // Re-expose the parser in case consumers still use it somewhere
 const toResultPairs = (res) => {
@@ -43,46 +44,55 @@ const toResultPairs = (res) => {
 };
 
 export default function useRankingData() {
-  // Délègue la récupération des données aux hooks existants
+  const tournamentId = useTournamentId();
+
   const {
     players,
     loading: loadingPlayers,
     error: errorPlayers,
     refresh: refreshPlayers,
-  } = usePlayers();
+  } = usePlayers(tournamentId);
 
   const {
     groups,
     loading: loadingGroups,
     error: errorGroups,
     refresh: refreshGroups,
-  } = useGroupsData();
+  } = useGroupsData(tournamentId);
 
   const {
     clubs,
     loading: loadingClubs,
     error: errorClubs,
     refresh: refreshClubs,
-  } = useClub();
+  } = useClub(tournamentId);
 
   const {
     matches,
     loading: loadingMatches,
     error: errorMatches,
     refresh: refreshMatches,
-  } = useMatches();
+  } = useMatches(tournamentId);
 
-  // Compose des états globaux
-  const loading =
-    loadingPlayers || loadingGroups || loadingClubs || loadingMatches;
-  // Normalise l'erreur en chaîne pour éviter "Objects are not valid as a React child"
-  const firstErr =
-    errorPlayers || errorGroups || errorClubs || errorMatches || null;
-  const errorMessage = firstErr
-    ? typeof firstErr === "string"
-      ? firstErr
-      : firstErr?.message || firstErr?.toString?.() || "Unknown error"
-    : null;
+  const invalidId =
+    !Number.isFinite(Number(tournamentId)) || Number(tournamentId) <= 0;
+
+  // Si l'ID est invalide, on évite toute requête réseau et on renvoie une erreur lisible
+  let loading = false;
+  let errorMessage = null;
+
+  if (invalidId) {
+    errorMessage = "Invalid tournament id";
+  } else {
+    loading = loadingPlayers || loadingGroups || loadingClubs || loadingMatches;
+    const firstErr =
+      errorPlayers || errorGroups || errorClubs || errorMatches || null;
+    errorMessage = firstErr
+      ? typeof firstErr === "string"
+        ? firstErr
+        : firstErr?.message || firstErr?.toString?.() || "Unknown error"
+      : null;
+  }
 
   const refresh = useCallback(async () => {
     // Lance les refresh en parallèle; on ne bloque pas si l'un échoue
