@@ -42,9 +42,7 @@ const toResultPairs = (res) => {
   return [];
 };
 
-export default function useRankingData() {
-  const tournamentId = useTournamentId();
-
+export default function useRankingData(tournamentId) {
   const {
     players,
     loading: loadingPlayers,

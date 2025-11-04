@@ -143,7 +143,8 @@ const RankingPage = () => {
   const { t } = useTranslation();
   const { id } = useParams();
 
-  const { groups, players, clubs, matches, loading, error } = useRankingData();
+  const { groups, players, clubs, matches, loading, error } =
+    useRankingData(id);
 
   const clubsById = useMemo(() => {
     const m = new Map();
