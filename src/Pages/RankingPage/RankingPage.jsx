@@ -144,7 +144,6 @@ const RankingPage = () => {
   const { id } = useParams();
 
   const { groups, players, clubs, matches, loading, error } = useRankingData();
-  console.log(groups, players, matches, clubs);
 
   const clubsById = useMemo(() => {
     const m = new Map();
