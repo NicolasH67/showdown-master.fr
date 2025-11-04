@@ -16,20 +16,52 @@ import useRankingData from "../../Hooks/useRankingData";
  */
 
 // ---- Utils --------------------------------------------------------------
-function parseMatchPairwise(resultLike) {
-  const arr = Array.isArray(resultLike?.result_pairs)
-    ? resultLike.result_pairs
-    : Array.isArray(resultLike)
-    ? resultLike
-    : [];
-  if (arr.length === 0) return null;
+function parseMatchPairwise(match) {
+  // Accepts match.result_pairs (array), match.result (array), match.result (JSON string), or match.result as "11-2;11-9" etc.
+  const toPairs = (val) => {
+    if (!val) return [];
+    if (Array.isArray(val)) return val.map((n) => Number(n) || 0);
+    if (typeof val === "string") {
+      // try JSON first
+      try {
+        const parsed = JSON.parse(val);
+        if (Array.isArray(parsed)) return parsed.map((n) => Number(n) || 0);
+      } catch (_) {
+        // parse formats like "11-6;11-9" or "11:6, 11:9"
+        const chunks = val
+          .split(/[;,]/)
+          .map((s) => s.trim())
+          .filter(Boolean);
+        const arr = [];
+        for (const ch of chunks) {
+          const m = ch.match(/^(\d+)\s*[-:\/]\s*(\d+)$/);
+          if (m) {
+            arr.push(Number(m[1]) || 0, Number(m[2]) || 0);
+          }
+        }
+        return arr;
+      }
+    }
+    if (typeof val === "object" && Array.isArray(val.result_pairs)) {
+      return val.result_pairs.map((n) => Number(n) || 0);
+    }
+    return [];
+  };
+
+  // accept various shapes
+  const pairs = Array.isArray(match?.result_pairs)
+    ? toPairs(match.result_pairs)
+    : toPairs(match?.result) || toPairs(match);
+
+  if (!pairs.length) return null;
+
   let setsA = 0,
     setsB = 0,
     goalsA = 0,
     goalsB = 0;
-  for (let i = 0; i + 1 < arr.length; i += 2) {
-    const a = Number(arr[i] ?? 0);
-    const b = Number(arr[i + 1] ?? 0);
+  for (let i = 0; i + 1 < pairs.length; i += 2) {
+    const a = Number(pairs[i] ?? 0);
+    const b = Number(pairs[i + 1] ?? 0);
     if (a > b) setsA += 1;
     else if (b > a) setsB += 1;
     goalsA += a;
@@ -242,10 +274,8 @@ const RankingPage = () => {
         const goalDiffGB = gb.goalsFor - gb.goalsAgainst;
         if (goalDiffGA !== goalDiffGB) return goalDiffGB - goalDiffGA;
 
-        // 5) Tirage au sort déterministe (hash sur groupId + playerId pour stabilité)
-        const seedA = Number(gId) * 1000003 + Number(a.id);
-        const seedB = Number(gId) * 1000003 + Number(b.id);
-        return seedA - seedB;
+        // 5) Fallback stable : ordre alphabétique sur le nom de famille
+        return (a.lastname || "").localeCompare(b.lastname || "");
       });
 
       // Attribution des places
