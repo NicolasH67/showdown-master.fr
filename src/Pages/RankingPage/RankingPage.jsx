@@ -144,6 +144,7 @@ const RankingPage = () => {
   const { id } = useParams();
 
   const { groups, players, clubs, matches, loading, error } = useRankingData();
+  console.error(error);
 
   const clubsById = useMemo(() => {
     const m = new Map();
@@ -169,8 +170,6 @@ const RankingPage = () => {
     const rankedGroups = [...groups]
       .filter((g) => g?.highest_position != null)
       .sort((a, b) => Number(a.highest_position) - Number(b.highest_position));
-
-    console.log(rankedGroups);
 
     for (const g of rankedGroups) {
       const gId = Number(g.id);
