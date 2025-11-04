@@ -163,14 +163,14 @@ const RankingPage = () => {
       matchesByGroup.get(gid).push(m);
     }
 
-    console.log(matchesByGroup);
-
     const allRows = [];
 
     // Garder uniquement les groupes avec highest_position non nul/undefined et trier par ordre croissant
     const rankedGroups = [...groups]
       .filter((g) => g?.highest_position != null)
       .sort((a, b) => Number(a.highest_position) - Number(b.highest_position));
+
+    console.log(rankedGroups);
 
     for (const g of rankedGroups) {
       const gId = Number(g.id);
