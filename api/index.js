@@ -327,66 +327,94 @@ async function handlePatchMatch(req, res, matchId, body) {
 }
 
 //
+// Small helper to load bcryptjs in both CJS/ESM environments
+async function getBcrypt() {
+  const mod = await import("bcryptjs");
+  // In some bundlers, bcryptjs is a CJS default export; in others, functions are on the module itself.
+  return mod?.default ?? mod;
+}
 // --------- AUTH (JWT cookie maison) ---------
 //
 async function handleAdminLogin(req, res, body) {
-  const bcrypt = (await import("bcryptjs")).default;
-  const COOKIE = process.env.COOKIE_NAME || "sm_session";
-  const SECRET = process.env.JWT_SECRET || "change-me";
-  const idNum = Number(body?.tournamentId);
-  const pwd = String(body?.password || "").trim();
-  if (!Number.isFinite(idNum) || !pwd)
-    return send(res, 400, { error: "Missing fields" });
+  try {
+    const bcrypt = await getBcrypt();
+    const COOKIE = process.env.COOKIE_NAME || "sm_session";
+    const SECRET = process.env.JWT_SECRET || "change-me";
+    const idNum = Number(body?.tournamentId);
+    const pwd = String(body?.password || "").trim();
+    if (!Number.isFinite(idNum) || !pwd)
+      return send(res, 400, { error: "Missing fields" });
 
-  const { ok, status, text } = await sFetch(
-    `/rest/v1/tournament?id=eq.${idNum}&select=id,admin_password_hash,user_password_hash`,
-    { headers: headers(process.env.SUPABASE_SERVICE_KEY) }
-  );
-  if (!ok) return send(res, status, text, "application/json");
-  const arr = JSON.parse(text) || [];
-  const t = arr[0];
-  if (!t) return send(res, 404, { error: "not_found" });
+    const { ok, status, text } = await sFetch(
+      `/rest/v1/tournament?id=eq.${idNum}&select=id,admin_password_hash,user_password_hash`,
+      { headers: headers(process.env.SUPABASE_SERVICE_KEY) }
+    );
+    if (!ok) return send(res, status, text, "application/json");
+    const arr = JSON.parse(text || "[]");
+    const t = arr[0];
+    if (!t) return send(res, 404, { error: "not_found" });
 
-  const candidate = t.admin_password_hash || t.user_password_hash || "";
-  const passOk = candidate.startsWith("$2")
-    ? await bcrypt.compare(pwd, candidate)
-    : pwd === candidate;
+    const candidate = t.admin_password_hash || t.user_password_hash || "";
+    let passOk = false;
+    if (typeof candidate === "string" && candidate.startsWith("$2")) {
+      // bcrypt hash
+      passOk = await bcrypt.compare(pwd, candidate);
+    } else {
+      // legacy plaintext (rare / migration)
+      passOk = pwd === String(candidate);
+    }
+    if (!passOk) return send(res, 401, { error: "Invalid credentials" });
 
-  if (!passOk) return send(res, 401, { error: "Invalid credentials" });
-
-  const token = await signJWT({ scope: "admin", tournament_id: idNum }, SECRET);
-  setCookie(res, COOKIE, token, 12 * 60 * 60 * 1000);
-  return send(res, 200, { ok: true });
+    const token = await signJWT(
+      { scope: "admin", tournament_id: idNum },
+      SECRET
+    );
+    setCookie(res, COOKIE, token, 12 * 60 * 60 * 1000);
+    return send(res, 200, { ok: true });
+  } catch (e) {
+    // Return a safe error payload but avoid leaking internals
+    return send(res, 500, { error: "server_error_login" });
+  }
 }
 async function handleViewerLogin(req, res, body) {
-  const bcrypt = (await import("bcryptjs")).default;
-  const COOKIE = process.env.COOKIE_NAME || "sm_session";
-  const SECRET = process.env.JWT_SECRET || "change-me";
-  const idNum = Number(body?.tournamentId);
-  const pwd = String(body?.password || "").trim();
-  if (!Number.isFinite(idNum) || !pwd)
-    return send(res, 400, { error: "Missing fields" });
+  try {
+    const bcrypt = await getBcrypt();
+    const COOKIE = process.env.COOKIE_NAME || "sm_session";
+    const SECRET = process.env.JWT_SECRET || "change-me";
+    const idNum = Number(body?.tournamentId);
+    const pwd = String(body?.password || "").trim();
+    if (!Number.isFinite(idNum) || !pwd)
+      return send(res, 400, { error: "Missing fields" });
 
-  const { ok, status, text } = await sFetch(
-    `/rest/v1/tournament?id=eq.${idNum}&select=id,user_password_hash,is_private`,
-    { headers: headers(process.env.SUPABASE_SERVICE_KEY) }
-  );
-  if (!ok) return send(res, status, text, "application/json");
-  const arr = JSON.parse(text) || [];
-  const t = arr[0];
-  if (!t) return send(res, 404, { error: "not_found" });
-  if (t.is_private !== true)
-    return send(res, 400, { error: "tournament_public" });
+    const { ok, status, text } = await sFetch(
+      `/rest/v1/tournament?id=eq.${idNum}&select=id,user_password_hash,is_private`,
+      { headers: headers(process.env.SUPABASE_SERVICE_KEY) }
+    );
+    if (!ok) return send(res, status, text, "application/json");
+    const arr = JSON.parse(text || "[]");
+    const t = arr[0];
+    if (!t) return send(res, 404, { error: "not_found" });
+    if (t.is_private !== true)
+      return send(res, 400, { error: "tournament_public" });
 
-  const passOk = await bcrypt.compare(pwd, t.user_password_hash || "");
-  if (!passOk) return send(res, 401, { error: "Invalid credentials" });
+    const candidate = t.user_password_hash || "";
+    let passOk = false;
+    if (typeof candidate === "string" && candidate.startsWith("$2")) {
+      passOk = await bcrypt.compare(pwd, candidate);
+    } else {
+      passOk = pwd === String(candidate);
+    }
+    if (!passOk) return send(res, 401, { error: "Invalid credentials" });
 
-  const token = await signJWT(
-    { scope: "viewer", tournament_id: idNum },
-    SECRET
-  );
-  setCookie(res, COOKIE, token, 12 * 60 * 60 * 1000);
-  return send(res, 200, { ok: true });
+    const token = await signJWT(
+      { scope: "viewer", tournament_id: idNum },
+      SECRET
+    );
+    setCookie(res, COOKIE, token, 12 * 60 * 60 * 1000);
+    return send(res, 200, { ok: true });
+  } catch (_e) {
+    return send(res, 500, { error: "server_error_login" });
+  }
 }
 function handleLogout(_req, res) {
   const COOKIE = process.env.COOKIE_NAME || "sm_session";
@@ -715,3 +743,5 @@ export default async function handler(req, res) {
     }
   }
 }
+
+export const config = { runtime: "nodejs20.x" };
