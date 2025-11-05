@@ -74,7 +74,7 @@ const AdminLogin = () => {
         );
         return;
       }
-      await post("/auth/admin/login", {
+      await post("/tournaments/auth", {
         tournamentId: tournamentIdNum,
         password: String(password).trim(),
       });
@@ -83,11 +83,31 @@ const AdminLogin = () => {
         location.state?.from || `/tournament/${tournamentIdNum}/admin/players`;
       navigate(backTo, { replace: true });
     } catch (err) {
-      const detail = err?.body?.error || err?.message || "";
-      console.error("/auth/admin/login error:", detail);
-      setErrorMessage(
-        t("wrongPassword", { defaultValue: "Mot de passe incorrect." })
-      );
+      const code = err?.body?.error || err?.status || err?.message || "";
+      console.error("/tournaments/auth error:", code);
+
+      let msgKey = "wrongPassword";
+      let fallback = "Mot de passe incorrect.";
+
+      if (code === "not_found" || String(code).includes("404")) {
+        msgKey = "tournamentNotFound"; // i18n optionnel
+        fallback = "Tournoi introuvable.";
+      } else if (code === "tournament_public") {
+        msgKey = "tournamentIsPublic"; // i18n optionnel
+        fallback =
+          "Ce tournoi est public : la connexion admin n'est pas requise.";
+      } else if (
+        code === "Method Not Allowed" ||
+        String(code).includes("405")
+      ) {
+        msgKey = "routeNotAllowed";
+        fallback = "Route d'authentification indisponible (405).";
+      } else if (code === "Missing fields") {
+        msgKey = "missingFields";
+        fallback = "Champs manquants.";
+      }
+
+      setErrorMessage(t(msgKey, { defaultValue: fallback }));
     }
   };
 
