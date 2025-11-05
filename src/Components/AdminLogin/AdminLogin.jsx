@@ -14,16 +14,19 @@ const AdminLogin = () => {
 
   // Résolution robuste de l'ID du tournoi
   const search = new URLSearchParams(location.search);
-  // Fallback 1: lire /tournament/:id depuis l'URL si useParams est vide
-  const pathMatch = (location.pathname || "").match(/\/tournament\/(\d+)/);
-  const pathId = pathMatch ? pathMatch[1] : null;
 
+  // Supporte /tournament/:id ET /tournaments/:id (singulier/pluriel)
+  const pathname = location.pathname || "";
+  const pathMatchSingular = pathname.match(/\/tournament\/(\d+)/);
+  const pathMatchPlural = pathname.match(/\/tournaments\/(\d+)/);
+  const pathId = pathMatchSingular?.[1] || pathMatchPlural?.[1] || null;
+
+  // Order: params → state → query → path fallback
   const resolvedId =
     params?.id ?? location.state?.tournamentId ?? search.get("id") ?? pathId;
 
   const tournamentIdNum = Number(resolvedId);
   if (process.env.NODE_ENV !== "production") {
-    // aide debug: voir d'où vient l'id
     console.log("[AdminLogin] id sources:", {
       params: params?.id,
       state: location.state?.tournamentId,
@@ -65,35 +68,56 @@ const AdminLogin = () => {
   const handleLogin = async (e) => {
     e.preventDefault();
     setErrorMessage("");
+
+    if (!Number.isFinite(tournamentIdNum) || tournamentIdNum <= 0) {
+      setErrorMessage(
+        t("errorMissingTournamentId", {
+          defaultValue: "ID du tournoi manquant.",
+        })
+      );
+      return;
+    }
+
     try {
-      if (!Number.isFinite(tournamentIdNum) || tournamentIdNum <= 0) {
-        setErrorMessage(
-          t("errorMissingTournamentId", {
-            defaultValue: "ID du tournoi manquant.",
-          })
-        );
-        return;
-      }
-      await post("/tournaments/auth", {
+      // IMPORTANT : utiliser la route backend réellement exposée
+      // Backend actuel (server.js) : POST /auth/admin/login
+      // (ne pas utiliser /tournaments/auth qui n'existe pas sur ton monolithe)
+      await post("/auth/admin/login", {
         tournamentId: tournamentIdNum,
         password: String(password).trim(),
       });
-      await refresh(); // synchronise le hook useAuth avec le serveur
+
+      // Synchronise l'état auth (cookie httpOnly) → hook
+      await refresh();
+
+      // Fermer la modal et rediriger
+      setIsModalOpen(false);
+      setPassword("");
+      setErrorMessage("");
+
       const backTo =
         location.state?.from || `/tournament/${tournamentIdNum}/admin/players`;
       navigate(backTo, { replace: true });
     } catch (err) {
-      const code = err?.body?.error || err?.status || err?.message || "";
-      console.error("/tournaments/auth error:", code);
+      // Unifier l'extraction de code d'erreur
+      const code =
+        err?.body?.error ||
+        err?.status ||
+        err?.message ||
+        (typeof err === "string" ? err : "");
+
+      if (process.env.NODE_ENV !== "production") {
+        console.error("[AdminLogin] /auth/admin/login error:", code, err);
+      }
 
       let msgKey = "wrongPassword";
       let fallback = "Mot de passe incorrect.";
 
       if (code === "not_found" || String(code).includes("404")) {
-        msgKey = "tournamentNotFound"; // i18n optionnel
+        msgKey = "tournamentNotFound";
         fallback = "Tournoi introuvable.";
       } else if (code === "tournament_public") {
-        msgKey = "tournamentIsPublic"; // i18n optionnel
+        msgKey = "tournamentIsPublic";
         fallback =
           "Ce tournoi est public : la connexion admin n'est pas requise.";
       } else if (
@@ -102,7 +126,11 @@ const AdminLogin = () => {
       ) {
         msgKey = "routeNotAllowed";
         fallback = "Route d'authentification indisponible (405).";
-      } else if (code === "Missing fields") {
+      } else if (
+        code === "Missing fields" ||
+        code === "missing_fields" ||
+        String(code).includes("Missing")
+      ) {
         msgKey = "missingFields";
         fallback = "Champs manquants.";
       }
