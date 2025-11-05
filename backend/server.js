@@ -16,18 +16,9 @@ const {
 } = require("./middlewares/auth");
 require("dotenv").config();
 
-// --- Sanity check required environment variables ---
-const REQUIRED_ENV = ["SUPABASE_URL", "SUPABASE_SERVICE_KEY", "JWT_SECRET"];
-const MISSING_ENV = REQUIRED_ENV.filter(
-  (k) => !process.env[k] || String(process.env[k]).trim() === ""
-);
-if (MISSING_ENV.length) {
-  console.warn("[BOOT] Missing env vars:", MISSING_ENV.join(", "));
-}
-
 const app = express();
 
-// ---- Debug helpers ----
+// ---- Helpers ----
 const dbg = (...args) => console.log(new Date().toISOString(), ...args);
 const maskBody = (b) => {
   try {
@@ -42,13 +33,12 @@ const maskBody = (b) => {
   }
 };
 
+// ---- CORS ----
 const RAW_ALLOWED =
   process.env.CORS_ORIGINS ||
   process.env.CORS_ORIGIN ||
   "http://localhost:3000";
 const ALLOWED_ORIGINS = RAW_ALLOWED.split(",").map((s) => s.trim());
-
-// Auto-allow Vercel preview/prod URL if present
 if (process.env.VERCEL_URL) {
   const vercelHost = `https://${process.env.VERCEL_URL}`;
   if (!ALLOWED_ORIGINS.includes(vercelHost)) ALLOWED_ORIGINS.push(vercelHost);
@@ -57,7 +47,6 @@ if (process.env.NEXT_PUBLIC_SITE_URL) {
   const site = process.env.NEXT_PUBLIC_SITE_URL.trim();
   if (site && !ALLOWED_ORIGINS.includes(site)) ALLOWED_ORIGINS.push(site);
 }
-// Force-add known prod origin (Vercel)
 const PROD_ORIGIN = "https://showdown-master-fr.vercel.app";
 if (!ALLOWED_ORIGINS.includes(PROD_ORIGIN)) ALLOWED_ORIGINS.push(PROD_ORIGIN);
 
@@ -66,11 +55,9 @@ app.use((req, res, next) => {
   const allowAll = ALLOWED_ORIGINS.includes("*");
   const isAllowed = origin && (allowAll || ALLOWED_ORIGINS.includes(origin));
 
-  if (isAllowed) {
-    res.header("Access-Control-Allow-Origin", origin);
-  } else {
-    res.header("Access-Control-Allow-Origin", ALLOWED_ORIGINS[0] || "*");
-  }
+  if (isAllowed) res.header("Access-Control-Allow-Origin", origin);
+  else res.header("Access-Control-Allow-Origin", ALLOWED_ORIGINS[0] || "*");
+
   res.header("Vary", "Origin");
   res.header(
     "Access-Control-Allow-Methods",
@@ -82,7 +69,16 @@ app.use((req, res, next) => {
   next();
 });
 
-// Supabase (service role) client
+// ---- Env sanity ----
+const REQUIRED_ENV = ["SUPABASE_URL", "SUPABASE_SERVICE_KEY", "JWT_SECRET"];
+const MISSING_ENV = REQUIRED_ENV.filter(
+  (k) => !process.env[k] || String(process.env[k]).trim() === ""
+);
+if (MISSING_ENV.length) {
+  console.warn("[BOOT] Missing env vars:", MISSING_ENV.join(", "));
+}
+
+// ---- Supabase (service role) ----
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY
@@ -109,7 +105,7 @@ app.get("/api/health", (req, res) => {
   res.json({ ok: true, time: new Date().toISOString() });
 });
 
-// ----- extra debug endpoints (utiles sur Vercel) -----
+// ---- DEBUG endpoints (utile sur Vercel) ----
 app.get("/api/debug/env", (req, res) => {
   res.json({
     ok: true,
@@ -143,16 +139,11 @@ app.get("/api/debug/health", async (req, res) => {
 });
 
 // =========================
-// AUTH ROUTES (admin / viewer)
+// AUTH
 // =========================
-
-// Admin login (uses tournament.admin_password_hash)
 async function adminLoginHandler(req, res) {
   try {
     dbg("→ [POST] /auth/admin/login called", { body: maskBody(req.body) });
-    if (process.env.NODE_ENV !== "production") {
-      console.log("[/auth/admin/login] raw body:", req.body);
-    }
 
     const { tournamentId, password } = req.body || {};
     const idNum = Number(tournamentId);
@@ -171,9 +162,8 @@ async function adminLoginHandler(req, res) {
 
     const bcrypt = require("bcryptjs");
     let candidate = t.admin_password_hash || t.user_password_hash || null;
-    if (!candidate) {
+    if (!candidate)
       return res.status(401).json({ error: "Invalid credentials" });
-    }
 
     const looksLikeBcrypt =
       typeof candidate === "string" && candidate.startsWith("$2");
@@ -196,14 +186,14 @@ async function adminLoginHandler(req, res) {
     setSessionCookie(res, token, 12 * 60 * 60 * 1000);
     return res.json({ ok: true });
   } catch (e) {
+    console.error("adminLoginHandler error:", e);
     return res.status(500).json({ error: "server_error" });
   }
 }
 app.post("/auth/admin/login", adminLoginHandler);
 app.post("/api/auth/admin/login", adminLoginHandler);
 
-function adminLoginGetHandler(req, res) {
-  dbg("→ [GET] /auth/admin/login called");
+function adminLoginGetHandler(_req, res) {
   res.status(405).json({
     error: "Method Not Allowed",
     hint: "Use POST /auth/admin/login with JSON { tournamentId, password }.",
@@ -240,13 +230,14 @@ async function tournamentViewerLoginHandler(req, res) {
     setSessionCookie(res, token, 12 * 60 * 60 * 1000);
     return res.json({ ok: true });
   } catch (e) {
+    console.error("tournamentViewerLoginHandler error:", e);
     return res.status(500).json({ error: "server_error" });
   }
 }
 app.post("/auth/tournament/login", tournamentViewerLoginHandler);
 app.post("/api/auth/tournament/login", tournamentViewerLoginHandler);
 
-function logoutHandler(req, res) {
+function logoutHandler(_req, res) {
   dbg("→ [POST] /auth/logout called");
   clearSessionCookie(res);
   res.json({ ok: true });
@@ -274,6 +265,7 @@ function meHandler(req, res) {
 app.get("/auth/me", meHandler);
 app.get("/api/auth/me", meHandler);
 
+// ---- Mailer (skip verify in prod to avoid serverless crash) ----
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: Number(process.env.SMTP_PORT || 587),
@@ -281,26 +273,21 @@ const transporter = nodemailer.createTransport({
   auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
 });
 
-// Avoid SMTP verify on serverless in production (can be slow/fragile)
 if (process.env.NODE_ENV !== "production") {
   transporter
     .verify()
-    .then(() => {
-      console.log("SMTP transport verified ✅");
-    })
-    .catch((err) => {
+    .then(() => console.log("SMTP transport verified ✅"))
+    .catch((err) =>
       console.error("SMTP transport verify failed ❌", {
         message: err?.message,
         code: err?.code,
         response: err?.response,
         responseCode: err?.responseCode,
-      });
-    });
+      })
+    );
 }
 
-// =========================
-// EMAIL CODE
-// =========================
+// ---- Email code ----
 app.post("/api/send-email-code", async (req, res) => {
   dbg("→ [POST] /api/send-email-code called", { body: maskBody(req.body) });
   const { email } = req.body || {};
@@ -330,9 +317,7 @@ app.post("/api/send-email-code", async (req, res) => {
     console.log("Email sent:", info?.messageId || info);
 
     const payload = { requestId };
-    if (process.env.NODE_ENV !== "production") {
-      payload.devCode = code;
-    }
+    if (process.env.NODE_ENV !== "production") payload.devCode = code;
     res.json(payload);
   } catch (err) {
     console.error("sendMail failed", {
@@ -376,9 +361,113 @@ app.post("/api/verify-email-code", (req, res) => {
 });
 
 // =========================
-// PUBLIC: players & groups by tournament (read-only, no auth)
+// API: tournaments & mirrors
 // =========================
+app.get("/api/tournaments", async (req, res) => {
+  try {
+    dbg("→ [GET] /api/tournaments called", { query: req.query });
+    const { past } = req.query;
 
+    const { data, error } = await supabase
+      .from("tournament")
+      .select("id, title, startday, endday, is_private")
+      .order("startday", { ascending: true });
+
+    if (error) {
+      console.error("[SUPABASE] /api/tournaments error:", error);
+      return res
+        .status(500)
+        .json({ error: "supabase_error", hint: error.message });
+    }
+
+    let list = data || [];
+    if (past !== undefined) {
+      const isPast = String(past) === "1" || String(past) === "true";
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const ts = +today;
+      list = list.filter((t) => {
+        const end = Date.parse(t?.endday ?? "");
+        if (!Number.isFinite(end)) return !isPast; // si end invalide, considère futur/présent
+        return isPast ? end <= ts : end >= ts;
+      });
+    }
+
+    return res.json(list);
+  } catch (e) {
+    console.error("/api/tournaments fatal error", e);
+    return res
+      .status(500)
+      .json({ error: "server_error", hint: String(e?.message || e) });
+  }
+});
+
+app.get("/api/tournaments/:id", async (req, res) => {
+  try {
+    dbg("→ [GET] /api/tournaments/:id called", { params: req.params });
+    const idNum = Number(req.params.id);
+    if (!Number.isFinite(idNum) || idNum <= 0) {
+      return res.status(400).json({ error: "invalid_tournament_id" });
+    }
+    const { data, error } = await supabase
+      .from("tournament")
+      .select("id, title, startday, endday, is_private")
+      .eq("id", idNum)
+      .single();
+    if (error) return res.status(404).json({ error: "not_found" });
+    return res.json(data || null);
+  } catch (e) {
+    console.error("GET /api/tournaments/:id error", e);
+    return res.status(500).json({ error: "server_error" });
+  }
+});
+
+app.get("/api/public/tournaments", async (req, res) => {
+  try {
+    dbg("→ [GET] /api/public/tournaments called", { query: req.query });
+    const { past } = req.query;
+    const { data, error } = await supabase
+      .from("tournament")
+      .select("id, title, startday, endday, is_private")
+      .order("startday", { ascending: true });
+
+    if (error) return res.status(500).json({ error: error.message });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const isPast = String(past) === "1" || String(past) === "true";
+
+    const filtered = (data || []).filter((t) => {
+      const end = new Date(t.endday);
+      end.setHours(0, 0, 0, 0);
+      return isPast ? end <= today : end >= today;
+    });
+
+    res.json(filtered);
+  } catch (e) {
+    console.error("/api/public/tournaments error", e);
+    res.status(500).json({ error: "server_error" });
+  }
+});
+
+app.get("/api/public/tournaments/:id", async (req, res) => {
+  try {
+    dbg("→ [GET] /api/public/tournaments/:id called", { params: req.params });
+    const { id } = req.params;
+    const { data, error } = await supabase
+      .from("tournament")
+      .select("id, title, startday, endday, is_private")
+      .eq("id", id)
+      .single();
+    if (error) return res.status(404).json({ error: "not_found" });
+    return res.json(data);
+  } catch (e) {
+    console.error("GET /api/public/tournaments/:id error", e);
+    return res.status(500).json({ error: "server_error" });
+  }
+});
+
+// ----- Players / Groups / Clubs / Referees / Matches (lectures) -----
 app.get("/api/tournaments/:id/players", async (req, res) => {
   try {
     dbg("→ [GET] /api/tournaments/:id/players called", { params: req.params });
@@ -399,33 +488,27 @@ app.get("/api/tournaments/:id/players", async (req, res) => {
   }
 });
 
-app.get("/api/public/tournaments/:id/players", async (req, res) => {
-  try {
-    dbg("→ [GET] /api/public/tournaments/:id/players called", {
+app.patch(
+  "/api/tournaments/:id/players/:playerId",
+  requireAdminForTournament,
+  async (req, res) => {
+    dbg("→ [PATCH] /api/tournaments/:id/players/:playerId called", {
       params: req.params,
+      body: maskBody(req.body),
     });
-    const { id } = req.params;
-    const idNum = Number(id);
-    if (!Number.isFinite(idNum) || idNum <= 0) {
-      return res.status(400).json({ error: "invalid_tournament_id" });
-    }
-
+    const { id, playerId } = req.params;
+    const payload = req.body || {};
     const { data, error } = await supabase
       .from("player")
-      .select(
-        `id, firstname, lastname, tournament_id, group_id,
-         club:club_id(id, name, abbreviation)`
-      )
-      .eq("tournament_id", idNum)
-      .order("lastname", { ascending: true });
-
-    if (error) return res.status(500).json({ error: error.message });
-    return res.json(data || []);
-  } catch (e) {
-    console.error("GET /api/public/tournaments/:id/players", e);
-    return res.status(500).json({ error: "server_error" });
+      .update(payload)
+      .eq("id", playerId)
+      .eq("tournament_id", id)
+      .select()
+      .single();
+    if (error) return res.status(400).json({ error: error.message });
+    res.json(data);
   }
-});
+);
 
 app.get("/api/tournaments/:id/groups", async (req, res) => {
   try {
@@ -442,33 +525,6 @@ app.get("/api/tournaments/:id/groups", async (req, res) => {
     return res.json(data || []);
   } catch (e) {
     console.error("GET /api/tournaments/:id/groups", e);
-    return res.status(500).json({ error: "server_error" });
-  }
-});
-
-app.get("/api/public/tournaments/:id/groups", async (req, res) => {
-  try {
-    dbg("→ [GET] /api/public/tournaments/:id/groups called", {
-      params: req.params,
-    });
-    const { id } = req.params;
-    const idNum = Number(id);
-    if (!Number.isFinite(idNum) || idNum <= 0) {
-      return res.status(400).json({ error: "invalid_tournament_id" });
-    }
-
-    const { data, error } = await supabase
-      .from("group")
-      .select(
-        "id, name, group_type, round_type, tournament_id, highest_position"
-      )
-      .eq("tournament_id", idNum)
-      .order("name", { ascending: true });
-
-    if (error) return res.status(500).json({ error: error.message });
-    return res.json(data || []);
-  } catch (e) {
-    console.error("GET /api/public/tournaments/:id/groups", e);
     return res.status(500).json({ error: "server_error" });
   }
 });
@@ -495,36 +551,10 @@ const listClubsByTournament = async (req, res) => {
     return res.status(500).json({ error: "server_error" });
   }
 };
-
 app.get("/api/tournaments/:id/clubs", listClubsByTournament);
 app.get("/api/tournaments/:id/club", listClubsByTournament);
 
-app.get("/api/public/tournaments/:id/clubs", async (req, res) => {
-  try {
-    dbg("→ [GET] /api/public/tournaments/:id/clubs called", {
-      params: req.params,
-    });
-    const { id } = req.params;
-    const idNum = Number(id);
-    if (!Number.isFinite(idNum) || idNum <= 0) {
-      return res.status(400).json({ error: "invalid_tournament_id" });
-    }
-
-    const { data, error } = await supabase
-      .from("club")
-      .select("id, name, abbreviation, tournament_id")
-      .eq("tournament_id", idNum)
-      .order("name", { ascending: true });
-
-    if (error) return res.status(500).json({ error: error.message });
-    return res.json(data || []);
-  } catch (e) {
-    console.error("GET /api/public/tournaments/:id/clubs", e);
-    return res.status(500).json({ error: "server_error" });
-  }
-});
-
-const listRefereesByTournament = async (req, res) => {
+app.get("/api/tournaments/:id/referees", async (req, res) => {
   try {
     dbg("→ [GET] /api/tournaments/:id/referees called", { params: req.params });
     const { id } = req.params;
@@ -549,35 +579,8 @@ const listRefereesByTournament = async (req, res) => {
     console.error("GET /api/tournaments/:id/referees", e);
     return res.status(500).json({ error: "server_error" });
   }
-};
+});
 
-app.get("/api/tournaments/:id/referees", listRefereesByTournament);
-app.get("/api/tournaments/:id/referee", listRefereesByTournament);
-
-// Update a player (ADMIN only for same tournament)
-app.patch(
-  "/api/tournaments/:id/players/:playerId",
-  requireAdminForTournament,
-  async (req, res) => {
-    dbg("→ [PATCH] /api/tournaments/:id/players/:playerId called", {
-      params: req.params,
-      body: maskBody(req.body),
-    });
-    const { id, playerId } = req.params;
-    const payload = req.body || {};
-    const { data, error } = await supabase
-      .from("player")
-      .update(payload)
-      .eq("id", playerId)
-      .eq("tournament_id", id)
-      .select()
-      .single();
-    if (error) return res.status(400).json({ error: error.message });
-    res.json(data);
-  }
-);
-
-// Matches (viewer OR admin)
 app.get("/api/tournaments/:id/matches", async (req, res) => {
   try {
     dbg("→ [GET] /api/tournaments/:id/matches called", { params: req.params });
@@ -620,50 +623,6 @@ app.get("/api/tournaments/:id/matches", async (req, res) => {
   }
 });
 
-app.get("/api/public/tournaments/:id/matches", async (req, res) => {
-  try {
-    dbg("→ [GET] /api/public/tournaments/:id/matches called", {
-      params: req.params,
-    });
-    const { id } = req.params;
-    const idNum = Number(id);
-    if (!Number.isFinite(idNum) || idNum <= 0) {
-      return res.status(400).json({ error: "invalid_tournament_id" });
-    }
-
-    const { data, error } = await supabase
-      .from("match")
-      .select(
-        `
-        id,
-        tournament_id,
-        group_id,
-        match_day,
-        match_time,
-        table_number,
-        player1:player1_id ( id, firstname, lastname, club_id ),
-        player2:player2_id ( id, firstname, lastname, club_id ),
-        group:group_id ( id, name, group_type, group_former, highest_position ),
-        referee_1:referee1_id ( id, firstname, lastname ),
-        referee_2:referee2_id ( id, firstname, lastname ),
-        player1_group_position,
-        player2_group_position,
-        result
-      `
-      )
-      .eq("tournament_id", idNum)
-      .order("match_day", { ascending: true })
-      .order("match_time", { ascending: true })
-      .order("table_number", { ascending: true });
-
-    if (error) return res.status(500).json({ error: error.message });
-    return res.json(data || []);
-  } catch (e) {
-    console.error("GET /api/public/tournaments/:id/matches", e);
-    return res.status(500).json({ error: "server_error" });
-  }
-});
-
 app.patch(
   "/api/tournaments/:id/matches/:matchId",
   requireAdminForTournament,
@@ -686,191 +645,21 @@ app.patch(
   }
 );
 
-// =========================
-// API: tournaments list & detail (no secrets)
-// =========================
-app.get("/api/tournaments", async (req, res) => {
-  try {
-    dbg("→ [GET] /api/tournaments called", { query: req.query });
-    if (MISSING_ENV.length) {
-      console.error("[ENV] Missing:", MISSING_ENV);
-    }
-    const { past } = req.query;
-    const { data, error } = await supabase
-      .from("tournament")
-      .select("id, title, startday, endday, is_private")
-      .order("startday", { ascending: true });
-
-    if (error) {
-      console.error("[SUPABASE] /api/tournaments error:", error);
-      return res
-        .status(500)
-        .json({ error: "supabase_error", hint: error.message });
-    }
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const isPast = String(past) === "1" || String(past) === "true";
-
-    const filtered = (data || []).filter((t) => {
-      const end = new Date(t.endday);
-      end.setHours(0, 0, 0, 0);
-      return isPast ? end <= today : end >= today;
-    });
-
-    return res.json(filtered);
-  } catch (e) {
-    console.error("/api/tournaments fatal error", e);
-    return res
-      .status(500)
-      .json({ error: "server_error", hint: String(e?.message || e) });
-  }
+// ---- Simple ping ----
+app.get("/api", (_req, res) => {
+  res.json({ ok: true, service: "showdown-master api" });
 });
 
-app.get("/api/tournaments/:id", async (req, res) => {
-  try {
-    dbg("→ [GET] /api/tournaments/:id called", { params: req.params });
-    const idNum = Number(req.params.id);
-    if (!Number.isFinite(idNum) || idNum <= 0) {
-      return res.status(400).json({ error: "invalid_tournament_id" });
-    }
-    const { data, error } = await supabase
-      .from("tournament")
-      .select("id, title, startday, endday, is_private")
-      .eq("id", idNum)
-      .single();
-    if (error) return res.status(404).json({ error: "not_found" });
-    return res.json(data || null);
-  } catch (e) {
-    console.error("GET /api/tournaments/:id error", e);
-    return res.status(500).json({ error: "server_error" });
-  }
-});
-
-// =========================
-// PUBLIC mirrors
-// =========================
-app.get("/api/public/tournaments/:id", async (req, res) => {
-  try {
-    dbg("→ [GET] /api/public/tournaments/:id called", { params: req.params });
-    const { id } = req.params;
-    const { data, error } = await supabase
-      .from("tournament")
-      .select("id, title, startday, endday, is_private")
-      .eq("id", id)
-      .single();
-    if (error) return res.status(404).json({ error: "not_found" });
-    return res.json(data);
-  } catch (e) {
-    console.error("GET /api/public/tournaments/:id error", e);
-    return res.status(500).json({ error: "server_error" });
-  }
-});
-
-app.get("/api/public/tournaments", async (req, res) => {
-  try {
-    dbg("→ [GET] /api/public/tournaments called", { query: req.query });
-    const { past } = req.query;
-    const { data, error } = await supabase
-      .from("tournament")
-      .select("id, title, startday, endday, is_private")
-      .order("startday", { ascending: true });
-
-    if (error) return res.status(500).json({ error: error.message });
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const isPast = String(past) === "1" || String(past) === "true";
-
-    const filtered = (data || []).filter((t) => {
-      const end = new Date(t.endday);
-      end.setHours(0, 0, 0, 0);
-      return isPast ? end <= today : end >= today;
-    });
-
-    console.log("[GET] /api/public/tournaments", {
-      past,
-      count: filtered.length,
-    });
-    res.json(filtered);
-  } catch (e) {
-    console.error("/api/public/tournaments error", e);
-    res.status(500).json({ error: "server_error" });
-  }
-});
-
-// =========================
-// CREATE TOURNAMENT (secure defaults)
-// =========================
-app.post("/api/tournaments", async (req, res) => {
-  try {
-    dbg("→ [POST] /api/tournaments called", { body: maskBody(req.body) });
-    const {
-      title,
-      startday,
-      endday,
-      adminPassword,
-      email,
-      table_count,
-      match_duration,
-      location,
-    } = req.body || {};
-    if (!title || !startday || !endday || !adminPassword || !email)
-      return res.status(400).json({ error: "missing_fields" });
-
-    const bcrypt = require("bcryptjs");
-    const adminHash = await bcrypt.hash(String(adminPassword), 10);
-    const tables = Number.isFinite(Number(table_count))
-      ? Number(table_count)
-      : 4;
-    const duration = Number.isFinite(Number(match_duration))
-      ? Number(match_duration)
-      : 30;
-
-    const { data, error } = await supabase
-      .from("tournament")
-      .insert([
-        {
-          title,
-          startday,
-          endday,
-          email,
-          table_count: tables,
-          match_duration: duration,
-          location: location || null,
-          is_private: true,
-          admin_password_hash: adminHash,
-          user_password_hash: adminHash,
-        },
-      ])
-      .select("id, title, startday, endday, is_private")
-      .single();
-
-    if (error)
-      return res.status(400).json({ error: error.message || "insert_failed" });
-    return res.status(201).json(data);
-  } catch (e) {
-    console.error("POST /api/tournaments error", e);
-    return res.status(500).json({ error: "server_error" });
-  }
-});
-
-// stockage en mémoire (OK pour dev)
+// ---- In-memory store (dev) ----
 const store = new Map();
 const sixDigit = () => Math.floor(100000 + Math.random() * 900000).toString();
 const sha256 = (s) => crypto.createHash("sha256").update(s).digest("hex");
 const MAX_ATTEMPTS = 5;
 
-// Simple ping
-app.get("/api", (req, res) => {
-  res.json({ ok: true, service: "showdown-master api" });
-});
-
-// Export the Express app for serverless runtimes (e.g., Vercel)
+// ---- Export / run ----
 module.exports = app;
 module.exports.default = app;
 
-// Start the server only when executed directly (local dev / standalone)
 if (require.main === module && !process.env.VERCEL) {
   const port = process.env.PORT || 3001;
   const host = process.env.HOST || "0.0.0.0";
