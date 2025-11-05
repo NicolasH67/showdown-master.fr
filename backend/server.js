@@ -100,10 +100,9 @@ app.get("/api/health", (req, res) => {
 // =========================
 
 // Admin login (uses tournament.admin_password_hash)
-app.post("/auth/admin/login", async (req, res) => {
+async function adminLoginHandler(req, res) {
   try {
     dbg("→ [POST] /auth/admin/login called", { body: maskBody(req.body) });
-    // Debug (dev only): inspect body
     if (process.env.NODE_ENV !== "production") {
       console.log("[/auth/admin/login] raw body:", req.body);
     }
@@ -129,14 +128,12 @@ app.post("/auth/admin/login", async (req, res) => {
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
-    // Si la valeur en BDD n'est pas un hash bcrypt ($2...), c'est probablement du texte en clair (colonne renommée sans migration)
     const looksLikeBcrypt =
       typeof candidate === "string" && candidate.startsWith("$2");
     if (!looksLikeBcrypt) {
       if (pwd !== String(candidate)) {
         return res.status(401).json({ error: "Invalid credentials" });
       }
-      // upgrade en bcrypt et stocker en admin_password_hash
       const upgraded = await bcrypt.hash(pwd, 10);
       await supabase
         .from("tournament")
@@ -154,18 +151,21 @@ app.post("/auth/admin/login", async (req, res) => {
   } catch (e) {
     return res.status(500).json({ error: "server_error" });
   }
-});
+}
+app.post("/auth/admin/login", adminLoginHandler);
+app.post("/api/auth/admin/login", adminLoginHandler);
 
-app.get("/auth/admin/login", (req, res) => {
+function adminLoginGetHandler(req, res) {
   dbg("→ [GET] /auth/admin/login called");
   res.status(405).json({
     error: "Method Not Allowed",
     hint: "Use POST /auth/admin/login with JSON { tournamentId, password }.",
   });
-});
+}
+app.get("/auth/admin/login", adminLoginGetHandler);
+app.get("/api/auth/admin/login", adminLoginGetHandler);
 
-// Viewer login (uses tournament.user_password_hash + is_private)
-app.post("/auth/tournament/login", async (req, res) => {
+async function tournamentViewerLoginHandler(req, res) {
   try {
     dbg("→ [POST] /auth/tournament/login called", { body: maskBody(req.body) });
     const { tournamentId, password } = req.body || {};
@@ -195,17 +195,19 @@ app.post("/auth/tournament/login", async (req, res) => {
   } catch (e) {
     return res.status(500).json({ error: "server_error" });
   }
-});
+}
+app.post("/auth/tournament/login", tournamentViewerLoginHandler);
+app.post("/api/auth/tournament/login", tournamentViewerLoginHandler);
 
-// Logout
-app.post("/auth/logout", (req, res) => {
+function logoutHandler(req, res) {
   dbg("→ [POST] /auth/logout called");
   clearSessionCookie(res);
   res.json({ ok: true });
-});
+}
+app.post("/auth/logout", logoutHandler);
+app.post("/api/auth/logout", logoutHandler);
 
-// Session status
-app.get("/auth/me", (req, res) => {
+function meHandler(req, res) {
   try {
     dbg("→ [GET] /auth/me called");
     res.set("Cache-Control", "no-store");
@@ -221,7 +223,9 @@ app.get("/auth/me", (req, res) => {
   } catch {
     return res.json({ ok: false });
   }
-});
+}
+app.get("/auth/me", meHandler);
+app.get("/api/auth/me", meHandler);
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
@@ -827,3 +831,7 @@ if (require.main === module && !process.env.VERCEL) {
     console.log(`Allowed origins: ${ALLOWED_ORIGINS.join(", ")}`);
   });
 }
+
+app.get("/api", (req, res) => {
+  res.json({ ok: true, service: "showdown-master api" });
+});
