@@ -78,36 +78,60 @@ const AdminLogin = () => {
       return;
     }
 
-    try {
-      // IMPORTANT : utiliser la route backend réellement exposée
-      // Backend actuel (server.js) : POST /auth/admin/login
-      // (ne pas utiliser /tournaments/auth qui n'existe pas sur ton monolithe)
-      await post("/auth/admin/login", {
-        tournamentId: tournamentIdNum,
-        password: String(password).trim(),
-      });
+    const payload = {
+      tournamentId: tournamentIdNum,
+      password: String(password).trim(),
+    };
 
-      // Synchronise l'état auth (cookie httpOnly) → hook
-      await refresh();
+    // Essaye d'abord l'URL serverless Vercel (/api/...), puis fallback monolithe (/auth/...)
+    const urls = ["/api/auth/admin/login", "/auth/admin/login"];
 
-      // Fermer la modal et rediriger
-      setIsModalOpen(false);
-      setPassword("");
-      setErrorMessage("");
+    let lastError = null;
+    let success = false;
 
-      const backTo =
-        location.state?.from || `/tournament/${tournamentIdNum}/admin/players`;
-      navigate(backTo, { replace: true });
-    } catch (err) {
-      // Unifier l'extraction de code d'erreur
+    for (const url of urls) {
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (res.ok) {
+          success = true;
+          break;
+        }
+
+        // tente d'extraire le code d'erreur JSON sinon garde le status
+        let body = null;
+        try {
+          body = await res.json();
+        } catch {
+          body = { error: String(res.status) };
+        }
+        lastError = { status: res.status, body };
+
+        // Si 404/405 sur cette variante, on essaie la suivante
+        if (res.status === 404 || res.status === 405) continue;
+
+        // pour tout autre code, on arrête ici
+        break;
+      } catch (err) {
+        lastError = err;
+        // on essaie la variante suivante
+      }
+    }
+
+    if (!success) {
       const code =
-        err?.body?.error ||
-        err?.status ||
-        err?.message ||
-        (typeof err === "string" ? err : "");
+        lastError?.body?.error ||
+        lastError?.status ||
+        lastError?.message ||
+        (typeof lastError === "string" ? lastError : "login_failed");
 
       if (process.env.NODE_ENV !== "production") {
-        console.error("[AdminLogin] /auth/admin/login error:", code, err);
+        console.error("[AdminLogin] login failed:", code, lastError);
       }
 
       let msgKey = "wrongPassword";
@@ -125,18 +149,32 @@ const AdminLogin = () => {
         String(code).includes("405")
       ) {
         msgKey = "routeNotAllowed";
-        fallback = "Route d'authentification indisponible (405).";
+        fallback =
+          "Route d'authentification indisponible (405). Vérifiez l'URL.";
       } else if (
         code === "Missing fields" ||
         code === "missing_fields" ||
-        String(code).includes("Missing")
+        String(code).toLowerCase().includes("missing")
       ) {
         msgKey = "missingFields";
         fallback = "Champs manquants.";
       }
 
       setErrorMessage(t(msgKey, { defaultValue: fallback }));
+      return;
     }
+
+    // Synchronise l'état auth (cookie httpOnly) → hook
+    await refresh();
+
+    // Fermer la modal et rediriger
+    setIsModalOpen(false);
+    setPassword("");
+    setErrorMessage("");
+
+    const backTo =
+      location.state?.from || `/tournament/${tournamentIdNum}/admin/players`;
+    navigate(backTo, { replace: true });
   };
 
   const badId = !Number.isFinite(tournamentIdNum) || tournamentIdNum <= 0;
