@@ -9,7 +9,9 @@
 // --------- Utils bas niveau ---------
 //
 function applyCors(req, res) {
-  const origin = req.headers.origin || `https://${req.headers.host}`;
+  const origin =
+    req.headers.origin ||
+    (req.headers.host ? `https://${req.headers.host}` : "*");
   res.setHeader("Access-Control-Allow-Origin", origin);
   res.setHeader("Vary", "Origin");
   res.setHeader(
@@ -51,34 +53,60 @@ function b64url(input) {
 function b64urlJSON(obj) {
   return b64url(JSON.stringify(obj));
 }
-function hmacSHA256(key, data) {
-  const crypto = require("crypto");
-  return crypto
-    .createHmac("sha256", key)
+
+// HMAC SHA-256 (Edge-friendly)
+async function hmacSHA256(key, data) {
+  // Web Crypto (Vercel Edge)
+  if (globalThis.crypto?.subtle) {
+    const enc = new TextEncoder();
+    const cryptoKey = await globalThis.crypto.subtle.importKey(
+      "raw",
+      enc.encode(key),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    );
+    const sigBuf = await globalThis.crypto.subtle.sign(
+      "HMAC",
+      cryptoKey,
+      enc.encode(data)
+    );
+    return Buffer.from(sigBuf)
+      .toString("base64")
+      .replace(/=/g, "")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_");
+  }
+  // Node fallback (ESM import)
+  const { createHmac } = await import("node:crypto");
+  return createHmac("sha256", key)
     .update(data)
     .digest("base64")
     .replace(/=/g, "")
     .replace(/\+/g, "-")
     .replace(/\//g, "_");
 }
-function signJWT(payload, secret, expMs = 12 * 60 * 60 * 1000) {
+
+// JWT sign/verify (async)
+async function signJWT(payload, secret, expMs = 12 * 60 * 60 * 1000) {
   const header = { alg: "HS256", typ: "JWT" };
   const now = Math.floor(Date.now() / 1000);
   const body = { iat: now, exp: now + Math.floor(expMs / 1000), ...payload };
   const part1 = b64urlJSON(header);
   const part2 = b64urlJSON(body);
-  const sig = hmacSHA256(secret, `${part1}.${part2}`);
+  const sig = await hmacSHA256(secret, `${part1}.${part2}`);
   return `${part1}.${part2}.${sig}`;
 }
-function verifyJWT(token, secret) {
+async function verifyJWT(token, secret) {
   const [h, p, s] = String(token || "").split(".");
   if (!h || !p || !s) return null;
-  const expected = hmacSHA256(secret, `${h}.${p}`);
+  const expected = await hmacSHA256(secret, `${h}.${p}`);
   if (expected !== s) return null;
   const json = JSON.parse(Buffer.from(p, "base64").toString("utf8"));
   if (json.exp && Math.floor(Date.now() / 1000) > json.exp) return null;
   return json;
 }
+
 function setCookie(res, name, value, maxAgeMs) {
   const attrs = [
     `${name}=${value}`,
@@ -110,7 +138,25 @@ async function sFetch(path, init) {
 }
 
 function parseUrl(req) {
-  return new URL(req.url, `https://${req.headers.host}`);
+  return new URL(req.url, `https://${req.headers.host || "localhost"}`);
+}
+
+// SHA-256 hex (Edge-friendly)
+async function sha256Hex(s) {
+  if (globalThis.crypto?.subtle) {
+    const enc = new TextEncoder();
+    const buf = await globalThis.crypto.subtle.digest("SHA-256", enc.encode(s));
+    return Buffer.from(buf).toString("hex");
+  }
+  const { createHash } = await import("node:crypto");
+  return createHash("sha256").update(s).digest("hex");
+}
+
+// UUID (Edge-friendly)
+async function cryptoRandom() {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  const { randomUUID } = await import("node:crypto");
+  return randomUUID();
 }
 
 //
@@ -284,7 +330,7 @@ async function handlePatchMatch(req, res, matchId, body) {
 // --------- AUTH (JWT cookie maison) ---------
 //
 async function handleAdminLogin(req, res, body) {
-  const bcrypt = require("bcryptjs");
+  const bcrypt = (await import("bcryptjs")).default;
   const COOKIE = process.env.COOKIE_NAME || "sm_session";
   const SECRET = process.env.JWT_SECRET || "change-me";
   const idNum = Number(body?.tournamentId);
@@ -308,12 +354,12 @@ async function handleAdminLogin(req, res, body) {
 
   if (!passOk) return send(res, 401, { error: "Invalid credentials" });
 
-  const token = signJWT({ scope: "admin", tournament_id: idNum }, SECRET);
+  const token = await signJWT({ scope: "admin", tournament_id: idNum }, SECRET);
   setCookie(res, COOKIE, token, 12 * 60 * 60 * 1000);
   return send(res, 200, { ok: true });
 }
 async function handleViewerLogin(req, res, body) {
-  const bcrypt = require("bcryptjs");
+  const bcrypt = (await import("bcryptjs")).default;
   const COOKIE = process.env.COOKIE_NAME || "sm_session";
   const SECRET = process.env.JWT_SECRET || "change-me";
   const idNum = Number(body?.tournamentId);
@@ -335,7 +381,10 @@ async function handleViewerLogin(req, res, body) {
   const passOk = await bcrypt.compare(pwd, t.user_password_hash || "");
   if (!passOk) return send(res, 401, { error: "Invalid credentials" });
 
-  const token = signJWT({ scope: "viewer", tournament_id: idNum }, SECRET);
+  const token = await signJWT(
+    { scope: "viewer", tournament_id: idNum },
+    SECRET
+  );
   setCookie(res, COOKIE, token, 12 * 60 * 60 * 1000);
   return send(res, 200, { ok: true });
 }
@@ -344,14 +393,14 @@ function handleLogout(_req, res) {
   clearCookie(res, COOKIE);
   return send(res, 200, { ok: true });
 }
-function handleMe(req, res) {
+async function handleMe(req, res) {
   const COOKIE = process.env.COOKIE_NAME || "sm_session";
   const SECRET = process.env.JWT_SECRET || "change-me";
   const cookie = String(req.headers.cookie || "");
   const m = cookie.match(new RegExp(`${COOKIE}=([^;]+)`));
   const token = m ? m[1] : null;
   if (!token) return send(res, 200, { ok: false });
-  const payload = verifyJWT(token, SECRET);
+  const payload = await verifyJWT(token, SECRET);
   if (!payload) return send(res, 200, { ok: false });
   return send(res, 200, {
     ok: true,
@@ -367,29 +416,25 @@ const volatileStore = new Map();
 function sixDigit() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
-function sha256(s) {
-  return require("crypto").createHash("sha256").update(s).digest("hex");
-}
 
 async function handleSendEmailCode(req, res, body) {
   const email = String(body?.email || "").trim();
   if (!email) return send(res, 400, { error: "Missing email" });
 
   const code = sixDigit();
-  const salt = cryptoRandom();
-  const codeHash = sha256(`${code}:${salt}`);
-  const requestId = cryptoRandom();
+  const salt = await cryptoRandom();
+  const codeHash = await sha256Hex(`${code}:${salt}`);
+  const requestId = await cryptoRandom();
   const expires = Date.now() + 10 * 60 * 1000;
   volatileStore.set(requestId, { email, codeHash, salt, expires, attempts: 0 });
 
-  // En dev, renvoie le code pour faciliter les tests
   const devPayload =
     process.env.NODE_ENV !== "production" ? { devCode: code } : {};
-  // En prod, envoie l'email SI SMTP configuré, sinon renvoie ok sans crash
+
   const hasSMTP = process.env.SMTP_HOST && process.env.SMTP_USER;
   if (hasSMTP) {
     try {
-      const nodemailer = require("nodemailer");
+      const nodemailer = (await import("nodemailer")).default;
       const tr = nodemailer.createTransport({
         host: process.env.SMTP_HOST,
         port: Number(process.env.SMTP_PORT || 587),
@@ -405,17 +450,14 @@ async function handleSendEmailCode(req, res, body) {
         subject: "Code de vérification",
         text: `Votre code de vérification est : ${code}`,
       });
-    } catch (e) {
-      // Ne plante pas l'API
+    } catch (_e) {
+      // ne plante pas l'API
     }
   }
   return send(res, 200, { ok: true, requestId, ...devPayload });
 }
-function cryptoRandom() {
-  return require("crypto").randomUUID();
-}
 
-function handleVerifyEmailCode(req, res, body) {
+async function handleVerifyEmailCode(req, res, body) {
   const requestId = String(body?.requestId || "");
   const code = String(body?.code || "");
   if (!requestId || !code) return send(res, 400, { error: "Missing fields" });
@@ -427,7 +469,7 @@ function handleVerifyEmailCode(req, res, body) {
   if (row.attempts >= 5)
     return send(res, 429, { verified: false, error: "too_many_attempts" });
 
-  const ok = sha256(`${code}:${row.salt}`) === row.codeHash;
+  const ok = (await sha256Hex(`${code}:${row.salt}`)) === row.codeHash;
   volatileStore.set(requestId, { ...row, attempts: row.attempts + 1 });
   if (ok) volatileStore.delete(requestId);
   return send(res, 200, { verified: ok });
@@ -453,13 +495,10 @@ export default async function handler(req, res) {
     const { pathname, searchParams } = parseUrl(req);
 
     // ---- DEBUG
-    if (
-      req.method === "GET" &&
-      parseUrl(req).pathname === "/api/debug/health"
-    ) {
+    if (req.method === "GET" && pathname === "/api/debug/health") {
       return send(res, 200, { ok: true, now: new Date().toISOString() });
     }
-    if (req.method === "GET" && parseUrl(req).pathname === "/api/debug/env") {
+    if (req.method === "GET" && pathname === "/api/debug/env") {
       const flags = {
         node: process.version,
         nodeEnv: process.env.NODE_ENV || null,
@@ -506,7 +545,7 @@ export default async function handler(req, res) {
       return handleCreateTournament(req, res, body);
     }
 
-    // Aliases with query ?id= for compatibility (players, groups, clubs, referees, matches)
+    // Aliases with query ?id=
     if (
       req.method === "GET" &&
       /^\/api\/tournaments\/players\/?$/.test(pathname)
@@ -593,7 +632,7 @@ export default async function handler(req, res) {
       return handlePatchMatch(req, res, Number(mPatchMatch[2]), body);
     }
 
-    // ---- PUBLIC mirroir (pour compat historique — même data)
+    // ---- PUBLIC mirroir
     if (
       req.method === "GET" &&
       /^\/api\/public\/tournaments\/?$/.test(pathname)
