@@ -329,14 +329,26 @@ async function handlePatchMatch(req, res, matchId, body) {
 //
 // Small helper to load bcryptjs in both CJS/ESM environments
 async function getBcrypt() {
-  const mod = await import("bcryptjs");
-  // In some bundlers, bcryptjs is a CJS default export; in others, functions are on the module itself.
-  return mod?.default ?? mod;
+  // Try CommonJS first (Node runtime on Vercel supports this in serverless funcs)
+  try {
+    // eslint-disable-next-line import/no-extraneous-dependencies, global-require
+    const mod = require("bcryptjs");
+    return mod?.default ?? mod;
+  } catch (_) {
+    // Fall back to dynamic ESM import
+    try {
+      const mod = await import("bcryptjs");
+      return mod?.default ?? mod;
+    } catch (e2) {
+      return null; // not installed
+    }
+  }
 }
 // --------- AUTH (JWT cookie maison) ---------
 //
 async function handleAdminLogin(req, res, body) {
   try {
+    const DEBUG = String(process.env.DEBUG_AUTH || "false") === "true";
     const bcrypt = await getBcrypt();
     const COOKIE = process.env.COOKIE_NAME || "sm_session";
     const SECRET = process.env.JWT_SECRET || "change-me";
@@ -357,7 +369,11 @@ async function handleAdminLogin(req, res, body) {
     const candidate = t.admin_password_hash || t.user_password_hash || "";
     let passOk = false;
     if (typeof candidate === "string" && candidate.startsWith("$2")) {
-      // bcrypt hash
+      if (!bcrypt) {
+        if (DEBUG)
+          console.error("[AUTH] bcryptjs not available while hash is bcrypt.");
+        return send(res, 500, { error: "bcrypt_unavailable" });
+      }
       passOk = await bcrypt.compare(pwd, candidate);
     } else {
       // legacy plaintext (rare / migration)
@@ -372,12 +388,18 @@ async function handleAdminLogin(req, res, body) {
     setCookie(res, COOKIE, token, 12 * 60 * 60 * 1000);
     return send(res, 200, { ok: true });
   } catch (e) {
-    // Return a safe error payload but avoid leaking internals
+    if (String(process.env.DEBUG_AUTH || "false") === "true") {
+      return send(res, 500, {
+        error: "server_error_login",
+        message: e?.message || null,
+      });
+    }
     return send(res, 500, { error: "server_error_login" });
   }
 }
 async function handleViewerLogin(req, res, body) {
   try {
+    const DEBUG = String(process.env.DEBUG_AUTH || "false") === "true";
     const bcrypt = await getBcrypt();
     const COOKIE = process.env.COOKIE_NAME || "sm_session";
     const SECRET = process.env.JWT_SECRET || "change-me";
@@ -400,6 +422,11 @@ async function handleViewerLogin(req, res, body) {
     const candidate = t.user_password_hash || "";
     let passOk = false;
     if (typeof candidate === "string" && candidate.startsWith("$2")) {
+      if (!bcrypt) {
+        if (DEBUG)
+          console.error("[AUTH] bcryptjs not available while hash is bcrypt.");
+        return send(res, 500, { error: "bcrypt_unavailable" });
+      }
       passOk = await bcrypt.compare(pwd, candidate);
     } else {
       passOk = pwd === String(candidate);
@@ -412,7 +439,13 @@ async function handleViewerLogin(req, res, body) {
     );
     setCookie(res, COOKIE, token, 12 * 60 * 60 * 1000);
     return send(res, 200, { ok: true });
-  } catch (_e) {
+  } catch (e) {
+    if (String(process.env.DEBUG_AUTH || "false") === "true") {
+      return send(res, 500, {
+        error: "server_error_login",
+        message: e?.message || null,
+      });
+    }
     return send(res, 500, { error: "server_error_login" });
   }
 }
@@ -536,6 +569,10 @@ export default async function handler(req, res) {
         hasJWT_SECRET: !!process.env.JWT_SECRET,
       };
       return send(res, 200, flags);
+    }
+    if (req.method === "GET" && pathname === "/api/debug/auth") {
+      const bcrypt = await getBcrypt();
+      return send(res, 200, { bcrypt: !!bcrypt });
     }
 
     // ---- AUTH
