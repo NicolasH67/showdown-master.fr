@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import GroupsSection from "../../Components/GroupsSection/GroupsSection";
 import MatchRow from "../../Components/MatchRow/MatchRow";
 
-import useGroupDetails from "../../hooks/useGroupDetails";
+import useGroupDetails from "../../Hooks/useGroupDetails";
 
 const GroupsDetails = () => {
   const { t } = useTranslation();
@@ -18,16 +18,6 @@ const GroupsDetails = () => {
   if (loading) return <div className="p-4">{t("loading") || "Loading..."}</div>;
   if (error) return <div className="p-4 text-red-600">{String(error)}</div>;
   if (!group) return <div className="p-4">{t("notFound") || "Not found"}</div>;
-
-  const groupTitle = `${group.name || "?"} ${
-    group.group_type ? `| ${t(group.group_type)}` : ""
-  }`;
-
-  const renderPlayerLink = (p) => {
-    if (!p) return "—";
-    const label = `${p.firstname} ${p.lastname}`;
-    return <Link to={`/tournament/${id}/players/${p.id}`}>{label}</Link>;
-  };
 
   const formatResult = (result) => {
     if (!result || !Array.isArray(result) || result.length < 2) return "-";

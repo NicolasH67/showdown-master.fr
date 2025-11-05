@@ -1,8 +1,8 @@
 import { useMemo } from "react";
-import usePlayers from "./usePlayers";
-import useGroupsData from "./useGroupsData";
-import useClub from "./useClub";
-import useMatchs from "./useMatchs";
+import usePlayers from "./usePlayers.js";
+import useGroupsData from "./useGroupsData.js";
+import useClubs from "./useClubs.js";
+import useMatches from "./useMatches.js";
 
 /**
  * Agrège toutes les données nécessaires pour la page de détails d'un groupe.
@@ -14,8 +14,8 @@ import useMatchs from "./useMatchs";
 export default function useGroupDetails(tournamentId, groupId) {
   const { players, loading: pl, error: pe } = usePlayers(tournamentId);
   const { groups, loading: gl, error: ge } = useGroupsData(tournamentId);
-  const { clubs, loading: cl, error: ce } = useClub(tournamentId);
-  const { matches, loading: ml, error: me } = useMatchs(tournamentId);
+  const { clubs, loading: cl, error: ce } = useClubs(tournamentId);
+  const { matches, loading: ml, error: me } = useMatches(tournamentId);
 
   // Groupe courant
   const group = useMemo(() => {
