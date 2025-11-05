@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import usePlayers from "./usePlayers.js";
 import useGroupsData from "./useGroupsData.js";
-import useClubs from "./useClubs.js";
+import useClubs from "./useClub.js";
 import useMatches from "./useMatches.js";
 
 /**
