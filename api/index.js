@@ -8,6 +8,21 @@
 //
 // --------- Utils bas niveau ---------
 //
+function applyCors(req, res) {
+  const origin = req.headers.origin || `https://${req.headers.host}`;
+  res.setHeader("Access-Control-Allow-Origin", origin);
+  res.setHeader("Vary", "Origin");
+  res.setHeader(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, X-Requested-With"
+  );
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET,POST,PATCH,PUT,DELETE,OPTIONS,HEAD"
+  );
+  res.setHeader("Access-Control-Allow-Credentials", "true");
+}
+
 async function readJson(req) {
   return new Promise((resolve) => {
     let data = "";
@@ -423,12 +438,38 @@ function handleVerifyEmailCode(req, res, body) {
 //
 export default async function handler(req, res) {
   try {
+    // CORS for all routes
+    applyCors(req, res);
+    if (req.method === "OPTIONS") {
+      res.statusCode = 204;
+      res.end();
+      return;
+    }
     // Sanity env check pour éviter 500 opaques
     if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
       return send(res, 500, { error: "supabase_env_missing" });
     }
 
     const { pathname, searchParams } = parseUrl(req);
+
+    // ---- DEBUG
+    if (
+      req.method === "GET" &&
+      parseUrl(req).pathname === "/api/debug/health"
+    ) {
+      return send(res, 200, { ok: true, now: new Date().toISOString() });
+    }
+    if (req.method === "GET" && parseUrl(req).pathname === "/api/debug/env") {
+      const flags = {
+        node: process.version,
+        nodeEnv: process.env.NODE_ENV || null,
+        vercel: !!process.env.VERCEL,
+        hasSUPABASE_URL: !!process.env.SUPABASE_URL,
+        hasSERVICE_KEY: !!process.env.SUPABASE_SERVICE_KEY,
+        hasJWT_SECRET: !!process.env.JWT_SECRET,
+      };
+      return send(res, 200, flags);
+    }
 
     // ---- AUTH
     if (req.method === "POST" && pathname === "/api/auth/admin/login") {
@@ -464,6 +505,54 @@ export default async function handler(req, res) {
       const body = await readJson(req);
       return handleCreateTournament(req, res, body);
     }
+
+    // Aliases with query ?id= for compatibility (players, groups, clubs, referees, matches)
+    if (
+      req.method === "GET" &&
+      /^\/api\/tournaments\/players\/?$/.test(pathname)
+    ) {
+      const id = Number(searchParams.get("id"));
+      if (!Number.isFinite(id))
+        return send(res, 400, { error: "invalid_tournament_id" });
+      return handleListPlayers(req, res, id);
+    }
+    if (
+      req.method === "GET" &&
+      /^\/api\/tournaments\/groups\/?$/.test(pathname)
+    ) {
+      const id = Number(searchParams.get("id"));
+      if (!Number.isFinite(id))
+        return send(res, 400, { error: "invalid_tournament_id" });
+      return handleListGroups(req, res, id);
+    }
+    if (
+      req.method === "GET" &&
+      /^\/api\/tournaments\/clubs\/?$/.test(pathname)
+    ) {
+      const id = Number(searchParams.get("id"));
+      if (!Number.isFinite(id))
+        return send(res, 400, { error: "invalid_tournament_id" });
+      return handleListClubs(req, res, id);
+    }
+    if (
+      req.method === "GET" &&
+      /^\/api\/tournaments\/referees?\/?$/.test(pathname)
+    ) {
+      const id = Number(searchParams.get("id"));
+      if (!Number.isFinite(id))
+        return send(res, 400, { error: "invalid_tournament_id" });
+      return handleListReferees(req, res, id);
+    }
+    if (
+      req.method === "GET" &&
+      /^\/api\/tournaments\/matches\/?$/.test(pathname)
+    ) {
+      const id = Number(searchParams.get("id"));
+      if (!Number.isFinite(id))
+        return send(res, 400, { error: "invalid_tournament_id" });
+      return handleListMatches(req, res, id);
+    }
+
     const mT = pathname.match(/^\/api\/tournaments\/(\d+)\/?$/);
     if (req.method === "GET" && mT) {
       return handleGetTournament(req, res, Number(mT[1]));
@@ -535,9 +624,55 @@ export default async function handler(req, res) {
     if (req.method === "GET" && mpMatches)
       return handleListMatches(req, res, Number(mpMatches[1]));
 
+    if (
+      req.method === "GET" &&
+      /^\/api\/public\/tournaments\/players\/?$/.test(pathname)
+    ) {
+      const id = Number(searchParams.get("id"));
+      if (!Number.isFinite(id))
+        return send(res, 400, { error: "invalid_tournament_id" });
+      return handleListPlayers(req, res, id);
+    }
+    if (
+      req.method === "GET" &&
+      /^\/api\/public\/tournaments\/groups\/?$/.test(pathname)
+    ) {
+      const id = Number(searchParams.get("id"));
+      if (!Number.isFinite(id))
+        return send(res, 400, { error: "invalid_tournament_id" });
+      return handleListGroups(req, res, id);
+    }
+    if (
+      req.method === "GET" &&
+      /^\/api\/public\/tournaments\/clubs\/?$/.test(pathname)
+    ) {
+      const id = Number(searchParams.get("id"));
+      if (!Number.isFinite(id))
+        return send(res, 400, { error: "invalid_tournament_id" });
+      return handleListClubs(req, res, id);
+    }
+    if (
+      req.method === "GET" &&
+      /^\/api\/public\/tournaments\/matches\/?$/.test(pathname)
+    ) {
+      const id = Number(searchParams.get("id"));
+      if (!Number.isFinite(id))
+        return send(res, 400, { error: "invalid_tournament_id" });
+      return handleListMatches(req, res, id);
+    }
+
     // Fallback
     return send(res, 404, { error: "route_not_found", path: pathname });
   } catch (e) {
-    return send(res, 500, { error: e?.message || "server_error" });
+    try {
+      return send(res, 500, {
+        error: "server_error",
+        message: e?.message || null,
+        name: e?.name || null,
+      });
+    } catch {
+      res.statusCode = 500;
+      res.end('{"error":"server_error"}');
+    }
   }
 }
