@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import usePlayers from "./usePlayers.js";
 import useGroupsData from "./useGroupsData.js";
 import useClubs from "./useClub.js";
-import useMatches from "./useMatches.js";
+import useMatches from "./useMatchs.js";
 
 /**
  * Agrège toutes les données nécessaires pour la page de détails d'un groupe.
