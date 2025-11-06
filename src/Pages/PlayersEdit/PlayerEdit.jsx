@@ -42,7 +42,7 @@ const PlayersEdit = () => {
       s === "first" ||
       s === "r1" ||
       s === "round1" ||
-      s === "1st_round" ||
+      s === "1st round" ||
       s === "first_round"
     );
   };
