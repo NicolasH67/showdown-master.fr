@@ -26,10 +26,10 @@ const Navbar = () => {
   // Clef de re-render fiable quand l'état d'auth change
   const authKey = `${ok ? "1" : "0"}-${scope || "none"}-${tournamentId ?? "x"}`;
   const currentId = id ? Number(id) : null;
-  // Affiche la barre admin dès qu'on est authentifié "admin".
-  // (Le contrôle "sameTournament" doit rester côté API pour sécuriser les actions,
-  // pas pour masquer la navigation.)
-  const isAdmin = ok && scope === "admin";
+  // Affiche la barre admin uniquement si la session admin correspond AU tournois courant
+  // (ex. connecté admin du tournoi 11, mais sur la page du tournoi 19 -> barre publique)
+  const isAdminForCurrentTournament =
+    ok && scope === "admin" && Number(tournamentId) === currentId;
 
   // Sync auth on route change to avoid stale navbar after login/logout
   useEffect(() => {
@@ -90,7 +90,7 @@ const Navbar = () => {
 
   const renderNavbarLinks = () => {
     if (isTournamentPage) {
-      if (isAdmin) {
+      if (isAdminForCurrentTournament) {
         return (
           <>
             <li className="nav-item">
