@@ -23,6 +23,8 @@ const Navbar = () => {
 
   // Auth state from cookie-backed session
   const { loading, ok, scope, tournamentId, refresh } = useAuth();
+  // Clef de re-render fiable quand l'état d'auth change
+  const authKey = `${ok ? "1" : "0"}-${scope || "none"}-${tournamentId ?? "x"}`;
   const currentId = id ? Number(id) : null;
   // Affiche la barre admin dès qu'on est authentifié "admin".
   // (Le contrôle "sameTournament" doit rester côté API pour sécuriser les actions,
@@ -33,6 +35,11 @@ const Navbar = () => {
     const lang = localStorage.getItem("language") || "en";
     document.documentElement.lang = lang;
   }, [i18n.language]);
+
+  useEffect(() => {
+    // Dès que l'état d'authentification change, on force un repli (mobile)
+    setIsNavbarCollapsed(true);
+  }, [authKey]);
 
   if (loading) {
     // During auth resolution, show a neutral navbar
@@ -186,6 +193,8 @@ const Navbar = () => {
                   }
                   setLoggingOut(false);
                 }}
+                active
+                disabled={loggingOut}
                 ariaLabel={t("logout", { defaultValue: "Logout" })}
                 title={t("logout", { defaultValue: "Logout" })}
                 variant="primary"
@@ -333,7 +342,9 @@ const Navbar = () => {
           }`}
           id="navbarNav"
         >
-          <ul className="navbar-nav">{renderNavbarLinks()}</ul>
+          <ul key={authKey} className="navbar-nav">
+            {renderNavbarLinks()}
+          </ul>
         </div>
         <div className="dropdown">
           <button
