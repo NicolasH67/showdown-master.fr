@@ -16,6 +16,7 @@ const Navbar = () => {
   const navigate = useNavigate();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNavbarCollapsed, setIsNavbarCollapsed] = useState(true);
+  const [loggingOut, setLoggingOut] = useState(false);
   const tournament = location.pathname.match(/\/tournament\/([^/]+)/);
   const id = tournament ? tournament[1] : null;
 
@@ -155,35 +156,48 @@ const Navbar = () => {
             </li>
             <li className="nav-item">
               <button
-                className="btn btn-link nav-link"
+                type="button"
+                className="btn btn-outline-light ms-2"
+                disabled={loggingOut}
+                aria-busy={loggingOut ? "true" : "false"}
                 onClick={async () => {
                   try {
+                    setLoggingOut(true);
+                    // Appelle l'API de logout (cookie httpOnly supprimé côté serveur)
                     await fetch("/api/auth/logout", {
                       method: "POST",
                       credentials: "include",
+                      headers: { "Content-Type": "application/json" },
                     });
-                  } catch (_) {}
-                  // Met à jour le contexte d'auth pour que la navbar repasse en mode user
+                  } catch (_) {
+                    // ignore network errors, we tenterons quand même un refresh
+                  }
+
+                  // Rafraîchir l'état d'auth (fait repasser ok=false, scope=undefined)
                   try {
                     await refresh?.();
                   } catch (_) {}
 
-                  // Si on est sur une page tournoi, renvoyer vers la vue utilisateur du même tournoi
-                  const isTournamentPage =
+                  // Replier la navbar (mobile)
+                  try {
+                    setIsNavbarCollapsed(true);
+                  } catch (_) {}
+
+                  // Rediriger vers la vue publique du tournoi si on est sur une page tournoi
+                  const onTournamentPage =
                     location.pathname.includes("/tournament/");
-                  if (isTournamentPage && id) {
+                  if (onTournamentPage && id) {
                     navigate(`/tournament/${id}/players`, { replace: true });
                   } else {
                     navigate("/", { replace: true });
                   }
 
-                  // Replier la navbar en mobile
-                  try {
-                    setIsNavbarCollapsed(true);
-                  } catch (_) {}
+                  setLoggingOut(false);
                 }}
               >
-                {t("logout", { defaultValue: "Logout" })}
+                {loggingOut
+                  ? t("loggingOut", { defaultValue: "Logging out…" })
+                  : t("logout", { defaultValue: "Logout" })}
               </button>
             </li>
           </>
