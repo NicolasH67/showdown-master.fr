@@ -32,25 +32,14 @@ const PlayersEdit = () => {
 
   const groupType = "default";
 
-  // Garder uniquement les groupes du 1er tour
-  const isFirstRound = (rt) => {
-    if (!rt) return false;
-    const s = String(rt).toLowerCase().replace(/\s+/g, "");
-    // Supporte plusieurs écritures possibles
-    return (
-      s === "1st" ||
-      s === "first" ||
-      s === "r1" ||
-      s === "round1" ||
-      s === "1st round" ||
-      s === "first_round"
-    );
-  };
+  console.log(groups);
 
   const firstRoundGroups = useMemo(() => {
     if (!Array.isArray(groups)) return [];
     return groups.filter((g) => g.round_type === "1st round");
   }, [groups]);
+
+  console.log(firstRoundGroups);
 
   useEffect(() => {
     if (players.length > 0 || clubs.length > 0 || referees.length > 0) {
