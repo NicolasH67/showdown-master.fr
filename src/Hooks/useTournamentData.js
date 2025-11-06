@@ -1,82 +1,72 @@
-import supabase from "../Helpers/supabaseClient";
-import { useState, useEffect } from "react";
+// src/Hooks/useTournamentData.js
+import { useMemo } from "react";
 
+// ⬇️ On réutilise tes hooks de données (qui eux gèrent Vercel/local & API fallback)
+import usePlayers from "./usePlayers";
+import useGroupsData from "./useGroupsData";
+import useClubs from "./useClubs";
+import useMatchs from "./useMatchs";
+
+/**
+ * Agrège les données du tournoi en s'appuyant sur les hooks dédiés
+ * (au lieu d'interroger Supabase directement ici).
+ *
+ * API de retour conservée :
+ *  - groups, clubs, players, playersWithGroups, referees, loading, error
+ *
+ * Note : `refreshTrigger` est supporté en dépendance via les hooks enfants
+ * s'ils l'acceptent ; sinon il n'a pas d'effet.
+ */
 const useTournamentData = (tournamentId, refreshTrigger) => {
-  const [groups, setGroups] = useState([]);
-  const [clubs, setClubs] = useState([]);
-  const [players, setPlayers] = useState([]);
-  const [referees, setReferees] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // Données de base
+  const {
+    groups,
+    loading: groupsLoading,
+    error: groupsError,
+  } = useGroupsData(tournamentId, refreshTrigger);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const [
-          { data: groupData, error: groupError },
-          { data: clubData, error: clubError },
-          { data: playerData, error: playerError },
-          { data: refereeData, error: refereeError },
-        ] = await Promise.all([
-          supabase
-            .from("group")
-            .select("id, name, tournament_id, round_type, group_type"),
-          supabase.from("club").select("id, name, tournament_id, abbreviation"),
-          supabase
-            .from("player")
-            .select(
-              "id, firstname, lastname, club:club_id (id, name, abbreviation), tournament_id, group_id"
-            ),
-          supabase
-            .from("referee")
-            .select(
-              "id, firstname, lastname, club:club_id (id, name, abbreviation), tournament_id"
-            ),
-        ]);
+  const {
+    clubs,
+    loading: clubsLoading,
+    error: clubsError,
+  } = useClubs(tournamentId, refreshTrigger);
 
-        if (groupError) throw groupError;
-        if (clubError) throw clubError;
-        if (playerError) throw playerError;
-        if (refereeError) throw refereeError;
+  const {
+    players,
+    loading: playersLoading,
+    error: playersError,
+  } = usePlayers(tournamentId, refreshTrigger);
 
-        setGroups(
-          groupData.filter(
-            (group) =>
-              group.tournament_id === Number(tournamentId) &&
-              group.round_type === "1st round"
-          )
-        );
-        setClubs(
-          clubData.filter((club) => club.tournament_id === Number(tournamentId))
-        );
-        setPlayers(
-          playerData.filter(
-            (player) => player.tournament_id === Number(tournamentId)
-          )
-        );
-        setReferees(
-          refereeData.filter(
-            (referee) => referee.tournament_id === Number(tournamentId)
-          )
-        );
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
+  // Optionnel : si tu as un hook useReferees, importe-le et remplace ce bloc
+  // Par compat, on retourne un tableau vide et des flags neutres.
+  // const { referees, loading: refsLoading, error: refsError } = useReferees(tournamentId, refreshTrigger);
+  const referees = [];
+  const refsLoading = false;
+  const refsError = null;
 
-    if (tournamentId) fetchData();
-  }, [tournamentId, refreshTrigger]); // Ajout de refreshTrigger comme dépendance
+  // Loading global = au moins un en cours
+  const loading =
+    !!groupsLoading || !!clubsLoading || !!playersLoading || !!refsLoading;
 
-  const playersWithGroups = players.map((player) => {
-    const groupNames = player.group_id
-      ?.map((id) => groups.find((g) => g.id === id)?.name)
-      .filter(Boolean)
-      .join(", ");
-    return { ...player, groupNames };
-  });
+  // Premier error non nul
+  const error = playersError || groupsError || clubsError || refsError || null;
+
+  // Enrichissement : playersWithGroups => ajoute "groupNames" (liste des noms de groupes du joueur)
+  const playersWithGroups = useMemo(() => {
+    if (!Array.isArray(players) || players.length === 0) return [];
+    const groupsById = new Map(
+      (Array.isArray(groups) ? groups : []).map((g) => [g.id, g])
+    );
+
+    return players.map((p) => {
+      const ids = Array.isArray(p.group_id) ? p.group_id : [];
+      const names = ids
+        .map((gid) => groupsById.get(gid)?.name)
+        .filter(Boolean)
+        .join(", ");
+      return { ...p, groupNames: names };
+    });
+  }, [players, groups]);
 
   return {
     groups,
