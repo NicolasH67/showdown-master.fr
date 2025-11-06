@@ -49,7 +49,7 @@ const PlayersEdit = () => {
 
   const firstRoundGroups = useMemo(() => {
     if (!Array.isArray(groups)) return [];
-    return groups.filter((g) => isFirstRound(g.round_type));
+    return groups.filter((g) => g.round_type === "1st round");
   }, [groups]);
 
   useEffect(() => {
