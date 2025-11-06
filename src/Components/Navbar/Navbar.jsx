@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import AdminLogin from "../AdminLogin/AdminLogin";
+import Button from "../Button/Button";
 import useAuth from "../../auth/useAuth";
 
 /**
@@ -155,13 +156,12 @@ const Navbar = () => {
               </NavLink>
             </li>
             <li className="nav-item ms-2 d-flex align-items-center">
-              <button
-                type="button"
-                className="btn btn-outline-light px-3 py-1"
-                disabled={loggingOut}
-                aria-busy={loggingOut ? "true" : "false"}
-                aria-label={t("logout", { defaultValue: "Logout" })}
-                title={t("logout", { defaultValue: "Logout" })}
+              <Button
+                label={
+                  loggingOut
+                    ? t("loggingOut", { defaultValue: "Logging out…" })
+                    : t("logout", { defaultValue: "Logout" })
+                }
                 onClick={async () => {
                   try {
                     setLoggingOut(true);
@@ -186,11 +186,11 @@ const Navbar = () => {
                   }
                   setLoggingOut(false);
                 }}
-              >
-                {loggingOut
-                  ? t("loggingOut", { defaultValue: "Logging out…" })
-                  : t("logout", { defaultValue: "Logout" })}
-              </button>
+                active
+                disabled={loggingOut}
+                ariaLabel={t("logout", { defaultValue: "Logout" })}
+                title={t("logout", { defaultValue: "Logout" })}
+              />
             </li>
           </>
         );
