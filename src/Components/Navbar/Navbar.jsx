@@ -154,36 +154,29 @@ const Navbar = () => {
                 {t("tournamentEdit")}
               </NavLink>
             </li>
-            <li className="nav-item">
+            <li className="nav-item ms-2 d-flex align-items-center">
               <button
                 type="button"
-                className="btn btn-outline-light ms-2"
+                className="btn btn-outline-light px-3 py-1"
                 disabled={loggingOut}
                 aria-busy={loggingOut ? "true" : "false"}
+                aria-label={t("logout", { defaultValue: "Logout" })}
+                title={t("logout", { defaultValue: "Logout" })}
                 onClick={async () => {
                   try {
                     setLoggingOut(true);
-                    // Appelle l'API de logout (cookie httpOnly supprimé côté serveur)
                     await fetch("/api/auth/logout", {
                       method: "POST",
                       credentials: "include",
                       headers: { "Content-Type": "application/json" },
                     });
-                  } catch (_) {
-                    // ignore network errors, we tenterons quand même un refresh
-                  }
-
-                  // Rafraîchir l'état d'auth (fait repasser ok=false, scope=undefined)
+                  } catch (_) {}
                   try {
                     await refresh?.();
                   } catch (_) {}
-
-                  // Replier la navbar (mobile)
                   try {
                     setIsNavbarCollapsed(true);
                   } catch (_) {}
-
-                  // Rediriger vers la vue publique du tournoi si on est sur une page tournoi
                   const onTournamentPage =
                     location.pathname.includes("/tournament/");
                   if (onTournamentPage && id) {
@@ -191,7 +184,6 @@ const Navbar = () => {
                   } else {
                     navigate("/", { replace: true });
                   }
-
                   setLoggingOut(false);
                 }}
               >
