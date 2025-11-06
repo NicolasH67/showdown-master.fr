@@ -190,6 +190,13 @@ const Navbar = () => {
                 disabled={loggingOut}
                 ariaLabel={t("logout", { defaultValue: "Logout" })}
                 title={t("logout", { defaultValue: "Logout" })}
+                variant="primary"
+                className="btn btn-primary"
+                style={{
+                  backgroundColor: "#0d6efd",
+                  borderColor: "#0d6efd",
+                  color: "#fff",
+                }}
               />
             </li>
           </>
