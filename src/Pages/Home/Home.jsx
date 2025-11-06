@@ -69,7 +69,7 @@ const Home = () => {
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
     try {
-      await post("/api/auth/login", {
+      await post("/api/auth/tournament/login", {
         tournamentId: selectedTournament.id,
         password,
       });
