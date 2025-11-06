@@ -31,6 +31,17 @@ const Navbar = () => {
   // pas pour masquer la navigation.)
   const isAdmin = ok && scope === "admin";
 
+  // Sync auth on route change to avoid stale navbar after login/logout
+  useEffect(() => {
+    (async () => {
+      try {
+        await refresh?.();
+      } catch (_) {}
+    })();
+    // We only want to re-check when the route changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
   useEffect(() => {
     const lang = localStorage.getItem("language") || "en";
     document.documentElement.lang = lang;
@@ -324,7 +335,7 @@ const Navbar = () => {
   };
 
   return (
-    <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav key={authKey} className="navbar navbar-expand-lg navbar-dark bg-dark">
       <div className="container-fluid">
         <button
           className="navbar-toggler"
