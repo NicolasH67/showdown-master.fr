@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import useTournamentData from "../../Hooks/useTournamentData";
 import PlayerForm from "../../Components/PlayerForm/PlayerForm";
@@ -31,6 +31,26 @@ const PlayersEdit = () => {
   const { onDelete, onEdit, error, successMessage } = useEntityActions();
 
   const groupType = "default";
+
+  // Garder uniquement les groupes du 1er tour
+  const isFirstRound = (rt) => {
+    if (!rt) return false;
+    const s = String(rt).toLowerCase().replace(/\s+/g, "");
+    // Supporte plusieurs écritures possibles
+    return (
+      s === "1st" ||
+      s === "first" ||
+      s === "r1" ||
+      s === "round1" ||
+      s === "1st_round" ||
+      s === "first_round"
+    );
+  };
+
+  const firstRoundGroups = useMemo(() => {
+    if (!Array.isArray(groups)) return [];
+    return groups.filter((g) => isFirstRound(g.round_type));
+  }, [groups]);
 
   useEffect(() => {
     if (players.length > 0 || clubs.length > 0 || referees.length > 0) {
@@ -87,7 +107,7 @@ const PlayersEdit = () => {
         <PlayerForm
           tournamentId={id}
           clubs={clubs}
-          groups={groups}
+          groups={firstRoundGroups}
           onAddSuccess={() => setRefreshTrigger((prev) => !prev)}
         />
       )}
@@ -120,7 +140,7 @@ const PlayersEdit = () => {
               clubs={clubs}
               players={players}
               groupType={groupType}
-              groups={groups}
+              groups={firstRoundGroups}
               onDelete={(playerId) => handleDelete("player", playerId)}
               onEdit={(playerId, updatedData) =>
                 handleEdit("player", playerId, updatedData)
