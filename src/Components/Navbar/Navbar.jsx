@@ -186,8 +186,6 @@ const Navbar = () => {
                   }
                   setLoggingOut(false);
                 }}
-                active
-                disabled={loggingOut}
                 ariaLabel={t("logout", { defaultValue: "Logout" })}
                 title={t("logout", { defaultValue: "Logout" })}
                 variant="primary"
