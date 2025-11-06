@@ -22,11 +22,10 @@ const Navbar = () => {
   // Auth state from cookie-backed session
   const { loading, ok, scope, tournamentId, refresh } = useAuth();
   const currentId = id ? Number(id) : null;
-  const sameTournament =
-    currentId == null || tournamentId == null
-      ? true
-      : Number(tournamentId) === currentId;
-  const isAdmin = ok && scope === "admin" && sameTournament;
+  // Affiche la barre admin dès qu'on est authentifié "admin".
+  // (Le contrôle "sameTournament" doit rester côté API pour sécuriser les actions,
+  // pas pour masquer la navigation.)
+  const isAdmin = ok && scope === "admin";
 
   useEffect(() => {
     const lang = localStorage.getItem("language") || "en";
@@ -159,7 +158,7 @@ const Navbar = () => {
                 className="btn btn-link nav-link"
                 onClick={async () => {
                   try {
-                    await fetch("http://localhost:3001/auth/logout", {
+                    await fetch("/api/auth/logout", {
                       method: "POST",
                       credentials: "include",
                     });
