@@ -264,6 +264,11 @@ const ScheduleEdit = () => {
     return arr[position - 1] || `(${position})`;
   };
 
+  console.log("1st filteredSortedGroups:", filteredSortedGroups);
+  console.log("2nd sortedPlayers:", sortedPlayers);
+  console.log("3rd generatedMatches:", generatedMatches);
+  console.log("4th clubs:", clubs);
+
   return (
     <div>
       <h1 id="page-title" tabIndex="-1">
