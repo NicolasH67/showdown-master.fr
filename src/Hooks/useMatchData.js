@@ -5,7 +5,7 @@ import { useParams } from "react-router-dom";
 import usePlayers from "./usePlayers";
 import useGroupsData from "./useGroupsData";
 import useMatchs from "./useMatchs";
-import useClubs from "./useClubs";
+import useClub from "./useClub";
 
 /**
  * useMatchData (composition)
@@ -45,7 +45,7 @@ const useMatchData = () => {
     clubs: clubsRaw,
     loading: loadingClubs,
     error: errorClubs,
-  } = useClubs(tournamentId);
+  } = useClub(tournamentId);
 
   // Agrégation des états
   const loading =
