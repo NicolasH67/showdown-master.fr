@@ -269,6 +269,62 @@ async function handleListPlayers(req, res, id) {
   } catch {}
   return send(res, 200, data);
 }
+
+async function handleCreatePlayers(req, res, id, body) {
+  // Admin-only: must be admin for this tournament
+  const admin = await isAdminForTournament(req, id);
+  if (!admin) return send(res, 401, { error: "unauthorized" });
+
+  // Accept a single object or an array under `players`
+  const rows = Array.isArray(body?.players)
+    ? body.players
+    : Array.isArray(body)
+    ? body
+    : body && typeof body === "object"
+    ? [body]
+    : [];
+
+  if (!rows.length) return send(res, 400, { error: "missing_payload" });
+
+  // Normalize and validate each row; minimally require firstname/lastname
+  const payload = [];
+  for (const r of rows) {
+    const firstname = String(r?.firstname || "").trim();
+    const lastname = String(r?.lastname || "").trim();
+    if (!firstname || !lastname) {
+      return send(res, 400, { error: "missing_player_name" });
+    }
+    const obj = {
+      firstname,
+      lastname,
+      tournament_id: id,
+    };
+    if (r?.club_id != null) obj.club_id = Number(r.club_id) || null;
+    if (r?.group_id != null) obj.group_id = r.group_id; // may be array per your schema
+    if (r?.category != null) obj.category = r.category;
+    payload.push(obj);
+  }
+
+  const { ok, status, text } = await sFetch(
+    `/rest/v1/player?select=id,firstname,lastname,club_id,group_id,tournament_id,created_at,updated_at`,
+    {
+      method: "POST",
+      headers: {
+        ...headers(process.env.SUPABASE_SERVICE_KEY),
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  if (!ok) return send(res, status, text, "application/json");
+  let arr = [];
+  try {
+    arr = JSON.parse(text);
+  } catch {}
+  return send(res, 201, Array.isArray(arr) ? arr : [arr]);
+}
 async function handlePatchPlayer(req, res, playerId, body) {
   const { ok, status, text } = await sFetch(
     `/rest/v1/player?id=eq.${playerId}&select=*`,
@@ -673,6 +729,16 @@ export default async function handler(req, res) {
       return handleListPlayers(req, res, id);
     }
     if (
+      req.method === "POST" &&
+      /^\/api\/tournaments\/players\/?$/.test(pathname)
+    ) {
+      const id = Number(searchParams.get("id"));
+      if (!Number.isFinite(id))
+        return send(res, 400, { error: "invalid_tournament_id" });
+      const body = await readJson(req);
+      return handleCreatePlayers(req, res, id, body);
+    }
+    if (
       req.method === "GET" &&
       /^\/api\/tournaments\/groups\/?$/.test(pathname)
     ) {
@@ -728,6 +794,13 @@ export default async function handler(req, res) {
     const mPlayers = pathname.match(/^\/api\/tournaments\/(\d+)\/players\/?$/);
     if (req.method === "GET" && mPlayers)
       return handleListPlayers(req, res, Number(mPlayers[1]));
+    const mPostPlayers = pathname.match(
+      /^\/api\/tournaments\/(\d+)\/players\/?$/
+    );
+    if (req.method === "POST" && mPostPlayers) {
+      const body = await readJson(req);
+      return handleCreatePlayers(req, res, Number(mPostPlayers[1]), body);
+    }
     const mPatchPlayer = pathname.match(
       /^\/api\/tournaments\/(\d+)\/players\/(\d+)\/?$/
     );
