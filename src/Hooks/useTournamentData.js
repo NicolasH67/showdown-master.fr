@@ -4,8 +4,8 @@ import { useMemo } from "react";
 // ⬇️ On réutilise tes hooks de données (qui gèrent Vercel/local & API fallback)
 import usePlayers from "./usePlayers";
 import useGroupsData from "./useGroupsData";
-import useClubs from "./useClubs";
-import useReferees from "./useReferees";
+import useClub from "./useClub";
+import useReferee from "./useReferee";
 
 /**
  * Agrège les données du tournoi en s'appuyant sur les hooks dédiés
@@ -29,7 +29,7 @@ const useTournamentData = (tournamentId, refreshTrigger) => {
     clubs,
     loading: clubsLoading,
     error: clubsError,
-  } = useClubs(tournamentId, refreshTrigger);
+  } = useClub(tournamentId, refreshTrigger);
 
   const {
     players,
@@ -41,7 +41,7 @@ const useTournamentData = (tournamentId, refreshTrigger) => {
     referees,
     loading: refereesLoading,
     error: refereesError,
-  } = useReferees(tournamentId, refreshTrigger);
+  } = useReferee(tournamentId, refreshTrigger);
 
   // Loading global = au moins un en cours
   const loading =
