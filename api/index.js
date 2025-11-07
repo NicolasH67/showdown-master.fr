@@ -7,7 +7,6 @@
 
 //
 // --------- Utils bas niveau ---------
-//
 function applyCors(req, res) {
   const origin =
     req.headers.origin ||
@@ -159,9 +158,32 @@ async function cryptoRandom() {
   return randomUUID();
 }
 
+// ---- Auth helpers (JWT in cookie) ----
+async function getAuthFromCookie(req) {
+  const COOKIE = process.env.COOKIE_NAME || "sm_session";
+  const SECRET = process.env.JWT_SECRET || "change-me";
+  const cookie = String(req.headers.cookie || "");
+  const m = cookie.match(new RegExp(`${COOKIE}=([^;]+)`));
+  const token = m ? m[1] : null;
+  if (!token) return null;
+  return verifyJWT(token, SECRET);
+}
+
+async function isAdminForTournament(req, tournamentId) {
+  try {
+    const payload = await getAuthFromCookie(req);
+    return (
+      payload &&
+      payload.scope === "admin" &&
+      Number(payload.tournament_id) === Number(tournamentId)
+    );
+  } catch {
+    return false;
+  }
+}
+
 //
 // --------- Handlers REST Supabase ---------
-//
 async function handleListTournaments(req, res, searchParams) {
   const { ok, status, text } = await sFetch(
     `/rest/v1/tournament?select=id,title,startday,endday,is_private&order=startday.asc`,
@@ -286,6 +308,38 @@ async function handleListClubs(req, res, id) {
   } catch {}
   return send(res, 200, data);
 }
+async function handleCreateClub(req, res, id, body) {
+  // Admin-only: must be admin for this tournament
+  const admin = await isAdminForTournament(req, id);
+  if (!admin) return send(res, 401, { error: "unauthorized" });
+
+  const name = String(body?.name || "").trim();
+  const abbreviation = String(body?.abbreviation || "").trim();
+  if (!name || !abbreviation) {
+    return send(res, 400, { error: "missing_fields" });
+  }
+
+  const payload = [{ name, abbreviation, tournament_id: id }];
+  const { ok, status, text } = await sFetch(
+    `/rest/v1/club?select=id,name,abbreviation,tournament_id,created_at,updated_at`,
+    {
+      method: "POST",
+      headers: {
+        ...headers(process.env.SUPABASE_SERVICE_KEY),
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+  if (!ok) return send(res, status, text, "application/json");
+  let arr = [];
+  try {
+    arr = JSON.parse(text);
+  } catch {}
+  const obj = Array.isArray(arr) ? arr[0] : null;
+  return send(res, 201, obj || { ok: true });
+}
 async function handleListReferees(req, res, id) {
   const { ok, status, text } = await sFetch(
     `/rest/v1/referee?tournament_id=eq.${id}&select=id,firstname,lastname,tournament_id,club_id,created_at,updated_at,club:club_id(id,name,abbreviation)&order=lastname.asc&order=firstname.asc`,
@@ -344,8 +398,8 @@ async function getBcrypt() {
     }
   }
 }
+
 // --------- AUTH (JWT cookie maison) ---------
-//
 async function handleAdminLogin(req, res, body) {
   try {
     const DEBUG = String(process.env.DEBUG_AUTH || "false") === "true";
@@ -472,7 +526,6 @@ async function handleMe(req, res) {
 
 //
 // --------- Email code (gracieux) ---------
-//
 const volatileStore = new Map();
 function sixDigit() {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -538,7 +591,6 @@ async function handleVerifyEmailCode(req, res, body) {
 
 //
 // --------- Router central ---------
-//
 export default async function handler(req, res) {
   try {
     // CORS for all routes
@@ -639,6 +691,16 @@ export default async function handler(req, res) {
       return handleListClubs(req, res, id);
     }
     if (
+      req.method === "POST" &&
+      /^\/api\/tournaments\/clubs\/?$/.test(pathname)
+    ) {
+      const id = Number(searchParams.get("id"));
+      if (!Number.isFinite(id))
+        return send(res, 400, { error: "invalid_tournament_id" });
+      const body = await readJson(req);
+      return handleCreateClub(req, res, id, body);
+    }
+    if (
       req.method === "GET" &&
       /^\/api\/tournaments\/referees?\/?$/.test(pathname)
     ) {
@@ -679,8 +741,16 @@ export default async function handler(req, res) {
       return handleListGroups(req, res, Number(mGroups[1]));
 
     const mClubs = pathname.match(/^\/api\/tournaments\/(\d+)\/clubs?\/?$/);
-    if (req.method === "GET" && mClubs)
-      return handleListClubs(req, res, Number(mClubs[1]));
+    if (mClubs) {
+      const idNum = Number(mClubs[1]);
+      if (req.method === "GET") {
+        return handleListClubs(req, res, idNum);
+      }
+      if (req.method === "POST") {
+        const body = await readJson(req);
+        return handleCreateClub(req, res, idNum, body);
+      }
+    }
 
     const mRefs = pathname.match(/^\/api\/tournaments\/(\d+)\/referees?\/?$/);
     if (req.method === "GET" && mRefs)

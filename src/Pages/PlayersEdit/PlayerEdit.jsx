@@ -32,14 +32,10 @@ const PlayersEdit = () => {
 
   const groupType = "default";
 
-  console.log(groups);
-
   const firstRoundGroups = useMemo(() => {
     if (!Array.isArray(groups)) return [];
     return groups.filter((g) => g.round_type === "1st round");
   }, [groups]);
-
-  console.log(firstRoundGroups);
 
   useEffect(() => {
     if (players.length > 0 || clubs.length > 0 || referees.length > 0) {
