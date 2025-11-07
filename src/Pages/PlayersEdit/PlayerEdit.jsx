@@ -25,6 +25,8 @@ const PlayersEdit = () => {
     error: tournamentError,
   } = useTournamentData(id, refreshTrigger);
 
+  console.log(referees);
+
   const [formType, setFormType] = useState("player");
   const { t } = useTranslation();
   const location = useLocation();
