@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import useMatchData from "../../Hooks/useMatchData";
 import GroupList from "../../Components/GroupList/GroupList";
 import matchOrder from "../../Helpers/matchOrder.json";
@@ -31,15 +31,18 @@ const ScheduleEdit = () => {
         .from("tournament")
         .select("startday")
         .eq("id", id)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error(
           "Erreur de récupération de la date de début :",
           error.message
         );
-      } else if (data?.startday) {
+      } else if (data && data.startday) {
         setTournamentStartDate(data.startday);
+      } else {
+        // pas de ligne pour cet id; garder la valeur par défaut
+        console.warn("Aucune date de début trouvée pour le tournoi", id);
       }
     };
 
@@ -48,79 +51,88 @@ const ScheduleEdit = () => {
     }
   }, [id]);
 
-  // Trier les joueurs par leur identifiant dans chaque groupe
-  const sortedPlayers = Object.fromEntries(
-    Object.entries(players).map(([groupId, groupPlayers]) => [
-      groupId,
-      [...groupPlayers].sort((a, b) => a.id - b.id),
-    ])
-  );
+  // Normaliser les joueurs en dictionnaire { group_id: Player[] }
+  const playersByGroup = useMemo(() => {
+    if (!players) return {};
+    // Si c'est déjà un objet {groupId: [...]} on le retourne tel quel
+    if (!Array.isArray(players) && typeof players === "object") return players;
+    // Si c'est un tableau, on groupe par group_id
+    if (Array.isArray(players)) {
+      return players.reduce((acc, p) => {
+        const gid = Array.isArray(p.group_id) ? p.group_id[0] : p.group_id;
+        if (gid == null) return acc;
+        if (!acc[gid]) acc[gid] = [];
+        acc[gid].push(p);
+        return acc;
+      }, {});
+    }
+    return {};
+  }, [players]);
+
+  const sortedPlayers = useMemo(() => {
+    return Object.fromEntries(
+      Object.entries(playersByGroup).map(([groupId, groupPlayers]) => [
+        groupId,
+        [...groupPlayers].sort((a, b) => (a?.id ?? 0) - (b?.id ?? 0)),
+      ])
+    );
+  }, [playersByGroup]);
 
   const generateMatches = (groupId) => {
-    const groupPlayers = sortedPlayers[groupId] || [];
     const group = groups.find((g) => g.id === groupId);
-    const parsedGroupFormer = Array.isArray(group.group_former)
-      ? group.group_former
-      : group.group_former
-      ? JSON.parse(group.group_former)
-      : [];
+    const groupPlayers = sortedPlayers[groupId] || [];
 
-    if (groupPlayers.length + parsedGroupFormer.length < 2) {
-      alert("Il faut au moins 2 joueurs.");
+    // sécuriser le parsing de group_former
+    let groupFormer = [];
+    if (group && group.group_former) {
+      if (Array.isArray(group.group_former)) {
+        groupFormer = group.group_former;
+      } else {
+        try {
+          groupFormer = JSON.parse(group.group_former) || [];
+        } catch {
+          groupFormer = [];
+        }
+      }
+    }
+
+    const total = groupPlayers.length + groupFormer.length;
+    if (total < 2) {
+      alert(
+        t("needAtLeastTwoPlayers", {
+          defaultValue: "Il faut au moins 2 joueurs.",
+        })
+      );
       return;
     }
 
-    if (groupPlayers.length > 2) {
-      const matchOrderForGroup = matchOrder["Match Order"][groupPlayers.length];
-      if (!matchOrderForGroup) return alert("Aucun ordre de match défini.");
-
-      setGeneratedMatches((prev) => ({
-        ...prev,
-        [groupId]: matchOrderForGroup.map((matchStr) => {
-          const [p1, p2] = matchStr.split("-").map(Number);
-          const player1 = groupPlayers[p1 - 1];
-          const player2 = groupPlayers[p2 - 1];
-          return {
-            player1_id: player1 ? player1.id : null,
-            player1_group_position: player1 ? null : p1,
-            player2_id: player2 ? player2.id : null,
-            player2_group_position: player2 ? null : p2,
-            match_date: tournamentStartDate || "",
-            match_time: "",
-            table_number: "",
-          };
-        }),
-      }));
-    } else {
-      try {
-        const parsedGroupFormer = Array.isArray(group.group_former)
-          ? group.group_former
-          : JSON.parse(group.group_former);
-        const matchOrderForGroup =
-          matchOrder["Match Order"][parsedGroupFormer.length];
-        if (!matchOrderForGroup) return alert("Aucun ordre de match défini.");
-
-        setGeneratedMatches((prev) => ({
-          ...prev,
-          [groupId]: matchOrderForGroup.map((matchStr) => {
-            const [p1, p2] = matchStr.split("-").map(Number);
-            const player1 = groupPlayers[p1 - 1];
-            const player2 = groupPlayers[p2 - 1];
-            return {
-              player1_id: player1 ? player1.id : null,
-              player1_group_position: player1 ? null : p1,
-              player2_id: player2 ? player2.id : null,
-              player2_group_position: player2 ? null : p2,
-              match_date: tournamentStartDate || "",
-              match_time: "",
-              table_number: "",
-            };
-          }),
-        }));
-      } catch (error) {
-        console.log(error);
-      }
+    // Choix de l'ordre en fonction du nombre total de participants (réels + placeholders)
+    const order = matchOrder?.["Match Order"]?.[total];
+    if (!order) {
+      alert(
+        t("noMatchOrder", { defaultValue: "Aucun ordre de match défini." })
+      );
+      return;
     }
+
+    const rows = order.map((matchStr) => {
+      const [p1, p2] = String(matchStr)
+        .split("-")
+        .map((n) => parseInt(n, 10));
+      const player1 = groupPlayers[p1 - 1];
+      const player2 = groupPlayers[p2 - 1];
+      return {
+        player1_id: player1 ? player1.id : null,
+        player1_group_position: player1 ? null : p1,
+        player2_id: player2 ? player2.id : null,
+        player2_group_position: player2 ? null : p2,
+        match_date: tournamentStartDate || "",
+        match_time: "",
+        table_number: "",
+      };
+    });
+
+    setGeneratedMatches((prev) => ({ ...prev, [groupId]: rows }));
   };
 
   const updateGeneratedMatch = (groupId, matchIndex, field, value) => {
@@ -209,9 +221,12 @@ const ScheduleEdit = () => {
     }
   };
 
-  const filteredSortedGroups = groups
-    .filter((g) => g.round_type === selectedRound)
-    .sort((a, b) => a.id - b.id);
+  const filteredSortedGroups = useMemo(() => {
+    const arr = Array.isArray(groups) ? groups : [];
+    return arr
+      .filter((g) => (g?.round_type || "") === selectedRound)
+      .sort((a, b) => (a?.id ?? 0) - (b?.id ?? 0));
+  }, [groups, selectedRound]);
 
   if (loading) return <div>{t("loading")}</div>;
   if (error) return <div>{error}</div>;
@@ -237,10 +252,16 @@ const ScheduleEdit = () => {
 
   const getFakePlayerLabel = (group, position) => {
     if (!group?.group_former) return "";
-    const groupFormerArray = Array.isArray(group.group_former)
-      ? group.group_former
-      : JSON.parse(group.group_former);
-    return groupFormerArray[position - 1] || `(${position})`;
+    let arr = [];
+    if (Array.isArray(group.group_former)) arr = group.group_former;
+    else {
+      try {
+        arr = JSON.parse(group.group_former) || [];
+      } catch {
+        arr = [];
+      }
+    }
+    return arr[position - 1] || `(${position})`;
   };
 
   return (
@@ -257,75 +278,7 @@ const ScheduleEdit = () => {
         players={sortedPlayers}
         clubs={clubs}
         matches={matches}
-        generateMatches={(groupId) => {
-          const group = groups.find((g) => g.id === groupId);
-          const groupPlayers = sortedPlayers[groupId] || [];
-          const parsedGroupFormer = Array.isArray(group.group_former)
-            ? group.group_former
-            : group.group_former
-            ? JSON.parse(group.group_former)
-            : [];
-
-          if (groupPlayers.length + parsedGroupFormer.length < 2) {
-            alert("Il faut au moins 2 joueurs.");
-            return;
-          }
-
-          if (groupPlayers.length >= 2) {
-            const matchOrderForGroup =
-              matchOrder["Match Order"][groupPlayers.length];
-            if (!matchOrderForGroup)
-              return alert("Aucun ordre de match défini.");
-
-            setGeneratedMatches((prev) => ({
-              ...prev,
-              [groupId]: matchOrderForGroup.map((matchStr) => {
-                const [p1, p2] = matchStr.split("-").map(Number);
-                const player1 = groupPlayers[p1 - 1];
-                const player2 = groupPlayers[p2 - 1];
-                return {
-                  player1_id: player1 ? player1.id : null,
-                  player1_group_position: player1 ? null : p1,
-                  player2_id: player2 ? player2.id : null,
-                  player2_group_position: player2 ? null : p2,
-                  match_date: tournamentStartDate || "",
-                  match_time: "",
-                  table_number: "",
-                };
-              }),
-            }));
-          } else {
-            try {
-              const parsedGroupFormer = Array.isArray(group.group_former)
-                ? group.group_former
-                : JSON.parse(group.group_former);
-              const matchOrderForGroup =
-                matchOrder["Match Order"][parsedGroupFormer.length];
-              if (!matchOrderForGroup)
-                return alert("Aucun ordre de match défini.");
-
-              setGeneratedMatches((prev) => ({
-                ...prev,
-                [groupId]: matchOrderForGroup.map((matchStr) => {
-                  const [p1, p2] = matchStr.split("-").map(Number);
-                  const player1 = groupPlayers[p1 - 1];
-                  const player2 = groupPlayers[p2 - 1];
-                  return {
-                    player1_id: player1 ? player1.id : null,
-                    player1_group_position: player1 ? null : p1,
-                    player2_id: player2 ? player2.id : null,
-                    player2_group_position: player2 ? null : p2,
-                    match_date: tournamentStartDate || "",
-                    match_time: "",
-                    table_number: "",
-                  };
-                }),
-              }));
-            } catch (error) {
-              console.log(error);
-            }
-          }
-        }}
+        generateMatches={generateMatches}
         generatedMatches={generatedMatches}
         updateGeneratedMatch={updateGeneratedMatch}
         saveMatches={saveMatches}
