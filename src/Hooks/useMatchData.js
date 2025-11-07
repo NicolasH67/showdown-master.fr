@@ -1,156 +1,128 @@
-import { useState, useEffect } from "react";
+import { useMemo } from "react";
 import { useParams } from "react-router-dom";
-import { useTranslation } from "react-i18next";
-import { get, ApiError } from "../Helpers/apiClient";
+
+// Hooks existants (même dossier)
+import usePlayers from "./usePlayers";
+import useGroupsData from "./useGroupsData";
+import useMatchs from "./useMatchs";
+import useClubs from "./useClubs";
 
 /**
- * useMatchData – version alignée avec les autres hooks (API côté backend)
- *
- * - Ne parle plus directement à Supabase depuis le front.
- * - Utilise les routes unifiées `/api/tournaments/:id/...` avec un fallback robuste
- *   (ex: `/api/tournaments/players?id=...`) comme les autres hooks.
- * - Structure de retour inchangée: { groups, players, matches, clubs, loading, error }
+ * useMatchData (composition)
+ * - N'appelle plus d'API directement : agrège les données depuis
+ *   usePlayers, useGroupsData, useMatchs, useClubs.
+ * - Normalise le format de sortie pour les consommateurs existants:
+ *   { groups, players, matches, clubs, loading, error }
+ *     - groups: array
+ *     - players: { [group_id]: Player[] }
+ *     - matches: { [group_id]: Match[] }
+ *     - clubs:   { [club_id]: abbreviation | name }
  */
 const useMatchData = () => {
-  const { t } = useTranslation();
   const { id } = useParams();
+  const tournamentId = Number(id);
 
-  const [groups, setGroups] = useState([]);
-  const [players, setPlayers] = useState({}); // { [group_id]: Player[] }
-  const [matches, setMatches] = useState({}); // { [group_id]: Match[] }
-  const [clubs, setClubs] = useState({}); // { [club_id]: abbreviation }
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  // Appels via les hooks spécialisés
+  const {
+    players: playersRaw,
+    loading: loadingPlayers,
+    error: errorPlayers,
+  } = usePlayers(tournamentId);
 
-  useEffect(() => {
-    let cancelled = false;
+  const {
+    groups: groupsRaw,
+    loading: loadingGroups,
+    error: errorGroups,
+  } = useGroupsData(tournamentId);
 
-    const run = async () => {
-      setLoading(true);
-      setError(null);
-      setGroups([]);
-      setPlayers({});
-      setMatches({});
-      setClubs({});
+  const {
+    matches: matchesRaw,
+    loading: loadingMatches,
+    error: errorMatches,
+  } = useMatchs(tournamentId);
 
-      const idNum = Number(id);
-      if (!Number.isFinite(idNum) || idNum <= 0) {
-        if (!cancelled) {
-          setError(
-            new Error(
-              t("tournamentNotFound", { defaultValue: "Invalid tournament id" })
-            )
-          );
-          setLoading(false);
-        }
-        return;
+  const {
+    clubs: clubsRaw,
+    loading: loadingClubs,
+    error: errorClubs,
+  } = useClubs(tournamentId);
+
+  // Agrégation des états
+  const loading =
+    loadingPlayers || loadingGroups || loadingMatches || loadingClubs;
+
+  const error =
+    errorPlayers ||
+    errorGroups ||
+    errorMatches ||
+    errorClubs ||
+    (!Number.isFinite(tournamentId) || tournamentId <= 0
+      ? new Error("Invalid tournament id")
+      : null);
+
+  // Normalisations -----------------------------------------------------------
+
+  // groups: tel quel (tableau)
+  const groups = useMemo(() => {
+    if (!Array.isArray(groupsRaw)) return [];
+    return groupsRaw;
+  }, [groupsRaw]);
+
+  // clubs: tableau -> map { id: abbrOrName }
+  const clubs = useMemo(() => {
+    if (!clubsRaw) return {};
+    // si c'est déjà un dictionnaire, on le renvoie
+    if (!Array.isArray(clubsRaw) && typeof clubsRaw === "object")
+      return clubsRaw;
+
+    const map = {};
+    if (Array.isArray(clubsRaw)) {
+      for (const c of clubsRaw) {
+        if (!c || c.id == null) continue;
+        map[c.id] = c.abbreviation || c.name || String(c.id);
       }
+    }
+    return map;
+  }, [clubsRaw]);
 
-      // Essaie une liste d'URLs et renvoie le premier JSON OK
-      const firstOk = async (paths) => {
-        const errors = [];
-        for (const p of paths) {
-          try {
-            const r = await get(p);
-            if (r !== undefined && r !== null) return r;
-          } catch (e) {
-            // log + continue
-            if (process.env.NODE_ENV !== "production") {
-              console.warn(
-                "[useMatchData] endpoint failed:",
-                p,
-                e?.status || e?.message || e
-              );
-            }
-            errors.push(e);
-            continue;
-          }
-        }
-        if (errors.length) throw errors[errors.length - 1];
-        throw new ApiError("not_found", { status: 404, body: null });
-      };
+  // players: si tableau -> groupé par group_id
+  const players = useMemo(() => {
+    // déjà groupé ?
+    if (
+      playersRaw &&
+      !Array.isArray(playersRaw) &&
+      typeof playersRaw === "object"
+    ) {
+      return playersRaw; // { [gid]: Player[] }
+    }
+    const byGroup = {};
+    const arr = Array.isArray(playersRaw) ? playersRaw : [];
+    for (const p of arr) {
+      if (!p) continue;
+      const gid = Array.isArray(p.group_id) ? p.group_id[0] : p.group_id;
+      if (gid == null) continue;
+      (byGroup[gid] = byGroup[gid] || []).push(p);
+    }
+    return byGroup;
+  }, [playersRaw]);
 
-      try {
-        // 1) Groups
-        const groupsResp = await firstOk([`/api/tournaments/${idNum}/groups`]);
-        const groupsArr = Array.isArray(groupsResp)
-          ? groupsResp
-          : Array.isArray(groupsResp?.groups)
-          ? groupsResp.groups
-          : [];
-
-        // 2) Players
-        const playersResp = await firstOk([
-          `/api/tournaments/${idNum}/players`,
-          `/api/tournaments/players?id=${idNum}`,
-        ]);
-        const playersArr = Array.isArray(playersResp)
-          ? playersResp
-          : Array.isArray(playersResp?.players)
-          ? playersResp.players
-          : [];
-
-        // 3) Matches
-        const matchesResp = await firstOk([
-          `/api/tournaments/${idNum}/matches`,
-        ]);
-        const matchesArr = Array.isArray(matchesResp)
-          ? matchesResp
-          : Array.isArray(matchesResp?.matches)
-          ? matchesResp.matches
-          : [];
-
-        // 4) Clubs
-        const clubsResp = await firstOk([
-          `/api/tournaments/${idNum}/clubs`,
-          `/api/tournaments/${idNum}/club`,
-        ]);
-        const clubsArr = Array.isArray(clubsResp)
-          ? clubsResp
-          : Array.isArray(clubsResp?.clubs)
-          ? clubsResp.clubs
-          : [];
-
-        // Normalisations
-        const clubsMap = {};
-        for (const c of clubsArr) {
-          if (!c || c.id == null) continue;
-          clubsMap[c.id] = c.abbreviation || c.name || String(c.id);
-        }
-
-        const playersByGroup = playersArr.reduce((acc, p) => {
-          if (!p) return acc;
-          // group_id peut être un nombre ou un tableau; on prend le 1er si tableau
-          const gid = Array.isArray(p.group_id) ? p.group_id[0] : p.group_id;
-          if (gid == null) return acc;
-          (acc[gid] = acc[gid] || []).push(p);
-          return acc;
-        }, {});
-
-        const matchesByGroup = matchesArr.reduce((acc, m) => {
-          if (!m || m.group_id == null) return acc;
-          (acc[m.group_id] = acc[m.group_id] || []).push(m);
-          return acc;
-        }, {});
-
-        if (!cancelled) {
-          setGroups(groupsArr);
-          setPlayers(playersByGroup);
-          setMatches(matchesByGroup);
-          setClubs(clubsMap);
-        }
-      } catch (e) {
-        if (!cancelled) setError(e);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    run();
-    return () => {
-      cancelled = true;
-    };
-  }, [id, t]);
+  // matches: si tableau -> groupé par group_id
+  const matches = useMemo(() => {
+    if (
+      matchesRaw &&
+      !Array.isArray(matchesRaw) &&
+      typeof matchesRaw === "object"
+    ) {
+      return matchesRaw; // { [gid]: Match[] }
+    }
+    const byGroup = {};
+    const arr = Array.isArray(matchesRaw) ? matchesRaw : [];
+    for (const m of arr) {
+      if (!m || m.group_id == null) continue;
+      (byGroup[m.group_id] = byGroup[m.group_id] || []).push(m);
+    }
+    return byGroup;
+  }, [matchesRaw]);
 
   return { groups, players, matches, clubs, loading, error };
 };
