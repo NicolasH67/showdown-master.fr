@@ -352,6 +352,60 @@ async function handleListGroups(req, res, id) {
   } catch {}
   return send(res, 200, data);
 }
+
+async function handleCreateGroup(req, res, id, body) {
+  // Admin-only: must be admin for this tournament
+  const admin = await isAdminForTournament(req, id);
+  if (!admin) return send(res, 401, { error: "unauthorized" });
+
+  // Accept single object or an array under `groups`
+  const rows = Array.isArray(body?.groups)
+    ? body.groups
+    : Array.isArray(body)
+    ? body
+    : body && typeof body === "object"
+    ? [body]
+    : [];
+
+  if (!rows.length) return send(res, 400, { error: "missing_payload" });
+
+  // Normalize each row; minimally require name
+  const payload = [];
+  for (const r of rows) {
+    const name = String(r?.name || "").trim();
+    if (!name) return send(res, 400, { error: "missing_group_name" });
+    const obj = {
+      name,
+      tournament_id: id,
+      round_type: r?.round_type ?? null,
+      group_type: r?.group_type ?? null,
+      highest_position: r?.highest_position ?? null,
+      // passthroughs if provided by UI
+      group_former: r?.group_former ?? null,
+    };
+    payload.push(obj);
+  }
+
+  const { ok, status, text } = await sFetch(
+    `/rest/v1/group?select=id,name,group_type,round_type,tournament_id,highest_position,created_at,updated_at`,
+    {
+      method: "POST",
+      headers: {
+        ...headers(process.env.SUPABASE_SERVICE_KEY),
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  if (!ok) return send(res, status, text, "application/json");
+  let arr = [];
+  try {
+    arr = JSON.parse(text);
+  } catch {}
+  return send(res, 201, Array.isArray(arr) ? arr : [arr]);
+}
 async function handleListClubs(req, res, id) {
   const { ok, status, text } = await sFetch(
     `/rest/v1/club?tournament_id=eq.${id}&select=id,name,abbreviation,tournament_id,created_at,updated_at&order=name.asc`,
@@ -793,6 +847,16 @@ export default async function handler(req, res) {
       return handleListGroups(req, res, id);
     }
     if (
+      req.method === "POST" &&
+      /^\/api\/tournaments\/groups\/?$/.test(pathname)
+    ) {
+      const id = Number(searchParams.get("id"));
+      if (!Number.isFinite(id))
+        return send(res, 400, { error: "invalid_tournament_id" });
+      const body = await readJson(req);
+      return handleCreateGroup(req, res, id, body);
+    }
+    if (
       req.method === "GET" &&
       /^\/api\/tournaments\/clubs\/?$/.test(pathname)
     ) {
@@ -865,8 +929,16 @@ export default async function handler(req, res) {
     }
 
     const mGroups = pathname.match(/^\/api\/tournaments\/(\d+)\/groups\/?$/);
-    if (req.method === "GET" && mGroups)
-      return handleListGroups(req, res, Number(mGroups[1]));
+    if (mGroups) {
+      const idNum = Number(mGroups[1]);
+      if (req.method === "GET") {
+        return handleListGroups(req, res, idNum);
+      }
+      if (req.method === "POST") {
+        const body = await readJson(req);
+        return handleCreateGroup(req, res, idNum, body);
+      }
+    }
 
     const mClubs = pathname.match(/^\/api\/tournaments\/(\d+)\/clubs?\/?$/);
     if (mClubs) {
