@@ -408,6 +408,51 @@ async function handleListReferees(req, res, id) {
   } catch {}
   return send(res, 200, data);
 }
+
+async function handleCreateReferee(req, res, id, body) {
+  // Admin-only: must be admin for this tournament
+  const admin = await isAdminForTournament(req, id);
+  if (!admin) return send(res, 401, { error: "unauthorized" });
+
+  const firstname = String(body?.firstname || "").trim();
+  const lastname = String(body?.lastname || "").trim();
+  const clubIdRaw = body?.club_id;
+  if (!firstname || !lastname) {
+    return send(res, 400, { error: "missing_fields" });
+  }
+  const payload = [
+    {
+      firstname,
+      lastname,
+      club_id:
+        clubIdRaw === null || clubIdRaw === undefined
+          ? null
+          : Number(clubIdRaw) || null,
+      tournament_id: id,
+    },
+  ];
+
+  const { ok, status, text } = await sFetch(
+    `/rest/v1/referee?select=id,firstname,lastname,club_id,tournament_id,created_at,updated_at`,
+    {
+      method: "POST",
+      headers: {
+        ...headers(process.env.SUPABASE_SERVICE_KEY),
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  if (!ok) return send(res, status, text, "application/json");
+  let arr = [];
+  try {
+    arr = JSON.parse(text);
+  } catch {}
+  const obj = Array.isArray(arr) ? arr[0] : null;
+  return send(res, 201, obj || { ok: true });
+}
 async function handleListMatches(req, res, id) {
   const { ok, status, text } = await sFetch(
     `/rest/v1/match?tournament_id=eq.${id}&select=id,tournament_id,group_id,match_day,match_time,table_number,player1:player1_id(id,firstname,lastname,club_id),player2:player2_id(id,firstname,lastname,club_id),group:group_id(id,name,group_type,group_former,highest_position),referee_1:referee1_id(id,firstname,lastname),referee_2:referee2_id(id,firstname,lastname),player1_group_position,player2_group_position,result&order=match_day.asc&order=match_time.asc&order=table_number.asc`,
@@ -767,6 +812,16 @@ export default async function handler(req, res) {
       return handleCreateClub(req, res, id, body);
     }
     if (
+      req.method === "POST" &&
+      /^\/api\/tournaments\/referees?\/?$/.test(pathname)
+    ) {
+      const id = Number(searchParams.get("id"));
+      if (!Number.isFinite(id))
+        return send(res, 400, { error: "invalid_tournament_id" });
+      const body = await readJson(req);
+      return handleCreateReferee(req, res, id, body);
+    }
+    if (
       req.method === "GET" &&
       /^\/api\/tournaments\/referees?\/?$/.test(pathname)
     ) {
@@ -826,8 +881,16 @@ export default async function handler(req, res) {
     }
 
     const mRefs = pathname.match(/^\/api\/tournaments\/(\d+)\/referees?\/?$/);
-    if (req.method === "GET" && mRefs)
-      return handleListReferees(req, res, Number(mRefs[1]));
+    if (mRefs) {
+      const idNum = Number(mRefs[1]);
+      if (req.method === "GET") {
+        return handleListReferees(req, res, idNum);
+      }
+      if (req.method === "POST") {
+        const body = await readJson(req);
+        return handleCreateReferee(req, res, idNum, body);
+      }
+    }
 
     const mMatches = pathname.match(/^\/api\/tournaments\/(\d+)\/matches\/?$/);
     if (req.method === "GET" && mMatches)
