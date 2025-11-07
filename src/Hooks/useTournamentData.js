@@ -67,6 +67,8 @@ const useTournamentData = (tournamentId, refreshTrigger) => {
     });
   }, [players, groups]);
 
+  console.log("Referees in useTournamentData:", referees);
+
   return {
     groups,
     clubs,
