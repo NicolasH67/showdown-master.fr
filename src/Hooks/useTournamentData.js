@@ -1,10 +1,11 @@
 // src/Hooks/useTournamentData.js
 import { useMemo } from "react";
 
-// ⬇️ On réutilise tes hooks de données (qui eux gèrent Vercel/local & API fallback)
+// ⬇️ On réutilise tes hooks de données (qui gèrent Vercel/local & API fallback)
 import usePlayers from "./usePlayers";
 import useGroupsData from "./useGroupsData";
-import useClub from "./useClub";
+import useClubs from "./useClubs";
+import useReferees from "./useReferees";
 
 /**
  * Agrège les données du tournoi en s'appuyant sur les hooks dédiés
@@ -28,7 +29,7 @@ const useTournamentData = (tournamentId, refreshTrigger) => {
     clubs,
     loading: clubsLoading,
     error: clubsError,
-  } = useClub(tournamentId, refreshTrigger);
+  } = useClubs(tournamentId, refreshTrigger);
 
   const {
     players,
@@ -36,19 +37,19 @@ const useTournamentData = (tournamentId, refreshTrigger) => {
     error: playersError,
   } = usePlayers(tournamentId, refreshTrigger);
 
-  // Optionnel : si tu as un hook useReferees, importe-le et remplace ce bloc
-  // Par compat, on retourne un tableau vide et des flags neutres.
-  // const { referees, loading: refsLoading, error: refsError } = useReferees(tournamentId, refreshTrigger);
-  const referees = [];
-  const refsLoading = false;
-  const refsError = null;
+  const {
+    referees,
+    loading: refereesLoading,
+    error: refereesError,
+  } = useReferees(tournamentId, refreshTrigger);
 
   // Loading global = au moins un en cours
   const loading =
-    !!groupsLoading || !!clubsLoading || !!playersLoading || !!refsLoading;
+    !!groupsLoading || !!clubsLoading || !!playersLoading || !!refereesLoading;
 
   // Premier error non nul
-  const error = playersError || groupsError || clubsError || refsError || null;
+  const error =
+    playersError || groupsError || clubsError || refereesError || null;
 
   // Enrichissement : playersWithGroups => ajoute "groupNames" (liste des noms de groupes du joueur)
   const playersWithGroups = useMemo(() => {
@@ -66,8 +67,6 @@ const useTournamentData = (tournamentId, refreshTrigger) => {
       return { ...p, groupNames: names };
     });
   }, [players, groups]);
-
-  console.log("Referees in useTournamentData:", referees);
 
   return {
     groups,
