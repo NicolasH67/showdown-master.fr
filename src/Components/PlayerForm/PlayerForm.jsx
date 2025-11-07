@@ -1,5 +1,5 @@
 import { useState } from "react";
-import supabase from "../../Helpers/supabaseClient";
+import { post } from "../../Helpers/apiClient";
 import { useTranslation } from "react-i18next";
 import "./PlayerForm.css";
 
@@ -9,33 +9,62 @@ const PlayerForm = ({ tournamentId, clubs, groups, onAddSuccess }) => {
   const [groupId, setGroupId] = useState("");
   const [clubId, setClubId] = useState("");
   const [message, setMessage] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
   const { t } = useTranslation();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setMessage(null);
+    setSubmitting(true);
     try {
-      const { error } = await supabase.from("player").insert([
-        {
-          firstname,
-          lastname,
-          group_id: [parseInt(groupId)],
-          club_id: clubId,
-          tournament_id: tournamentId,
-        },
-      ]);
-      if (error) throw error;
+      const idNum = Number(tournamentId);
+      const gid = Number(groupId);
+      const cid = Number(clubId);
+
+      if (
+        !Number.isFinite(idNum) ||
+        !Number.isFinite(gid) ||
+        !Number.isFinite(cid)
+      ) {
+        throw new Error("Invalid form values");
+      }
+
+      const payload = {
+        firstname: String(firstname).trim(),
+        lastname: String(lastname).trim(),
+        group_id: [gid],
+        club_id: cid,
+        tournament_id: idNum,
+      };
+
+      // Try backend (admin-protected) endpoint first
+      try {
+        await post(`/api/tournaments/${idNum}/players`, payload);
+      } catch (err) {
+        // If running locally without the serverless endpoint (404/405),
+        // fallback to legacy direct insert via Supabase anon (kept for dev)
+        const status = err?.status || err?.body?.status;
+        if (status !== 404 && status !== 405) {
+          throw err;
+        }
+        // dynamic import to avoid bundling supabase client when not needed
+        const { default: supabase } = await import(
+          "../../Helpers/supabaseClient"
+        );
+        const { error } = await supabase.from("player").insert([payload]);
+        if (error) throw error;
+      }
 
       setMessage(t("playerAdded"));
       setFirstname("");
       setLastname("");
       setGroupId("");
       setClubId("");
-
-      if (onAddSuccess) {
-        onAddSuccess();
-      }
+      if (onAddSuccess) onAddSuccess();
     } catch (error) {
-      setMessage(error.message);
+      setMessage(error?.body?.error || error?.message || String(error));
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -78,7 +107,9 @@ const PlayerForm = ({ tournamentId, clubs, groups, onAddSuccess }) => {
           onChange={(e) => setClubId(e.target.value)}
           required
         >
-          <option value="">{t("from")}</option>
+          <option value="">
+            {t("selectClub", { defaultValue: "Select a club" })}
+          </option>
           {sortClubs(clubs).map((club) => (
             <option key={club.id} value={club.id}>
               {club.name}
@@ -102,8 +133,10 @@ const PlayerForm = ({ tournamentId, clubs, groups, onAddSuccess }) => {
           ))}
         </select>
       </div>
-      <button type="submit" className="btn btn-primary">
-        {t("addPlayer")}
+      <button type="submit" className="btn btn-primary" disabled={submitting}>
+        {submitting
+          ? t("saving", { defaultValue: "Saving..." })
+          : t("addPlayer")}
       </button>
     </form>
   );
