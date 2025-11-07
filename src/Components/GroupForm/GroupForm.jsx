@@ -1,5 +1,5 @@
 import { useState } from "react";
-import supabase from "../../Helpers/supabaseClient";
+import { get, post } from "../../Helpers/apiClient";
 import { useTranslation } from "react-i18next";
 
 const GroupForm = ({ tournamentId, setGroups }) => {
@@ -15,39 +15,95 @@ const GroupForm = ({ tournamentId, setGroups }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!groupName) return;
+    const name = String(groupName).trim();
+    if (!name) return;
+
+    const idNum = Number(tournamentId);
+    if (!Number.isFinite(idNum) || idNum <= 0) {
+      console.error(
+        "Invalid tournamentId provided to GroupForm:",
+        tournamentId
+      );
+      return;
+    }
+
+    const payload = {
+      name,
+      round_type: roundType,
+      highest_position:
+        highestPosition === "" || highestPosition === null
+          ? null
+          : parseInt(highestPosition, 10),
+      group_type: groupType,
+      tournament_id: idNum,
+    };
 
     try {
-      const { error } = await supabase.from("group").insert([
-        {
-          name: groupName,
-          round_type: roundType,
-          highest_position:
-            highestPosition === "" ? null : parseInt(highestPosition, 10),
-          group_type: groupType,
-          tournament_id: tournamentId,
-        },
-      ]);
+      // 1) Create group via backend (uses service role on server)
+      // Prefer the REST-unified route on Vercel
+      let created = false;
+      const candidates = [
+        // serverless unified handler (recommended)
+        `/api/tournaments/${idNum}/groups`,
+        // monolith dev server (if mounted under same origin)
+        `/api/tournaments/${idNum}/groups`,
+      ];
 
-      if (error) throw error;
+      let lastErr = null;
+      for (const url of candidates) {
+        try {
+          const res = await post(url, payload);
+          // if backend returns representation, consider created
+          if (res) {
+            created = true;
+            break;
+          }
+        } catch (err) {
+          lastErr = err;
+          continue;
+        }
+      }
 
-      const { data: newGroups, error: fetchError } = await supabase
-        .from("group")
-        .select(
-          "id, name, round_type, tournament_id, group_type, group_former, highest_position"
-        )
-        .eq("tournament_id", tournamentId);
+      if (!created) {
+        // As a safety, report the last error (avoids silent failure)
+        throw lastErr || new Error("create_group_failed");
+      }
 
-      if (fetchError) throw fetchError;
+      // 2) Refetch groups for the tournament (GET)
+      const groupsPaths = [
+        `/api/tournaments/${idNum}/groups`,
+        `/api/tournaments/${idNum}/groups`,
+      ];
+      let newGroups = [];
+      let fetched = false;
+      for (const url of groupsPaths) {
+        try {
+          const data = await get(url);
+          if (Array.isArray(data)) {
+            newGroups = data;
+          } else if (Array.isArray(data?.groups)) {
+            newGroups = data.groups;
+          }
+          fetched = true;
+          break;
+        } catch (_) {
+          // try next variant
+        }
+      }
+      if (!fetched) {
+        console.warn("[GroupForm] Unable to refresh groups list");
+      } else {
+        setGroups(newGroups);
+      }
 
-      setGroups(newGroups);
-
+      // 3) Reset UI state
       setGroupName("");
       setHighestPosition("");
       setRoundType(localStorage.getItem("lastRoundType") || "1st round");
       setGroupType(localStorage.getItem("lastGroupType") || "mix");
     } catch (error) {
       console.error("Erreur lors de la création du groupe :", error);
+      alert("Erreur lors de la création du groupe.");
     }
   };
 
