@@ -158,66 +158,133 @@ const ScheduleEdit = () => {
   const saveMatches = async (groupId) => {
     try {
       const matches = generatedMatches[groupId];
-
-      if (!matches || matches.length === 0) {
-        alert(t("matchesNoValidToSave"));
+      if (!Array.isArray(matches) || matches.length === 0) {
+        alert(
+          t("matchesNoValidToSave", {
+            defaultValue: "Aucun match à enregistrer.",
+          })
+        );
         return;
       }
 
-      const tournamentId = id;
+      // Vérifie que le tournoi existe (optionnel mais utile)
+      const tournamentId = Number(id);
+      if (!Number.isFinite(tournamentId) || tournamentId <= 0) {
+        throw new Error(
+          t("tournamentNotFound", { defaultValue: "Tournoi introuvable." })
+        );
+      }
       const { data: tournament, error: tournamentError } = await supabase
         .from("tournament")
         .select("id")
         .eq("id", tournamentId)
-        .single();
-
+        .maybeSingle();
       if (tournamentError || !tournament) {
-        throw new Error(t("tournamentNotFound"));
+        throw new Error(
+          t("tournamentNotFound", { defaultValue: "Tournoi introuvable." })
+        );
       }
 
-      const validMatches = matches.map((match) => {
-        console.log(match);
+      // Validation et normalisation des matches
+      const validMatches = matches.map((m, idx) => {
+        const p1Id = m?.player1_id ?? null;
+        const p2Id = m?.player2_id ?? null;
+        const p1Pos = p1Id ? null : m?.player1_group_position ?? null;
+        const p2Pos = p2Id ? null : m?.player2_group_position ?? null;
+        const day = String(m?.match_date || "").trim();
+        const time = String(m?.match_time || "").trim();
+        const tableNum = Number.parseInt(m?.table_number, 10);
+
         if (
-          (!match.player1_id && !match.player1_group_position) ||
-          (!match.player2_id && !match.player2_group_position) ||
-          !match.match_date ||
-          !match.match_time ||
-          !match.table_number
+          (!p1Id && !p1Pos) ||
+          (!p2Id && !p2Pos) ||
+          !day ||
+          !time ||
+          !Number.isFinite(tableNum)
         ) {
-          throw new Error(t("matchesIncompleteData"));
+          throw new Error(
+            t("matchesIncompleteData", {
+              defaultValue: `Ligne ${
+                idx + 1
+              } : données incomplètes (joueurs/placeholders/date/heure/table).`,
+            })
+          );
         }
 
         return {
-          player1_id: match.player1_id ?? null,
-          player2_id: match.player2_id ?? null,
-          player1_group_position: match.player1_id
-            ? null
-            : match.player1_group_position ?? null,
-          player2_group_position: match.player2_id
-            ? null
-            : match.player2_group_position ?? null,
-          result: [],
-          match_day: match.match_date,
-          match_time: match.match_time,
-          table_number: parseInt(match.table_number, 10),
+          player1_id: p1Id,
+          player2_id: p2Id,
+          player1_group_position: p1Pos,
+          player2_group_position: p2Pos,
+          result: Array.isArray(m?.result) ? m.result : [],
+          match_day: day, // ex: "2025-12-12"
+          match_time: time, // ex: "09:30"
+          table_number: tableNum, // integer
           tournament_id: tournamentId,
-          group_id: groupId,
-          referee1_id: null,
-          referee2_id: null,
+          group_id: Number(groupId),
+          referee1_id: m?.referee1_id ?? null,
+          referee2_id: m?.referee2_id ?? null,
         };
       });
 
-      const { error } = await supabase.from("match").insert(validMatches);
-      if (error) {
-        console.error(error);
-        throw new Error(error.message);
+      // 1) Essai via backend Vercel (recommandé en prod, bypass RLS)
+      // Route attendue: POST /api/tournaments/:id/matches  body: { matches: [...] }
+      let backendOk = false;
+      try {
+        const resp = await fetch(`/api/tournaments/${tournamentId}/matches`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ matches: validMatches }),
+        });
+
+        if (resp.ok) {
+          backendOk = true;
+        } else if (resp.status !== 404 && resp.status !== 405) {
+          // Si la route existe mais renvoie une autre erreur, on remonte l'erreur
+          const msg = await resp.text().catch(() => "");
+          throw new Error(
+            t("backendInsertFailed", {
+              defaultValue: `Insertion backend échouée (${resp.status}). ${msg}`,
+            })
+          );
+        }
+      } catch (e) {
+        // On log seulement; on tentera le fallback Supabase juste après
+        console.warn(
+          "[saveMatches] backend insert failed, fallback to Supabase:",
+          e?.message || e
+        );
       }
 
-      alert(t("matchesSavedSuccess"));
+      // 2) Fallback direct Supabase si pas de route backend
+      if (!backendOk) {
+        const { error } = await supabase.from("match").insert(validMatches);
+        if (error) {
+          // Cas fréquent en prod : 401/403 dû à RLS → inviter à se connecter admin / utiliser backend
+          if (
+            error?.code === "PGRST301" ||
+            error?.message?.includes("permission") ||
+            error?.message?.includes("RLS")
+          ) {
+            throw new Error(
+              t("rlsRejectInsert", {
+                defaultValue:
+                  "Insertion refusée par les règles de sécurité (RLS). Connectez‑vous en admin ou activez la route backend /api/tournaments/:id/matches.",
+              })
+            );
+          }
+          throw new Error(error.message || "insert_failed");
+        }
+      }
+
+      alert(t("matchesSavedSuccess", { defaultValue: "Matchs enregistrés." }));
       setGeneratedMatches((prev) => ({ ...prev, [groupId]: [] }));
     } catch (error) {
-      console.error(error.message);
-      alert(error.message);
+      console.error(error);
+      alert(
+        error?.message ||
+          t("unknownError", { defaultValue: "Erreur inconnue." })
+      );
     }
   };
 
@@ -263,11 +330,6 @@ const ScheduleEdit = () => {
     }
     return arr[position - 1] || `(${position})`;
   };
-
-  console.log("1st filteredSortedGroups:", filteredSortedGroups);
-  console.log("2nd sortedPlayers:", sortedPlayers);
-  console.log("3rd generatedMatches:", generatedMatches);
-  console.log("4th clubs:", clubs);
 
   return (
     <div>
