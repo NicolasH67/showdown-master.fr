@@ -130,8 +130,15 @@ function headers(SERVICE_KEY) {
 function supabaseBase() {
   return (process.env.SUPABASE_URL || "").replace(/\/+$/, "");
 }
-async function sFetch(path, init) {
-  const r = await fetch(`${supabaseBase()}${path}`, init);
+async function sFetch(path, init = {}) {
+  const mergedHeaders = {
+    Accept: "application/json",
+    ...(init && init.headers ? init.headers : {}),
+  };
+  const r = await fetch(`${supabaseBase()}${path}`, {
+    ...init,
+    headers: mergedHeaders,
+  });
   const text = await r.text();
   return { ok: r.ok, status: r.status, text };
 }
@@ -535,6 +542,81 @@ async function handlePatchMatch(req, res, matchId, body) {
   return send(res, status, ok ? JSON.parse(text) : text);
 }
 
+async function handleCreateMatches(req, res, id, body) {
+  // Admin-only: must be admin for this tournament
+  const admin = await isAdminForTournament(req, id);
+  if (!admin) return send(res, 401, { error: "unauthorized" });
+
+  // Accept a single object, an array, or { matches: [...] }
+  const rows = Array.isArray(body?.matches)
+    ? body.matches
+    : Array.isArray(body)
+    ? body
+    : body && typeof body === "object"
+    ? [body]
+    : [];
+
+  if (!rows.length) return send(res, 400, { error: "missing_payload" });
+
+  // Normalize each row with minimal required fields
+  const payload = [];
+  for (const m of rows) {
+    const match_day = m?.match_day ?? m?.match_date ?? null;
+    const match_time = m?.match_time ?? null;
+    const table_number =
+      m?.table_number != null ? Number(m.table_number) : null;
+
+    if (
+      (!m?.player1_id && !m?.player1_group_position) ||
+      (!m?.player2_id && !m?.player2_group_position) ||
+      !match_day ||
+      !match_time ||
+      table_number == null
+    ) {
+      return send(res, 400, { error: "matches_incomplete_data" });
+    }
+
+    payload.push({
+      player1_id: m.player1_id ?? null,
+      player2_id: m.player2_id ?? null,
+      player1_group_position: m.player1_id
+        ? null
+        : m.player1_group_position ?? null,
+      player2_group_position: m.player2_id
+        ? null
+        : m.player2_group_position ?? null,
+      result: Array.isArray(m.result) ? m.result : [],
+      match_day,
+      match_time,
+      table_number,
+      tournament_id: id,
+      group_id: m.group_id ?? null,
+      referee1_id: m.referee1_id ?? null,
+      referee2_id: m.referee2_id ?? null,
+    });
+  }
+
+  const { ok, status, text } = await sFetch(
+    `/rest/v1/match?select=id,tournament_id,group_id,match_day,match_time,table_number,player1_id,player2_id,player1_group_position,player2_group_position,result,referee1_id,referee2_id,created_at,updated_at`,
+    {
+      method: "POST",
+      headers: {
+        ...headers(process.env.SUPABASE_SERVICE_KEY),
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  if (!ok) return send(res, status, text, "application/json");
+  let arr = [];
+  try {
+    arr = JSON.parse(text);
+  } catch {}
+  return send(res, 201, Array.isArray(arr) ? arr : [arr]);
+}
+
 //
 // Small helper to load bcryptjs in both CJS/ESM environments
 async function getBcrypt() {
@@ -795,6 +877,7 @@ export default async function handler(req, res) {
       return handleLogout(req, res);
     }
     if (req.method === "GET" && pathname === "/api/auth/me") {
+      res.setHeader("Cache-Control", "no-store");
       return handleMe(req, res);
     }
 
@@ -904,6 +987,17 @@ export default async function handler(req, res) {
       return handleListMatches(req, res, id);
     }
 
+    if (
+      req.method === "POST" &&
+      /^\/api\/tournaments\/matches\/?$/.test(pathname)
+    ) {
+      const id = Number(searchParams.get("id"));
+      if (!Number.isFinite(id))
+        return send(res, 400, { error: "invalid_tournament_id" });
+      const body = await readJson(req);
+      return handleCreateMatches(req, res, id, body);
+    }
+
     const mT = pathname.match(/^\/api\/tournaments\/(\d+)\/?$/);
     if (req.method === "GET" && mT) {
       return handleGetTournament(req, res, Number(mT[1]));
@@ -965,8 +1059,16 @@ export default async function handler(req, res) {
     }
 
     const mMatches = pathname.match(/^\/api\/tournaments\/(\d+)\/matches\/?$/);
-    if (req.method === "GET" && mMatches)
-      return handleListMatches(req, res, Number(mMatches[1]));
+    if (mMatches) {
+      const idNum = Number(mMatches[1]);
+      if (req.method === "GET") {
+        return handleListMatches(req, res, idNum);
+      }
+      if (req.method === "POST") {
+        const body = await readJson(req);
+        return handleCreateMatches(req, res, idNum, body);
+      }
+    }
     const mPatchMatch = pathname.match(
       /^\/api\/tournaments\/(\d+)\/matches\/(\d+)\/?$/
     );
