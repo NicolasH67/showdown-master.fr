@@ -12,6 +12,7 @@ const ResultEdit = () => {
   const { t } = useTranslation();
   const location = useLocation();
   const { id } = useParams();
+  const tournamentIdNum = Number(id);
   const {
     matches,
     groups,
@@ -38,64 +39,99 @@ const ResultEdit = () => {
   }, [location.pathname, matches.length]);
 
   useEffect(() => {
+    let cancelled = false;
+
     const fetchClubs = async () => {
-      const { data: clubs, error: clubsError } = await supabase
-        .from("club")
-        .select("*");
-      if (clubsError) {
-        console.error("Erreur de chargement des clubs :", clubsError.message);
-      } else {
-        setAllClubs(clubs || []);
+      try {
+        if (!Number.isFinite(tournamentIdNum) || tournamentIdNum <= 0) {
+          setAllClubs([]);
+          return;
+        }
+        const { data: clubs, error: clubsError } = await supabase
+          .from("club")
+          .select("id,name,abbreviation,tournament_id")
+          .eq("tournament_id", tournamentIdNum)
+          .order("name", { ascending: true });
+
+        if (clubsError) {
+          console.error("Erreur de chargement des clubs :", clubsError.message);
+          if (!cancelled) setAllClubs([]);
+          return;
+        }
+        if (!cancelled) setAllClubs(clubs || []);
+      } catch (e) {
+        console.error("Erreur de chargement des clubs :", e?.message || e);
+        if (!cancelled) setAllClubs([]);
       }
     };
+
     fetchClubs();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [tournamentIdNum]);
 
-  const uniqueDates = Array.from(
-    new Set((matches || []).map((m) => m.match_day).filter(Boolean))
-  ).sort();
+  const uniqueDates = React.useMemo(() => {
+    const set = new Set(
+      (matches || [])
+        .map((m) => m?.match_day)
+        .filter((d) => typeof d === "string" && d.length > 0)
+    );
+    return Array.from(set).sort();
+  }, [matches]);
 
-  const tableCount = Math.max(
-    0,
-    ...(matches || []).map((m) => Number(m.table_number || 0))
-  );
+  const tableCount = React.useMemo(() => {
+    const nums = (matches || []).map((m) => Number(m?.table_number || 0));
+    if (nums.length === 0) return 0;
+    return Math.max(0, ...nums);
+  }, [matches]);
 
   // Build a stable global MNR ordering (by day, time, then table)
-  const globallySorted = [...(matches || [])].sort((a, b) => {
-    const dateA = new Date(`${a.match_day}T${a.match_time}`);
-    const dateB = new Date(`${b.match_day}T${b.match_time}`);
-    if (dateA < dateB) return -1;
-    if (dateA > dateB) return 1;
-    const ta = Number(a.table_number || 0);
-    const tb = Number(b.table_number || 0);
-    if (ta !== tb) return ta - tb;
-    // final tiebreaker to keep sort stable
-    return Number(a.id) - Number(b.id);
-  });
+  const globallySorted = React.useMemo(() => {
+    const safeTs = (m) => {
+      const s = `${m?.match_day || ""}T${m?.match_time || ""}`;
+      const ts = Date.parse(s);
+      return Number.isFinite(ts) ? ts : Number.MAX_SAFE_INTEGER;
+    };
+    const copy = [...(matches || [])];
+    copy.sort((a, b) => {
+      const ta = safeTs(a);
+      const tb = safeTs(b);
+      if (ta !== tb) return ta - tb;
+      const taNum = Number(a?.table_number || 0);
+      const tbNum = Number(b?.table_number || 0);
+      if (taNum !== tbNum) return taNum - tbNum;
+      return Number(a?.id || 0) - Number(b?.id || 0);
+    });
+    return copy;
+  }, [matches]);
 
   const mnrMap = new Map();
   globallySorted.forEach((m, idx) => mnrMap.set(m.id, idx + 1));
 
-  const filteredMatches = (matches || [])
-    .filter((m) => !selectedDate || m.match_day === selectedDate)
-    .filter((m) =>
-      selectedTable === null || selectedTable === undefined
-        ? true
-        : Number(m.table_number) === Number(selectedTable)
-    );
-
-  const sortedMatches = [...filteredMatches].sort((a, b) => {
-    const dateA = new Date(`${a.match_day}T${a.match_time}`);
-    const dateB = new Date(`${b.match_day}T${b.match_time}`);
-
-    if (dateA < dateB) {
-      return -1;
-    } else if (dateA > dateB) {
-      return 1;
-    } else {
-      return a.table_number - b.table_number;
-    }
-  });
+  const sortedMatches = React.useMemo(() => {
+    const safeTs = (m) => {
+      const s = `${m?.match_day || ""}T${m?.match_time || ""}`;
+      const ts = Date.parse(s);
+      return Number.isFinite(ts) ? ts : Number.MAX_SAFE_INTEGER;
+    };
+    const filtered = (matches || [])
+      .filter((m) => !selectedDate || m.match_day === selectedDate)
+      .filter((m) =>
+        selectedTable === null || selectedTable === undefined
+          ? true
+          : Number(m.table_number) === Number(selectedTable)
+      );
+    return [...filtered].sort((a, b) => {
+      const ta = safeTs(a);
+      const tb = safeTs(b);
+      if (ta !== tb) return ta - tb;
+      const taNum = Number(a?.table_number || 0);
+      const tbNum = Number(b?.table_number || 0);
+      if (taNum !== tbNum) return taNum - tbNum;
+      return Number(a?.id || 0) - Number(b?.id || 0);
+    });
+  }, [matches, selectedDate, selectedTable]);
 
   if (loading) {
     return <div>{t("loadingMatchs")}</div>;
@@ -151,7 +187,7 @@ const ResultEdit = () => {
                 referees={referees}
                 onMatchChange={handleMatchChange}
                 onSave={handleSave}
-                tournamentId={id}
+                tournamentId={tournamentIdNum}
               />
             ))}
           </tbody>

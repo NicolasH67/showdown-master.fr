@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import supabase from "../../Helpers/supabaseClient";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
@@ -8,7 +8,7 @@ const MatchRowResult = ({
   allgroups,
   index,
   mnr,
-  referees,
+  referees = [],
   onMatchChange,
   onSave,
   allclubs,
@@ -245,18 +245,19 @@ const MatchRowResult = ({
     }));
   };
 
-  // Cache de ranking pour éviter des re-fetchs multiples pendant une passe
-  const rankingCache = new Map(); // groupId -> ranking array
+  // Cache de ranking pour éviter des re-fetchs multiples entre rendus
+  const rankingCacheRef = useRef(new Map()); // groupId -> ranking array
 
   const getRankingForGroup = async (groupId) => {
-    if (rankingCache.has(groupId)) return rankingCache.get(groupId);
+    const cache = rankingCacheRef.current;
+    if (cache.has(groupId)) return cache.get(groupId);
     const matches = await fetchGroupMatches(groupId);
     if (!matches || matches.length === 0) {
-      rankingCache.set(groupId, []);
+      cache.set(groupId, []);
       return [];
     }
     const ranking = computeRankingFromMatches(matches);
-    rankingCache.set(groupId, ranking);
+    cache.set(groupId, ranking);
     return ranking;
   };
 
@@ -667,10 +668,17 @@ const MatchRowResult = ({
         />
       </td>
       <td className="text-center">
-        <Link to={`/tournament/${tournamentId}/groups/${match.group.id}`}>
-          {match.group.name} |{" "}
-          {t(match.group.group_type)?.charAt(0)?.toUpperCase()}
-        </Link>
+        {match?.group?.id ? (
+          <Link to={`/tournament/${tournamentId}/groups/${match.group.id}`}>
+            {match.group.name} |{" "}
+            {(t(match.group.group_type) || match.group.group_type || "")
+              .toString()
+              .charAt(0)
+              .toUpperCase()}
+          </Link>
+        ) : (
+          <span role="text">—</span>
+        )}
       </td>
       <td className="text-center">
         {match.player1 && match.player2 ? (
@@ -726,12 +734,20 @@ const MatchRowResult = ({
             match.player2_group_position &&
             match.group?.group_former ? (
               (() => {
-                const former = JSON.parse(match.group.group_former);
+                let formerArr = [];
+                try {
+                  formerArr = JSON.parse(match.group.group_former);
+                } catch (_) {
+                  return <span role="text">{t("notAssigned")}</span>;
+                }
+
                 const getLabel = (position) => {
-                  const entry = former[Number(position) - 1];
+                  const entry = formerArr[Number(position) - 1];
                   if (!entry) return position;
                   const groupId = entry[1];
-                  const group = allgroups.find((g) => g.id === groupId);
+                  const group = (allgroups || []).find(
+                    (g) => Number(g.id) === Number(groupId)
+                  );
                   return group
                     ? `${group.name}(${entry[0]})`
                     : `${groupId}(${entry[0]})`;
