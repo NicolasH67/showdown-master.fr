@@ -158,6 +158,7 @@ const ScheduleEdit = () => {
   const saveMatches = async (groupId) => {
     try {
       const matches = generatedMatches[groupId];
+
       if (!Array.isArray(matches) || matches.length === 0) {
         alert(
           t("matchesNoValidToSave", {
@@ -167,21 +168,17 @@ const ScheduleEdit = () => {
         return;
       }
 
-      // Vérifie que le tournoi existe (optionnel mais utile)
+      // Valide les identifiants de contexte uniquement côté client
       const tournamentId = Number(id);
       if (!Number.isFinite(tournamentId) || tournamentId <= 0) {
         throw new Error(
           t("tournamentNotFound", { defaultValue: "Tournoi introuvable." })
         );
       }
-      const { data: tournament, error: tournamentError } = await supabase
-        .from("tournament")
-        .select("id")
-        .eq("id", tournamentId)
-        .maybeSingle();
-      if (tournamentError || !tournament) {
+      const gId = Number(groupId);
+      if (!Number.isFinite(gId) || gId <= 0) {
         throw new Error(
-          t("tournamentNotFound", { defaultValue: "Tournoi introuvable." })
+          t("groupNotFound", { defaultValue: "Groupe introuvable." })
         );
       }
 
@@ -217,54 +214,62 @@ const ScheduleEdit = () => {
           player1_group_position: p1Pos,
           player2_group_position: p2Pos,
           result: Array.isArray(m?.result) ? m.result : [],
-          match_day: day, // ex: "2025-12-12"
-          match_time: time, // ex: "09:30"
-          table_number: tableNum, // integer
+          match_day: day, // YYYY-MM-DD
+          match_time: time, // HH:mm
+          table_number: tableNum,
           tournament_id: tournamentId,
-          group_id: Number(groupId),
+          group_id: gId,
           referee1_id: m?.referee1_id ?? null,
           referee2_id: m?.referee2_id ?? null,
         };
       });
 
-      // 1) Essai via backend Vercel (recommandé en prod, bypass RLS)
-      // Route attendue: POST /api/tournaments/:id/matches  body: { matches: [...] }
+      // 1) Tente d'abord les routes backend (bypass RLS). Deux variantes possibles.
       let backendOk = false;
-      try {
-        const resp = await fetch(`/api/tournaments/${tournamentId}/matches`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ matches: validMatches }),
-        });
+      const backends = [
+        `/api/tournaments/${tournamentId}/matches`,
+        `/api/tournaments/matches?id=${tournamentId}`,
+      ];
 
-        if (resp.ok) {
-          backendOk = true;
-        } else if (resp.status !== 404 && resp.status !== 405) {
-          // Si la route existe mais renvoie une autre erreur, on remonte l'erreur
-          const msg = await resp.text().catch(() => "");
-          throw new Error(
-            t("backendInsertFailed", {
-              defaultValue: `Insertion backend échouée (${resp.status}). ${msg}`,
-            })
+      for (const url of backends) {
+        try {
+          const resp = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ matches: validMatches }),
+          });
+
+          if (resp.ok) {
+            backendOk = true;
+            break;
+          }
+
+          // Si la route existe mais renvoie autre chose que 404/405, on arrête et on surface l'erreur
+          if (resp.status !== 404 && resp.status !== 405) {
+            const msg = await resp.text().catch(() => "");
+            throw new Error(
+              t("backendInsertFailed", {
+                defaultValue: `Insertion backend échouée (${resp.status}). ${msg}`,
+              })
+            );
+          }
+        } catch (e) {
+          // continue vers le backend suivant, puis fallback Supabase
+          console.warn(
+            `[saveMatches] backend '${url}' failed:`,
+            e?.message || e
           );
         }
-      } catch (e) {
-        // On log seulement; on tentera le fallback Supabase juste après
-        console.warn(
-          "[saveMatches] backend insert failed, fallback to Supabase:",
-          e?.message || e
-        );
       }
 
-      // 2) Fallback direct Supabase si pas de route backend
+      // 2) Fallback direct Supabase si aucune route backend n'a fonctionné
       if (!backendOk) {
         const { error } = await supabase.from("match").insert(validMatches);
         if (error) {
-          // Cas fréquent en prod : 401/403 dû à RLS → inviter à se connecter admin / utiliser backend
           if (
             error?.code === "PGRST301" ||
-            error?.message?.includes("permission") ||
-            error?.message?.includes("RLS")
+            /permission|RLS/i.test(error?.message || "")
           ) {
             throw new Error(
               t("rlsRejectInsert", {
