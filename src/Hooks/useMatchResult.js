@@ -2,16 +2,38 @@
 // Hook de gestion des matchs (récupération, édition et sauvegarde des résultats)
 import { useEffect, useRef, useState } from "react";
 import supabase from "../Helpers/supabaseClient";
+import usePlayers from "./usePlayers";
+import useMatches from "./useMatchs";
+import useGroupsData from "./useGroupsData";
+import useReferees from "./useReferee"; // garde le même chemin que dans le projet
 
 const MAX_SETS = 5; // sécurité côté UI
 
 const useMatchesResult = (tournamentId) => {
   const [matches, setMatches] = useState([]);
-  const [referees, setReferees] = useState([]);
   const [results, setResults] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [groups, setGroups] = useState([]);
+
+  // données issues des hooks centralisés
+  const {
+    matches: hookMatches = [],
+    loading: matchesLoading = false,
+    error: matchesError = null,
+    refresh: refreshMatches,
+  } = useMatches(tournamentId);
+
+  const {
+    groups: hookGroups = [],
+    loading: groupsLoading = false,
+    error: groupsError = null,
+  } = useGroupsData(tournamentId);
+
+  const {
+    referees: hookReferees = [],
+    loading: refsLoading = false,
+    error: refsError = null,
+  } = useReferees(tournamentId);
 
   // évite les setState après un unmount
   const cancelledRef = useRef(false);
@@ -22,76 +44,32 @@ const useMatchesResult = (tournamentId) => {
     };
   }, []);
 
+  // Synchronise les données issues des hooks vers l'état local (édition locale possible)
   useEffect(() => {
-    const fetchMatchesAndReferees = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+    // état de chargement global
+    const compositeLoading = matchesLoading || groupsLoading || refsLoading;
+    setLoading(compositeLoading);
 
-        const idNum = Number(tournamentId);
-        if (!Number.isFinite(idNum) || idNum <= 0) {
-          throw new Error("Invalid tournament id");
-        }
+    // première erreur disponible
+    setError(matchesError || groupsError || refsError || null);
 
-        // 1) Matches: tri côté SQL pour éviter le tri JS et les fautes de colonnes
-        const { data: matchData, error: matchError } = await supabase
-          .from("match")
-          .select(
-            `
-            id,
-            player1:player1_id(id, firstname, lastname, club_id),
-            player2:player2_id(id, firstname, lastname, club_id),
-            player1_group_position,
-            player2_group_position,
-            group:group_id(id, name, group_type, group_former, tournament_id),
-            match_day,
-            match_time,
-            table_number,
-            referee1_id,
-            referee2_id,
-            result,
-            tournament_id,
-            group_id
-          `
-          )
-          .eq("tournament_id", idNum)
-          .order("match_day", { ascending: true })
-          .order("match_time", { ascending: true })
-          .order("table_number", { ascending: true });
-        if (matchError) throw matchError;
+    if (!compositeLoading) {
+      // copie éditable des matchs
+      setMatches(Array.isArray(hookMatches) ? hookMatches : []);
+    }
+  }, [
+    matchesLoading,
+    groupsLoading,
+    refsLoading,
+    hookMatches,
+    matchesError,
+    groupsError,
+    refsError,
+  ]);
 
-        // 2) Groups
-        const { data: groupData, error: groupError } = await supabase
-          .from("group")
-          .select("id, name, group_former, tournament_id")
-          .eq("tournament_id", idNum)
-          .order("name", { ascending: true });
-        if (groupError) throw groupError;
-
-        // 3) Referees
-        const { data: refereeData, error: refereeError } = await supabase
-          .from("referee")
-          .select("id, firstname, lastname")
-          .eq("tournament_id", idNum)
-          .order("lastname", { ascending: true })
-          .order("firstname", { ascending: true });
-        if (refereeError) throw refereeError;
-
-        if (!cancelledRef.current) {
-          setMatches(matchData || []);
-          setGroups(groupData || []);
-          setReferees(refereeData || []);
-        }
-      } catch (err) {
-        console.error("[useMatchesResult] fetch error:", err);
-        if (!cancelledRef.current) setError(err);
-      } finally {
-        if (!cancelledRef.current) setLoading(false);
-      }
-    };
-
-    fetchMatchesAndReferees();
-  }, [tournamentId]);
+  // expose des valeurs dérivées depuis les hooks
+  const groups = Array.isArray(hookGroups) ? hookGroups : [];
+  const referees = Array.isArray(hookReferees) ? hookReferees : [];
 
   // Mise à jour des champs d'un match (date, heure, table, arbitres)
   const handleMatchChange = (matchId, field, value) => {
@@ -182,6 +160,12 @@ const useMatchesResult = (tournamentId) => {
     setMatches((prev) =>
       prev.map((m) => (m.id === matchId ? { ...m, result: resultArray } : m))
     );
+
+    if (typeof refreshMatches === "function") {
+      try {
+        await refreshMatches();
+      } catch (_) {}
+    }
 
     // Essaye d'enclencher la qualification si applicable
     const match = matches.find((m) => m.id === matchId);
