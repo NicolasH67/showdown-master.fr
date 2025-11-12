@@ -1,6 +1,6 @@
 // src/Hooks/useMatchResult.js
 // Hook de gestion des matchs (récupération, édition et sauvegarde des résultats)
-import { useEffect, useRef, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import supabase from "../Helpers/supabaseClient";
 import usePlayers from "./usePlayers";
 import useMatches from "./useMatchs";
@@ -34,6 +34,12 @@ const useMatchesResult = (tournamentId) => {
     loading: refsLoading = false,
     error: refsError = null,
   } = useReferees(tournamentId);
+
+  const {
+    players: players = [],
+    loading: playersLoading = false,
+    error: playersError = null,
+  } = usePlayers(tournamentId);
 
   // évite les setState après un unmount
   const cancelledRef = useRef(false);
@@ -95,29 +101,59 @@ const useMatchesResult = (tournamentId) => {
 
   // Sauvegarde d'un match (métadonnées)
   const handleSave = async (matchId) => {
+    // sécurité de base
+    const idNum = Number(tournamentId);
+    if (!Number.isFinite(idNum) || idNum <= 0) {
+      throw new Error("Invalid tournament id");
+    }
+
     const matchToSave = matches.find((m) => m.id === matchId);
     if (!matchToSave) return;
 
-    // normalisation
+    // Normalisation du payload
     const payload = {
       match_day: matchToSave.match_day || null,
       match_time: matchToSave.match_time || null,
       table_number: matchToSave.table_number
         ? parseInt(matchToSave.table_number, 10)
         : null,
-      referee1_id: matchToSave.referee1_id || null,
-      referee2_id: matchToSave.referee2_id || null,
+      referee1_id:
+        matchToSave.referee1_id != null
+          ? Number(matchToSave.referee1_id)
+          : null,
+      referee2_id:
+        matchToSave.referee2_id != null
+          ? Number(matchToSave.referee2_id)
+          : null,
     };
 
-    const { error: updErr } = await supabase
-      .from("match")
-      .update(payload)
-      .eq("id", matchId);
+    // Endpoints à essayer (ordre de préférence)
+    const urls = [
+      `/api/tournaments/${idNum}/matches/${matchId}`, // handler unifié Vercel / monolithe
+      `/api/tournaments/matches/${matchId}?id=${idNum}`, // fallback si tu exposes une variante
+    ];
 
-    if (updErr) {
-      console.error("[useMatchesResult] save meta error:", updErr);
-      throw updErr;
+    let lastErr = null;
+    for (const url of urls) {
+      try {
+        await patch(url, payload);
+
+        // maj locale pour refléter la sauvegarde
+        setMatches((prev) =>
+          prev.map((m) => (m.id === matchId ? { ...m, ...payload } : m))
+        );
+
+        return true;
+      } catch (e) {
+        lastErr = e;
+        // Sur 404/405 on tente le fallback suivant
+        if (e?.status === 404 || e?.status === 405) continue;
+        // Autres erreurs → on arrête
+        break;
+      }
     }
+
+    throw lastErr || new Error("save_failed");
   };
 
   // Construction du tableau de scores [p1s1, p2s1, p1s2, p2s2, ...]
