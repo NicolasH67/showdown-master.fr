@@ -3,6 +3,7 @@
 // -> version sans accès direct à Supabase : utilise uniquement les routes /api
 
 import { useEffect, useRef, useState } from "react";
+import { useParams } from "react-router-dom";
 import { get, patch, ApiError } from "../Helpers/apiClient";
 import usePlayers from "./usePlayers";
 import useMatches from "./useMatchs";
@@ -16,23 +17,38 @@ async function firstOk(paths, options = {}) {
   let lastErr = null;
   for (const p of paths) {
     try {
-      const json =
-        options.method === "PATCH"
-          ? await patch(p, options.body)
-          : await get(p);
-      return json;
+      if (options.method === "PATCH") {
+        try {
+          const out = await patch(p, options.body);
+          // Si la route renvoie 204/empty, notre client peut renvoyer undefined => considérer comme succès
+          return out === undefined ? {} : out;
+        } catch (e) {
+          // Accepte aussi les cas où le serveur répond 204 No Content
+          if (
+            e?.status === 204 ||
+            String(e?.message || "").includes("No content")
+          ) {
+            return {};
+          }
+          throw e;
+        }
+      } else {
+        const json = await get(p);
+        return json;
+      }
     } catch (e) {
       lastErr = e;
-      // si 404/405 on tente le fallback suivant
-      if (e?.status === 404 || e?.status === 405) continue;
-      // sinon on s'arrête
-      break;
+      if (e?.status === 404 || e?.status === 405) continue; // essayer le fallback suivant
+      break; // autre erreur => on s'arrête
     }
   }
   throw lastErr || new ApiError("not_found", { status: 404, body: null });
 }
 
 const useMatchesResult = (tournamentId) => {
+  const params = useParams();
+  const rawId = tournamentId ?? params?.id;
+  const resolvedIdNum = Number(rawId);
   const [matches, setMatches] = useState([]);
   const [results, setResults] = useState({});
   const [loading, setLoading] = useState(true);
@@ -44,25 +60,25 @@ const useMatchesResult = (tournamentId) => {
     loading: matchesLoading = false,
     error: matchesError = null,
     refresh: refreshMatches,
-  } = useMatches(tournamentId);
+  } = useMatches(resolvedIdNum);
 
   const {
     groups: hookGroups = [],
     loading: groupsLoading = false,
     error: groupsError = null,
-  } = useGroupsData(tournamentId);
+  } = useGroupsData(resolvedIdNum);
 
   const {
     referees: hookReferees = [],
     loading: refsLoading = false,
     error: refsError = null,
-  } = useReferees(tournamentId);
+  } = useReferees(resolvedIdNum);
 
   const {
     players: players = [],
     loading: playersLoading = false,
     error: playersError = null,
-  } = usePlayers(tournamentId);
+  } = usePlayers(resolvedIdNum);
 
   // évite les setState après un unmount
   const cancelledRef = useRef(false);
@@ -127,7 +143,7 @@ const useMatchesResult = (tournamentId) => {
 
   // Sauvegarde d'un match (métadonnées) — via PATCH /api
   const handleSave = async (matchId) => {
-    const idNum = Number(tournamentId);
+    const idNum = resolvedIdNum;
     if (!Number.isFinite(idNum) || idNum <= 0) {
       throw new Error("Invalid tournament id");
     }
@@ -186,7 +202,7 @@ const useMatchesResult = (tournamentId) => {
 
   // Soumission des résultats d'un match — via PATCH /api
   const handleResultSubmit = async (matchId) => {
-    const idNum = Number(tournamentId);
+    const idNum = resolvedIdNum;
     if (!Number.isFinite(idNum) || idNum <= 0) {
       throw new Error("Invalid tournament id");
     }
