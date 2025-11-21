@@ -448,7 +448,7 @@ const MatchRowResult = ({
       if (m.player2_group_position) patch.player2_id = expectedP2;
       if (Object.keys(patch).length) {
         matchUpdatePromises.push(
-          apiFetch(`/api/matches/${m.id}`, {
+          apiFetch(`/api/tournaments/${tournamentId}/matches/${m.id}`, {
             method: "PATCH",
             body: JSON.stringify(patch),
           })
@@ -654,10 +654,13 @@ const MatchRowResult = ({
         table_number: editTable === "" ? null : Number(editTable),
       };
 
-      const updated = await apiFetch(`/api/matches/${match.id}`, {
-        method: "PATCH",
-        body: JSON.stringify(payload),
-      });
+      const updated = await apiFetch(
+        `/api/tournaments/${tournamentId}/matches/${match.id}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify(payload),
+        }
+      );
 
       const effective = updated || { ...match, ...payload };
 
