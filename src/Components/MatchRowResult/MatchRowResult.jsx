@@ -15,10 +15,25 @@ const apiFetch = async (url, options = {}) => {
     let message = `HTTP ${res.status}`;
     try {
       const data = await res.json();
-      if (data && data.error) {
-        message = data.error;
-      } else if (data && data.message) {
-        message = data.message;
+      if (data) {
+        // Priorité aux champs renvoyés par notre backend
+        if (data.error || data.message) {
+          const parts = [];
+          if (data.error) parts.push(String(data.error));
+          if (data.message && data.message !== data.error) {
+            parts.push(String(data.message));
+          }
+          if (data.path) {
+            parts.push(`path=${data.path}`);
+          }
+          message = parts.join(" — ");
+        } else {
+          // Si c'est une erreur PostgREST brute
+          const raw = JSON.stringify(data);
+          if (raw && raw !== "{}") {
+            message = raw;
+          }
+        }
       }
     } catch {
       try {
