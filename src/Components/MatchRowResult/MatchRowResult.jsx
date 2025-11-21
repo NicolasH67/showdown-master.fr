@@ -752,6 +752,7 @@ const MatchRowResult = ({
       );
 
       onSave(effective);
+      window.location.reload();
     } catch (err) {
       alert(err.message || err);
     } finally {
