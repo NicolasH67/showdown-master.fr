@@ -129,7 +129,7 @@ function isGroupComplete(gPlayers, gMatches) {
   return expected > 0 && completed === expected;
 }
 
-// ---- Component ----------------------------------------------------------
+// ---- Component ------------------------s----------------------------------
 const RankingEdit = () => {
   const { t } = useTranslation();
   const { id } = useParams();
