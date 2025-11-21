@@ -153,7 +153,19 @@ const MatchRowResult = ({
 
   // --- Helpers post-save ---
   const fetchGroupMatches = async (groupId) => {
-    const data = await apiFetch(`/api/groups/${groupId}/matches`, {
+    // Si pas de groupId valable, on ne fait pas d’appel API
+    if (groupId === undefined || groupId === null || groupId === "") {
+      console.warn("[fetchGroupMatches] groupId invalide:", groupId);
+      return [];
+    }
+
+    const idNum = Number(groupId);
+    if (!Number.isFinite(idNum)) {
+      console.warn("[fetchGroupMatches] groupId non numérique:", groupId);
+      return [];
+    }
+
+    const data = await apiFetch(`/api/groups/${idNum}/matches`, {
       method: "GET",
     });
     return data || [];
