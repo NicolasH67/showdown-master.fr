@@ -15,7 +15,7 @@ const AdminEditPage = () => {
     handleSubmit,
   } = useAdminTournament(id);
 
-  console.log(tournamentData);
+  console.log("tournament edit data", tournamentData);
 
   return (
     <TournamentForm
