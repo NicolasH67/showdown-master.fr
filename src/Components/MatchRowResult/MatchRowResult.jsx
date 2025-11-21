@@ -163,27 +163,6 @@ const MatchRowResult = ({
     );
   }, [match.id]);
 
-  // Resynchroniser les arbitres si les props changent sans changement d'id de match
-  useEffect(() => {
-    setLocalReferee1Id(
-      match.referee1_id !== undefined
-        ? match.referee1_id
-        : match.referee_1
-        ? match.referee_1.id
-        : ""
-    );
-  }, [match.referee1_id, match.referee_1]);
-
-  useEffect(() => {
-    setLocalReferee2Id(
-      match.referee2_id !== undefined
-        ? match.referee2_id
-        : match.referee_2
-        ? match.referee_2.id
-        : ""
-    );
-  }, [match.referee2_id, match.referee_2]);
-
   const calculateStats = (result) => {
     let sets = [0, 0];
     let goals = [0, 0];
@@ -759,6 +738,19 @@ const MatchRowResult = ({
       onMatchChange(match.id, "table_number", effective.table_number);
       onMatchChange(match.id, "referee1_id", effective.referee1_id);
       onMatchChange(match.id, "referee2_id", effective.referee2_id);
+
+      // Mettre à jour immédiatement l'état local des arbitres pour refléter la sauvegarde
+      setLocalReferee1Id(
+        effective.referee1_id !== undefined && effective.referee1_id !== null
+          ? effective.referee1_id
+          : ""
+      );
+      setLocalReferee2Id(
+        effective.referee2_id !== undefined && effective.referee2_id !== null
+          ? effective.referee2_id
+          : ""
+      );
+
       onSave(effective);
     } catch (err) {
       alert(err.message || err);
