@@ -95,7 +95,31 @@ const useAdminTournament = (id) => {
         if (!cancelled && tournament) {
           setTournamentData((prev) => ({
             ...prev,
-            ...tournament,
+            // Champs simples
+            title: tournament.title ?? prev.title,
+            email: tournament.email ?? prev.email,
+            mix:
+              typeof tournament.mix === "boolean" ? tournament.mix : prev.mix,
+            location: tournament.location ?? prev.location,
+            // Dates : la base renvoie startday/endday, le state utilise startDay/endDay
+            startDay:
+              tournament.startDay ?? tournament.startday ?? prev.startDay,
+            endDay: tournament.endDay ?? tournament.endday ?? prev.endDay,
+            // Tables : table_count (snake) ou tableCount (camel)
+            table_count:
+              typeof tournament.table_count === "number"
+                ? tournament.table_count
+                : typeof tournament.tableCount === "number"
+                ? tournament.tableCount
+                : prev.table_count,
+            // Durée des matchs : match_duration (snake) ou matchDuration (camel)
+            match_duration:
+              typeof tournament.match_duration === "number"
+                ? tournament.match_duration
+                : typeof tournament.matchDuration === "number"
+                ? tournament.matchDuration
+                : prev.match_duration,
+            // On NE TOUCHE PAS aux mots de passe ici (admin/user/ereferee)
           }));
         }
       } catch (e) {
