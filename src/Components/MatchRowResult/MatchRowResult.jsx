@@ -99,6 +99,13 @@ const MatchRowResult = ({
   const [editDay, setEditDay] = useState(match.match_day || "");
   const [editTime, setEditTime] = useState("");
   const [editTable, setEditTable] = useState(match.table_number ?? "");
+  // Local referee selection state
+  const [localReferee1Id, setLocalReferee1Id] = useState(
+    match.referee1_id ?? ""
+  );
+  const [localReferee2Id, setLocalReferee2Id] = useState(
+    match.referee2_id ?? ""
+  );
 
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -124,10 +131,24 @@ const MatchRowResult = ({
   }, [match.result]);
 
   useEffect(() => {
+    // Initialisation quand on change de match
     setEditDay(match.match_day || "");
     setEditTime(match.match_time ? toHHMM(match.match_time) : "");
     setEditTable(match.table_number ?? "");
-  }, [match.match_day, match.match_time, match.table_number]);
+
+    // Initialiser les arbitres locaux à partir des props existantes
+    setLocalReferee1Id(match.referee1_id ?? "");
+    setLocalReferee2Id(match.referee2_id ?? "");
+  }, [match.id]);
+
+  // Resynchroniser les arbitres si les props changent sans changement d'id de match
+  useEffect(() => {
+    setLocalReferee1Id(match.referee1_id ?? "");
+  }, [match.referee1_id]);
+
+  useEffect(() => {
+    setLocalReferee2Id(match.referee2_id ?? "");
+  }, [match.referee2_id]);
 
   const calculateStats = (result) => {
     let sets = [0, 0];
@@ -940,14 +961,12 @@ const MatchRowResult = ({
           disabled={!match.player1 || !match.player2}
           className="form-select form-select-sm mb-1"
           style={{ textAlign: "center" }}
-          value={match.referee1_id || ""}
-          onChange={(e) =>
-            onMatchChange(
-              match.id,
-              "referee1_id",
-              e.target.value ? Number(e.target.value) : null
-            )
-          }
+          value={localReferee1Id === null ? "" : String(localReferee1Id)}
+          onChange={(e) => {
+            const val = e.target.value;
+            setLocalReferee1Id(val === "" ? "" : val);
+            onMatchChange(match.id, "referee1_id", val ? Number(val) : null);
+          }}
         >
           <option value="">{t("none")}</option>
           {referees.map((r) => (
@@ -960,14 +979,12 @@ const MatchRowResult = ({
           disabled={!match.player1 || !match.player2}
           className="form-select form-select-sm"
           style={{ textAlign: "center" }}
-          value={match.referee2_id || ""}
-          onChange={(e) =>
-            onMatchChange(
-              match.id,
-              "referee2_id",
-              e.target.value ? Number(e.target.value) : null
-            )
-          }
+          value={localReferee2Id === null ? "" : String(localReferee2Id)}
+          onChange={(e) => {
+            const val = e.target.value;
+            setLocalReferee2Id(val === "" ? "" : val);
+            onMatchChange(match.id, "referee2_id", val ? Number(val) : null);
+          }}
         >
           <option value="">{t("none")}</option>
           {referees.map((r) => (
