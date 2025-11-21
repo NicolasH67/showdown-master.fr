@@ -103,10 +103,18 @@ const MatchRowResult = ({
   const [editTable, setEditTable] = useState(match.table_number ?? "");
   // Local referee selection state
   const [localReferee1Id, setLocalReferee1Id] = useState(
-    match.referee1_id ?? (match.referee_1 ? match.referee_1.id : "") ?? ""
+    match.referee1_id !== undefined
+      ? match.referee1_id
+      : match.referee_1
+      ? match.referee_1.id
+      : ""
   );
   const [localReferee2Id, setLocalReferee2Id] = useState(
-    match.referee2_id ?? (match.referee_2 ? match.referee_2.id : "") ?? ""
+    match.referee2_id !== undefined
+      ? match.referee2_id
+      : match.referee_2
+      ? match.referee_2.id
+      : ""
   );
 
   const [errorMsg, setErrorMsg] = useState("");
@@ -140,23 +148,39 @@ const MatchRowResult = ({
 
     // Initialiser les arbitres locaux à partir des props existantes
     setLocalReferee1Id(
-      match.referee1_id ?? (match.referee_1 ? match.referee_1.id : "") ?? ""
+      match.referee1_id !== undefined
+        ? match.referee1_id
+        : match.referee_1
+        ? match.referee_1.id
+        : ""
     );
     setLocalReferee2Id(
-      match.referee2_id ?? (match.referee_2 ? match.referee_2.id : "") ?? ""
+      match.referee2_id !== undefined
+        ? match.referee2_id
+        : match.referee_2
+        ? match.referee_2.id
+        : ""
     );
   }, [match.id]);
 
   // Resynchroniser les arbitres si les props changent sans changement d'id de match
   useEffect(() => {
     setLocalReferee1Id(
-      match.referee1_id ?? (match.referee_1 ? match.referee_1.id : "") ?? ""
+      match.referee1_id !== undefined
+        ? match.referee1_id
+        : match.referee_1
+        ? match.referee_1.id
+        : ""
     );
   }, [match.referee1_id, match.referee_1]);
 
   useEffect(() => {
     setLocalReferee2Id(
-      match.referee2_id ?? (match.referee_2 ? match.referee_2.id : "") ?? ""
+      match.referee2_id !== undefined
+        ? match.referee2_id
+        : match.referee_2
+        ? match.referee_2.id
+        : ""
     );
   }, [match.referee2_id, match.referee_2]);
 
