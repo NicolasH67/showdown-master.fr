@@ -1135,19 +1135,16 @@ export default async function handler(req, res) {
       return send(res, 400, { error: "missing_filter" });
     }
 
-    // /api/players/:id GET and PATCH
-    const mPlainPlayer = pathname.match(/^\/api\/players\/(\d+)\/?$/);
+    // /api/players/:id GET and PATCH (id can be numeric or UUID)
+    const mPlainPlayer = pathname.match(/^\/api\/players\/([^/]+)\/?$/);
     if (mPlainPlayer) {
-      const pid = Number(mPlainPlayer[1]);
-      if (!Number.isFinite(pid)) {
-        return send(res, 400, { error: "invalid_player_id" });
-      }
+      const playerId = mPlainPlayer[1]; // keep as string
       if (req.method === "GET") {
-        return handleGetPlayer(req, res, pid);
+        return handleGetPlayer(req, res, playerId);
       }
       if (req.method === "PATCH") {
         const body = await readJson(req);
-        return handlePatchPlayer(req, res, pid, body);
+        return handlePatchPlayer(req, res, playerId, body);
       }
     }
 
@@ -1163,15 +1160,12 @@ export default async function handler(req, res) {
       return handleListMatchesByGroup(req, res, gid);
     }
 
-    // /api/matches/:id PATCH
-    const mPlainMatch = pathname.match(/^\/api\/matches\/(\d+)\/?$/);
+    // /api/matches/:id PATCH (id can be numeric or UUID)
+    const mPlainMatch = pathname.match(/^\/api\/matches\/([^/]+)\/?$/);
     if (mPlainMatch && req.method === "PATCH") {
-      const mid = Number(mPlainMatch[1]);
-      if (!Number.isFinite(mid)) {
-        return send(res, 400, { error: "invalid_match_id" });
-      }
+      const matchId = mPlainMatch[1]; // keep as string
       const body = await readJson(req);
-      return handlePatchMatch(req, res, mid, body);
+      return handlePatchMatch(req, res, matchId, body);
     }
 
     // ---- PUBLIC mirroir
