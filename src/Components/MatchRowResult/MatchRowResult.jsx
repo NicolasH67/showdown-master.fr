@@ -968,7 +968,7 @@ const MatchRowResult = ({
             onMatchChange(match.id, "referee1_id", val ? Number(val) : null);
           }}
         >
-          <option value="">{t("none")}</option>
+          {!localReferee1Id && <option value="">{t("none")}</option>}
           {referees.map((r) => (
             <option key={r.id} value={r.id}>
               {r.lastname} {r.firstname}
@@ -986,7 +986,7 @@ const MatchRowResult = ({
             onMatchChange(match.id, "referee2_id", val ? Number(val) : null);
           }}
         >
-          <option value="">{t("none")}</option>
+          {!localReferee2Id && <option value="">{t("none")}</option>}
           {referees.map((r) => (
             <option key={r.id} value={r.id}>
               {r.lastname} {r.firstname}
