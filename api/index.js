@@ -193,7 +193,7 @@ async function isAdminForTournament(req, tournamentId) {
 // --------- Handlers REST Supabase ---------
 async function handleListTournaments(req, res, searchParams) {
   const { ok, status, text } = await sFetch(
-    `/rest/v1/tournament?select=id,title,startday,endday,is_private,email,mix,table_count,match_duration,location&order=startday.asc`,
+    `/rest/v1/tournament?select=id,title,startday,endday,is_private&order=startday.asc`,
     { headers: headers(process.env.SUPABASE_SERVICE_KEY) }
   );
   if (!ok) return send(res, status, text, "application/json");
@@ -226,7 +226,7 @@ async function handleListTournaments(req, res, searchParams) {
 }
 async function handleGetTournament(req, res, id) {
   const { ok, status, text } = await sFetch(
-    `/rest/v1/tournament?id=eq.${id}&select=id,title,startday,endday,is_private,email,mix,table_count,match_duration,location`,
+    `/rest/v1/tournament?id=eq.${id}&select=id,title,startday,endday,is_private`,
     { headers: headers(process.env.SUPABASE_SERVICE_KEY) }
   );
   if (!ok) return send(res, status, text, "application/json");
@@ -236,70 +236,6 @@ async function handleGetTournament(req, res, id) {
   } catch {}
   const obj = Array.isArray(arr) ? arr[0] : null;
   return obj ? send(res, 200, obj) : send(res, 404, { error: "not_found" });
-}
-
-// Normalize PATCH payload from frontend into DB column names
-function normalizeTournamentPatchBody(body) {
-  const out = {};
-
-  if (body == null || typeof body !== "object") return out;
-
-  // Title
-  if (body.title !== undefined) out.title = body.title;
-
-  // Dates (frontend can send startDay/endDay or startday/endday)
-  if (body.startDay !== undefined) out.startday = body.startDay;
-  if (body.startday !== undefined) out.startday = body.startday;
-  if (body.endDay !== undefined) out.endday = body.endDay;
-  if (body.endday !== undefined) out.endday = body.endday;
-
-  // Mix flag
-  if (body.mix !== undefined) out.mix = body.mix;
-
-  // Email
-  if (body.email !== undefined) out.email = body.email;
-
-  // Table count (table_count or tableCount)
-  if (body.table_count !== undefined) out.table_count = body.table_count;
-  if (body.tableCount !== undefined) out.table_count = body.tableCount;
-
-  // Match duration (match_duration or matchDuration)
-  if (body.match_duration !== undefined)
-    out.match_duration = body.match_duration;
-  if (body.matchDuration !== undefined) out.match_duration = body.matchDuration;
-
-  // Location
-  if (body.location !== undefined) out.location = body.location;
-
-  // Privacy flag (is_private or isPrivate)
-  if (body.is_private !== undefined) out.is_private = body.is_private;
-  if (body.isPrivate !== undefined) out.is_private = body.isPrivate;
-
-  return out;
-}
-
-async function handlePatchTournament(req, res, id, body) {
-  // Only normalize and forward known/allowed fields
-  const payload = normalizeTournamentPatchBody(body);
-
-  if (!payload || Object.keys(payload).length === 0) {
-    return send(res, 400, { error: "empty_patch" });
-  }
-
-  const { ok, status, text } = await sFetch(
-    `/rest/v1/tournament?id=eq.${id}&select=id,title,startday,endday,is_private,email,mix,table_count,match_duration,location`,
-    {
-      method: "PATCH",
-      headers: {
-        ...headers(process.env.SUPABASE_SERVICE_KEY),
-        "Content-Type": "application/json",
-        Prefer: "return=representation",
-      },
-      body: JSON.stringify(payload),
-    }
-  );
-
-  return send(res, status, ok ? JSON.parse(text) : text);
 }
 async function handleCreateTournament(req, res, body) {
   const payload = {
@@ -315,7 +251,7 @@ async function handleCreateTournament(req, res, body) {
     user_password_hash: body?.user_password_hash ?? null,
   };
   const { ok, status, text } = await sFetch(
-    `/rest/v1/tournament?select=id,title,startday,endday,is_private,email,mix,table_count,match_duration,location`,
+    `/rest/v1/tournament?select=id,title,startday,endday,is_private`,
     {
       method: "POST",
       headers: {
@@ -1117,15 +1053,8 @@ export default async function handler(req, res) {
     }
 
     const mT = pathname.match(/^\/api\/tournaments\/(\d+)\/?$/);
-    if (mT) {
-      const idNum = Number(mT[1]);
-      if (req.method === "GET") {
-        return handleGetTournament(req, res, idNum);
-      }
-      if (req.method === "PATCH") {
-        const body = await readJson(req);
-        return handlePatchTournament(req, res, idNum, body);
-      }
+    if (req.method === "GET" && mT) {
+      return handleGetTournament(req, res, Number(mT[1]));
     }
 
     // sous-ressources
