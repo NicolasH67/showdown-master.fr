@@ -1,5 +1,46 @@
 import React, { useState, useEffect, useRef } from "react";
-import supabase from "../../Helpers/supabaseClient";
+
+const apiFetch = async (url, options = {}) => {
+  const finalOptions = {
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+    ...options,
+  };
+
+  const res = await fetch(url, finalOptions);
+
+  if (!res.ok) {
+    let message = `HTTP ${res.status}`;
+    try {
+      const data = await res.json();
+      if (data && data.error) {
+        message = data.error;
+      } else if (data && data.message) {
+        message = data.message;
+      }
+    } catch {
+      try {
+        const text = await res.text();
+        if (text) message = text;
+      } catch {
+        // ignore
+      }
+    }
+    throw new Error(message);
+  }
+
+  if (res.status === 204) {
+    return null;
+  }
+
+  try {
+    return await res.json();
+  } catch {
+    return null;
+  }
+};
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
@@ -97,11 +138,9 @@ const MatchRowResult = ({
 
   // --- Helpers post-save ---
   const fetchGroupMatches = async (groupId) => {
-    const { data, error } = await supabase
-      .from("match")
-      .select("id, group_id, player1_id, player2_id, result")
-      .eq("group_id", groupId);
-    if (error) throw error;
+    const data = await apiFetch(`/api/groups/${groupId}/matches`, {
+      method: "GET",
+    });
     return data || [];
   };
 
@@ -292,31 +331,27 @@ const MatchRowResult = ({
 
   // Supprime un group_id d'un joueur si présent
   const removeGroupFromPlayerIfPresent = async (playerId, groupIdToRemove) => {
-    const { data: p, error } = await supabase
-      .from("player")
-      .select("id, group_id")
-      .eq("id", playerId)
-      .maybeSingle();
-    if (error) throw error;
+    const p = await apiFetch(`/api/players/${playerId}`, {
+      method: "GET",
+    });
+
     const current = Array.isArray(p?.group_id) ? p.group_id : [];
     const next = current.filter(
       (gid) => Number(gid) !== Number(groupIdToRemove)
     );
     if (next.length === current.length) return; // rien à faire
-    const { error: upErr } = await supabase
-      .from("player")
-      .update({ group_id: next })
-      .eq("id", playerId);
-    if (upErr) throw upErr;
+
+    await apiFetch(`/api/players/${playerId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ group_id: next }),
+    });
   };
 
   // Récupère tous les joueurs qui ont ce group_id dans leur tableau
   const fetchPlayersHavingGroupId = async (groupId) => {
-    const { data, error } = await supabase
-      .from("player")
-      .select("id, group_id, firstname, lastname")
-      .contains("group_id", [Number(groupId)]);
-    if (error) throw error;
+    const data = await apiFetch(`/api/players?groupId=${Number(groupId)}`, {
+      method: "GET",
+    });
     return data || [];
   };
 
@@ -326,25 +361,27 @@ const MatchRowResult = ({
       playerId,
       newGroupId,
     });
-    const { data: p, error } = await supabase
-      .from("player")
-      .select("id, group_id")
-      .eq("id", playerId)
-      .maybeSingle();
-    if (error) throw error;
+
+    const p = await apiFetch(`/api/players/${playerId}`, {
+      method: "GET",
+    });
+
     const current = Array.isArray(p?.group_id) ? p.group_id : [];
     const already = current.map(String).includes(String(newGroupId));
     if (already) return;
+
     const next = [...current, newGroupId];
+
     console.log("[addGroupToPlayerIfMissing] updating player group_id", {
       playerId,
       next,
     });
-    const { error: upErr } = await supabase
-      .from("player")
-      .update({ group_id: next })
-      .eq("id", playerId);
-    if (upErr) throw upErr;
+
+    await apiFetch(`/api/players/${playerId}`, {
+      method: "PATCH",
+      body: JSON.stringify({ group_id: next }),
+    });
+
     console.log("[addGroupToPlayerIfMissing] update ok", { playerId });
   };
 
@@ -386,15 +423,12 @@ const MatchRowResult = ({
     }
 
     // 2) Mettre à jour les MATCHS du groupe cible en écrasant systématiquement
-    const { data: mlist, error } = await supabase
-      .from("match")
-      .select(
-        "id, group_id, player1_id, player2_id, player1_group_position, player2_group_position"
-      )
-      .eq("group_id", destGroupId);
-    if (error) throw error;
+    const mlist =
+      (await apiFetch(`/api/groups/${destGroupId}/matches`, {
+        method: "GET",
+      })) || [];
 
-    const matchUpdates = [];
+    const matchUpdatePromises = [];
 
     const computeExpectedPlayer = (groupPos) => {
       if (!groupPos) return null;
@@ -413,10 +447,18 @@ const MatchRowResult = ({
       if (m.player1_group_position) patch.player1_id = expectedP1;
       if (m.player2_group_position) patch.player2_id = expectedP2;
       if (Object.keys(patch).length) {
-        matchUpdates.push(supabase.from("match").update(patch).eq("id", m.id));
+        matchUpdatePromises.push(
+          apiFetch(`/api/matches/${m.id}`, {
+            method: "PATCH",
+            body: JSON.stringify(patch),
+          })
+        );
       }
     }
-    if (matchUpdates.length) await Promise.all(matchUpdates);
+
+    if (matchUpdatePromises.length) {
+      await Promise.all(matchUpdatePromises);
+    }
 
     // 3) Mettre à jour les JOUEURS: ajouter/retirer le group_id
     //    a) Ajouter le group_id aux joueurs attendus s'ils ne l'ont pas
@@ -436,7 +478,7 @@ const MatchRowResult = ({
     console.log("[fillScheduledMatchesForGroup] sync done", {
       destGroupId,
       desiredCount: desiredGlobal.size,
-      updatedMatches: matchUpdates.length,
+      updatedMatches: matchUpdatePromises.length,
       removedPlayers: removals.length,
     });
   };
@@ -603,34 +645,27 @@ const MatchRowResult = ({
 
     setLoading(true);
     try {
-      const { data, error, status } = await supabase
-        .from("match")
-        .update({
-          result: cleanedResults,
-          referee1_id: match.referee1_id,
-          referee2_id: match.referee2_id,
-          match_day: editDay || null,
-          match_time: toHHMMSS(editTime) || null,
-          table_number: editTable === "" ? null : Number(editTable),
-        })
-        .eq("id", match.id)
-        .select("*")
-        .maybeSingle();
+      const payload = {
+        result: cleanedResults,
+        referee1_id: match.referee1_id,
+        referee2_id: match.referee2_id,
+        match_day: editDay || null,
+        match_time: toHHMMSS(editTime) || null,
+        table_number: editTable === "" ? null : Number(editTable),
+      };
 
-      if (error) {
-        console.error(status, "—", error);
-        throw new Error(error.message);
-      }
+      const updated = await apiFetch(`/api/matches/${match.id}`, {
+        method: "PATCH",
+        body: JSON.stringify(payload),
+      });
 
-      if (!data) {
-        throw new Error("Aucune donnée renvoyée après la mise à jour.");
-      }
+      const effective = updated || { ...match, ...payload };
 
-      await postProcessAfterSave(data);
-      onMatchChange(match.id, "match_day", data.match_day);
-      onMatchChange(match.id, "match_time", data.match_time);
-      onMatchChange(match.id, "table_number", data.table_number);
-      onSave(data);
+      await postProcessAfterSave(effective);
+      onMatchChange(match.id, "match_day", effective.match_day);
+      onMatchChange(match.id, "match_time", effective.match_time);
+      onMatchChange(match.id, "table_number", effective.table_number);
+      onSave(effective);
     } catch (err) {
       alert(err.message || err);
     } finally {

@@ -347,6 +347,36 @@ async function handlePatchPlayer(req, res, playerId, body) {
   );
   return send(res, status, ok ? JSON.parse(text) : text);
 }
+
+// Fetch a single player by id
+async function handleGetPlayer(req, res, playerId) {
+  const { ok, status, text } = await sFetch(
+    `/rest/v1/player?id=eq.${playerId}&select=id,firstname,lastname,club_id,group_id,tournament_id,category,created_at,updated_at`,
+    { headers: headers(process.env.SUPABASE_SERVICE_KEY) }
+  );
+  if (!ok) return send(res, status, text, "application/json");
+  let arr = [];
+  try {
+    arr = JSON.parse(text);
+  } catch {}
+  const obj = Array.isArray(arr) ? arr[0] : null;
+  return obj ? send(res, 200, obj) : send(res, 404, { error: "not_found" });
+}
+
+// List players by group_id contains groupId
+async function handleListPlayersByGroupId(req, res, groupId) {
+  const filter = encodeURIComponent(JSON.stringify([Number(groupId)]));
+  const { ok, status, text } = await sFetch(
+    `/rest/v1/player?group_id=cs.${filter}&select=id,firstname,lastname,group_id,tournament_id,club_id,category,created_at,updated_at`,
+    { headers: headers(process.env.SUPABASE_SERVICE_KEY) }
+  );
+  if (!ok) return send(res, status, text, "application/json");
+  let data = [];
+  try {
+    data = JSON.parse(text);
+  } catch {}
+  return send(res, 200, data);
+}
 async function handleListGroups(req, res, id) {
   const { ok, status, text } = await sFetch(
     `/rest/v1/group?tournament_id=eq.${id}&select=id,name,group_type,round_type,tournament_id,highest_position&order=name.asc`,
@@ -615,6 +645,20 @@ async function handleCreateMatches(req, res, id, body) {
     arr = JSON.parse(text);
   } catch {}
   return send(res, 201, Array.isArray(arr) ? arr : [arr]);
+}
+
+// List matches by group_id
+async function handleListMatchesByGroup(req, res, groupId) {
+  const { ok, status, text } = await sFetch(
+    `/rest/v1/match?group_id=eq.${groupId}&select=id,tournament_id,group_id,match_day,match_time,table_number,player1_id,player2_id,player1_group_position,player2_group_position,result,referee1_id,referee2_id,created_at,updated_at`,
+    { headers: headers(process.env.SUPABASE_SERVICE_KEY) }
+  );
+  if (!ok) return send(res, status, text, "application/json");
+  let data = [];
+  try {
+    data = JSON.parse(text);
+  } catch {}
+  return send(res, 200, data);
 }
 
 //
@@ -1075,6 +1119,59 @@ export default async function handler(req, res) {
     if (req.method === "PATCH" && mPatchMatch) {
       const body = await readJson(req);
       return handlePatchMatch(req, res, Number(mPatchMatch[2]), body);
+    }
+
+    // ---- Custom REST routes for players, groups, and matches
+    // /api/players?groupId=...
+    if (req.method === "GET" && /^\/api\/players\/?$/.test(pathname)) {
+      const groupIdParam = searchParams.get("groupId");
+      if (groupIdParam != null) {
+        const gid = Number(groupIdParam);
+        if (!Number.isFinite(gid)) {
+          return send(res, 400, { error: "invalid_group_id" });
+        }
+        return handleListPlayersByGroupId(req, res, gid);
+      }
+      return send(res, 400, { error: "missing_filter" });
+    }
+
+    // /api/players/:id GET and PATCH
+    const mPlainPlayer = pathname.match(/^\/api\/players\/(\d+)\/?$/);
+    if (mPlainPlayer) {
+      const pid = Number(mPlainPlayer[1]);
+      if (!Number.isFinite(pid)) {
+        return send(res, 400, { error: "invalid_player_id" });
+      }
+      if (req.method === "GET") {
+        return handleGetPlayer(req, res, pid);
+      }
+      if (req.method === "PATCH") {
+        const body = await readJson(req);
+        return handlePatchPlayer(req, res, pid, body);
+      }
+    }
+
+    // /api/groups/:id/matches GET
+    const mGroupMatchesPlain = pathname.match(
+      /^\/api\/groups\/(\d+)\/matches\/?$/
+    );
+    if (mGroupMatchesPlain && req.method === "GET") {
+      const gid = Number(mGroupMatchesPlain[1]);
+      if (!Number.isFinite(gid)) {
+        return send(res, 400, { error: "invalid_group_id" });
+      }
+      return handleListMatchesByGroup(req, res, gid);
+    }
+
+    // /api/matches/:id PATCH
+    const mPlainMatch = pathname.match(/^\/api\/matches\/(\d+)\/?$/);
+    if (mPlainMatch && req.method === "PATCH") {
+      const mid = Number(mPlainMatch[1]);
+      if (!Number.isFinite(mid)) {
+        return send(res, 400, { error: "invalid_match_id" });
+      }
+      const body = await readJson(req);
+      return handlePatchMatch(req, res, mid, body);
     }
 
     // ---- PUBLIC mirroir
