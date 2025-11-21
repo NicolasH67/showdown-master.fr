@@ -95,7 +95,7 @@ const MatchRowResult = ({
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
-  console.log(match);
+  console.log("console log dans matchRowResul", match);
 
   // Local edit buffers to avoid re-filtering/remount while typing
   const [editDay, setEditDay] = useState(match.match_day || "");
