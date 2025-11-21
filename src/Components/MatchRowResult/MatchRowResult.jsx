@@ -695,8 +695,15 @@ const MatchRowResult = ({
     try {
       const payload = {
         result: cleanedResults,
-        referee1_id: match.referee1_id,
-        referee2_id: match.referee2_id,
+        // Utiliser la sélection locale des arbitres (selects) plutôt que les props match.*
+        referee1_id:
+          localReferee1Id === "" || localReferee1Id === null
+            ? null
+            : Number(localReferee1Id),
+        referee2_id:
+          localReferee2Id === "" || localReferee2Id === null
+            ? null
+            : Number(localReferee2Id),
         match_day: editDay || null,
         match_time: toHHMMSS(editTime) || null,
         table_number: editTable === "" ? null : Number(editTable),
@@ -716,6 +723,8 @@ const MatchRowResult = ({
       onMatchChange(match.id, "match_day", effective.match_day);
       onMatchChange(match.id, "match_time", effective.match_time);
       onMatchChange(match.id, "table_number", effective.table_number);
+      onMatchChange(match.id, "referee1_id", effective.referee1_id);
+      onMatchChange(match.id, "referee2_id", effective.referee2_id);
       onSave(effective);
     } catch (err) {
       alert(err.message || err);
