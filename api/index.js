@@ -648,9 +648,19 @@ async function handleCreateMatches(req, res, id, body) {
 }
 
 // List matches by group_id
-async function handleListMatchesByGroup(req, res, groupId) {
+async function handleListMatchesByGroup(req, res, groupIdRaw) {
+  const gid = Number(groupIdRaw);
+  if (!Number.isFinite(gid)) {
+    // groupId invalide → on renvoie une erreur claire
+    return send(res, 400, {
+      error: "invalid_group_id",
+      message: "groupId must be a valid integer",
+      groupId: groupIdRaw,
+    });
+  }
+
   const { ok, status, text } = await sFetch(
-    `/rest/v1/match?group_id=eq.${groupId}&select=id,tournament_id,group_id,match_day,match_time,table_number,player1_id,player2_id,player1_group_position,player2_group_position,result,referee1_id,referee2_id,created_at,updated_at`,
+    `/rest/v1/match?group_id=eq.${gid}&select=id,tournament_id,group_id,match_day,match_time,table_number,player1_id,player2_id,player1_group_position,player2_group_position,result,referee1_id,referee2_id,created_at,updated_at`,
     { headers: headers(process.env.SUPABASE_SERVICE_KEY) }
   );
   if (!ok) return send(res, status, text, "application/json");
@@ -1148,14 +1158,13 @@ export default async function handler(req, res) {
       }
     }
 
-    // /api/groups/:id/matches GET
-    // /api/groups/:id/matches GET (id can be numeric or UUID)
+    // /api/groups/:id/matches GET (id transmis tel quel, validé dans le handler)
     const mGroupMatchesPlain = pathname.match(
       /^\/api\/groups\/([^/]+)\/matches\/?$/
     );
     if (mGroupMatchesPlain && req.method === "GET") {
-      const gid = mGroupMatchesPlain[1]; // on garde la string telle quelle
-      return handleListMatchesByGroup(req, res, gid);
+      const gidRaw = mGroupMatchesPlain[1]; // peut être "undefined", sera validé dans handleListMatchesByGroup
+      return handleListMatchesByGroup(req, res, gidRaw);
     }
 
     // /api/matches/:id PATCH (id can be numeric or UUID)
