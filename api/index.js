@@ -1149,14 +1149,12 @@ export default async function handler(req, res) {
     }
 
     // /api/groups/:id/matches GET
+    // /api/groups/:id/matches GET (id can be numeric or UUID)
     const mGroupMatchesPlain = pathname.match(
-      /^\/api\/groups\/(\d+)\/matches\/?$/
+      /^\/api\/groups\/([^/]+)\/matches\/?$/
     );
     if (mGroupMatchesPlain && req.method === "GET") {
-      const gid = Number(mGroupMatchesPlain[1]);
-      if (!Number.isFinite(gid)) {
-        return send(res, 400, { error: "invalid_group_id" });
-      }
+      const gid = mGroupMatchesPlain[1]; // on garde la string telle quelle
       return handleListMatchesByGroup(req, res, gid);
     }
 
