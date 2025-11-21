@@ -968,13 +968,14 @@ const MatchRowResult = ({
             onMatchChange(match.id, "referee1_id", val ? Number(val) : null);
           }}
         >
-          {!localReferee1Id && <option value="">{t("none")}</option>}
+          <option value="">{t("none")}</option>
           {referees.map((r) => (
             <option key={r.id} value={r.id}>
               {r.lastname} {r.firstname}
             </option>
           ))}
         </select>
+
         <select
           disabled={!match.player1 || !match.player2}
           className="form-select form-select-sm"
@@ -986,7 +987,7 @@ const MatchRowResult = ({
             onMatchChange(match.id, "referee2_id", val ? Number(val) : null);
           }}
         >
-          {!localReferee2Id && <option value="">{t("none")}</option>}
+          <option value="">{t("none")}</option>
           {referees.map((r) => (
             <option key={r.id} value={r.id}>
               {r.lastname} {r.firstname}
