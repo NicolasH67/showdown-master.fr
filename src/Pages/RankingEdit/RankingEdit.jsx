@@ -1,34 +1,69 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import supabase from "../../Helpers/supabaseClient";
+import useRankingData from "../../Hooks/useRankingData";
 
 /**
- * RankingPage – Classement global par groupes à positions (highest_position)
- * Règles identiques à GroupTable :
+ * RankingEdit – Version admin du classement global par groupes à positions (highest_position)
+ * Règles identiques à GroupTable / RankingPage :
  *  - Tri principal : nb de victoires
  *  - En cas d'égalité à 2 ou 3 joueurs : départage en confrontation directe
  *      * diff sets, puis diff buts (points)
  *  - Sinon : ordre alphabétique (lastname)
  * Attribution des places finales par groupe :
  *  - 1er -> highest_position, 2e -> highest_position+1, etc.
- * Affichage : séparé par group_type, colonnes = Position | Joueur
+ * Affichage : séparé par group_type, colonnes = Position | Joueur | Provenance
+ * Particularité : permet l'export CSV et affiche les groupes même non complets
+ * (avec un indicateur "provisoire").
  */
 
-// ---- Utils --------------------------------------------------------------
-function parseMatchPairwise(resultArray) {
-  // Attend un tableau de scores set par set : [a1, b1, a2, b2, ...]
-  // Retourne {setsA, setsB, goalsA, goalsB}
-  if (!Array.isArray(resultArray) || resultArray.length === 0) {
-    return null;
-  }
+// ---- Utils (identiques à RankingPage) ---------------------------------
+function parseMatchPairwise(match) {
+  // Accepts match.result_pairs (array), match.result (array), match.result (JSON string), or match.result as "11-2;11-9" etc.
+  const toPairs = (val) => {
+    if (!val) return [];
+    if (Array.isArray(val)) return val.map((n) => Number(n) || 0);
+    if (typeof val === "string") {
+      // try JSON first
+      try {
+        const parsed = JSON.parse(val);
+        if (Array.isArray(parsed)) return parsed.map((n) => Number(n) || 0);
+      } catch (_) {
+        // parse formats like "11-6;11-9" or "11:6, 11:9"
+        const chunks = val
+          .split(/[;,]/)
+          .map((s) => s.trim())
+          .filter(Boolean);
+        const arr = [];
+        for (const ch of chunks) {
+          const m = ch.match(/^(\d+)\s*[-:\/]\s*(\d+)$/);
+          if (m) {
+            arr.push(Number(m[1]) || 0, Number(m[2]) || 0);
+          }
+        }
+        return arr;
+      }
+    }
+    if (typeof val === "object" && Array.isArray(val.result_pairs)) {
+      return val.result_pairs.map((n) => Number(n) || 0);
+    }
+    return [];
+  };
+
+  // accept various shapes
+  const pairs = Array.isArray(match?.result_pairs)
+    ? toPairs(match.result_pairs)
+    : toPairs(match?.result) || toPairs(match);
+
+  if (!pairs.length) return null;
+
   let setsA = 0,
     setsB = 0,
     goalsA = 0,
     goalsB = 0;
-  for (let i = 0; i + 1 < resultArray.length; i += 2) {
-    const a = Number(resultArray[i] ?? 0);
-    const b = Number(resultArray[i + 1] ?? 0);
+  for (let i = 0; i + 1 < pairs.length; i += 2) {
+    const a = Number(pairs[i] ?? 0);
+    const b = Number(pairs[i + 1] ?? 0);
     if (a > b) setsA += 1;
     else if (b > a) setsB += 1;
     goalsA += a;
@@ -38,11 +73,10 @@ function parseMatchPairwise(resultArray) {
 }
 
 function parseMatchRecord(match) {
-  // Adapté au schéma SQL: match.player1_id, match.player2_id, match.result (INT[])
-  const aId = match?.player1_id;
-  const bId = match?.player2_id;
-  if (!aId || !bId) return null;
-  const pr = parseMatchPairwise(match?.result);
+  const aId = Number(match?.player1_id ?? match?.player1?.id);
+  const bId = Number(match?.player2_id ?? match?.player2?.id);
+  if (!Number.isFinite(aId) || !Number.isFinite(bId)) return null;
+  const pr = parseMatchPairwise(match);
   if (!pr) return null;
   return { playerAId: aId, playerBId: bId, ...pr };
 }
@@ -51,9 +85,11 @@ function computeStats(players, matches) {
   // Map playerId -> stats
   const acc = new Map();
   const ensure = (p) => {
-    if (!acc.has(p.id)) {
-      acc.set(p.id, {
-        playerId: p.id,
+    const pid = Number(p.id);
+    if (!Number.isFinite(pid)) return;
+    if (!acc.has(pid)) {
+      acc.set(pid, {
+        playerId: pid,
         firstname: p.firstname || "",
         lastname: p.lastname || "",
         played: 0,
@@ -108,110 +144,45 @@ function computeStats(players, matches) {
 }
 
 function directStats(playersSubset, matchesSubset) {
-  const idSet = new Set(playersSubset.map((p) => p.id));
+  const idSet = new Set(
+    playersSubset.map((p) => Number(p.id)).filter(Number.isFinite)
+  );
   const filtered = matchesSubset.filter(
-    (m) => idSet.has(m.player1_id) && idSet.has(m.player2_id)
+    (m) =>
+      idSet.has(Number(m.player1_id ?? m.player1?.id)) &&
+      idSet.has(Number(m.player2_id ?? m.player2?.id))
   );
   return computeStats(playersSubset, filtered);
 }
 
-// Helper to check if all matches in a group are complete
 function isGroupComplete(gPlayers, gMatches) {
-  // A group is complete if all round-robin matches between its players have a non-empty result
-  const ids = new Set(gPlayers.map((p) => p.id));
+  const ids = new Set(
+    gPlayers.map((p) => Number(p.id)).filter(Number.isFinite)
+  );
   const n = gPlayers.length;
-  const expected = n >= 2 ? (n * (n - 1)) / 2 : 0; // round-robin match count
+  const expected = n >= 2 ? (n * (n - 1)) / 2 : 0;
   let completed = 0;
   for (const m of gMatches) {
-    if (!ids.has(m.player1_id) || !ids.has(m.player2_id)) continue;
-    if (Array.isArray(m.result) && m.result.length > 0) completed += 1;
+    const aOk = ids.has(Number(m.player1_id ?? m.player1?.id));
+    const bOk = ids.has(Number(m.player2_id ?? m.player2?.id));
+    if (!aOk || !bOk) continue;
+    if (Array.isArray(m.result_pairs) && m.result_pairs.length > 0)
+      completed += 1;
   }
   return expected > 0 && completed === expected;
 }
 
-// ---- Component ------------------------s----------------------------------
+// ---- Component ----------------------------------------------------------
 const RankingEdit = () => {
   const { t } = useTranslation();
   const { id } = useParams();
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [groups, setGroups] = useState([]);
-  const [players, setPlayers] = useState([]);
-  const [clubs, setClubs] = useState([]);
-  const [matches, setMatches] = useState([]);
-
-  useEffect(() => {
-    let alive = true;
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-
-      // 1) Groupes avec highest_position non NULL
-      const { data: gData, error: gErr } = await supabase
-        .from("group")
-        .select("id,name,highest_position,group_type")
-        .eq("tournament_id", id)
-        .not("highest_position", "is", null)
-        .order("highest_position", { ascending: true });
-      if (!alive) return;
-      if (gErr) {
-        setError(gErr.message);
-        setLoading(false);
-        return;
-      }
-
-      // 2) Joueurs du tournoi
-      const { data: pData, error: pErr } = await supabase
-        .from("player")
-        .select("id,firstname,lastname,group_id,club_id")
-        .eq("tournament_id", id);
-      if (!alive) return;
-      if (pErr) {
-        setError(pErr.message);
-        setLoading(false);
-        return;
-      }
-
-      // 2bis) Clubs du tournoi (pour la provenance)
-      const { data: cData, error: cErr } = await supabase
-        .from("club")
-        .select("id,name,abbreviation")
-        .eq("tournament_id", id);
-      if (!alive) return;
-      if (cErr) {
-        setError(cErr.message);
-        setLoading(false);
-        return;
-      }
-
-      // 3) Matchs du tournoi (IMPORTANT: filtrer par tournament_id)
-      const { data: mData, error: mErr } = await supabase
-        .from("match")
-        .select("id,group_id,player1_id,player2_id,result,tournament_id")
-        .eq("tournament_id", id);
-      if (!alive) return;
-      if (mErr) {
-        setError(mErr.message);
-        setLoading(false);
-        return;
-      }
-
-      setGroups(gData || []);
-      setPlayers(pData || []);
-      setClubs(cData || []);
-      setMatches(mData || []);
-      setLoading(false);
-    };
-    load();
-    return () => {
-      alive = false;
-    };
-  }, [id]);
+  const { groups, players, clubs, matches, loading, error } =
+    useRankingData(id);
 
   const clubsById = useMemo(() => {
     const m = new Map();
-    for (const c of clubs) m.set(c.id, c);
+    (clubs || []).forEach((c) => m.set(c.id, c));
     return m;
   }, [clubs]);
 
@@ -220,67 +191,143 @@ const RankingEdit = () => {
 
     // Regrouper les matchs par groupe pour rapidité
     const matchesByGroup = new Map();
-    for (const m of matches) {
-      if (!matchesByGroup.has(m.group_id)) matchesByGroup.set(m.group_id, []);
-      matchesByGroup.get(m.group_id).push(m);
+    for (const m of matches || []) {
+      const gid = Number(m.group_id ?? m.group?.id);
+      if (!Number.isFinite(gid)) continue;
+      if (!matchesByGroup.has(gid)) matchesByGroup.set(gid, []);
+      matchesByGroup.get(gid).push(m);
     }
 
     const allRows = [];
 
-    for (const g of groups) {
-      const gId = g.id;
+    // Garder uniquement les groupes avec highest_position non nul/undefined et trier par ordre croissant
+    const rankedGroups = [...(groups || [])]
+      .filter((g) => g?.highest_position != null)
+      .sort((a, b) => Number(a.highest_position) - Number(b.highest_position));
+
+    for (const g of rankedGroups) {
+      const gId = Number(g.id);
       const gMatches = matchesByGroup.get(gId) || [];
 
-      // joueurs appartenant à ce groupe (player.group_id est un ARRAY d'int)
-      const gPlayers = players.filter((p) =>
-        Array.isArray(p.group_id) ? p.group_id.includes(gId) : false
+      // joueurs du groupe : priorité aux ids présents dans les matchs, fallback sur player.group_id
+      const idsFromMatches = new Set(
+        gMatches
+          .flatMap((m) => [
+            Number(m.player1_id ?? m.player1?.id),
+            Number(m.player2_id ?? m.player2?.id),
+          ])
+          .filter(Number.isFinite)
       );
 
-      // Skip this group if its matches are not all completed
-      if (!isGroupComplete(gPlayers, gMatches)) {
-        continue;
+      let gPlayers = (players || []).filter((p) =>
+        idsFromMatches.has(Number(p.id))
+      );
+
+      if (gPlayers.length === 0) {
+        gPlayers = (players || []).filter((p) => {
+          if (!Array.isArray(p.group_id)) return false;
+          const gids = p.group_id.map((x) => Number(x)).filter(Number.isFinite);
+          return gids.includes(gId);
+        });
       }
+
+      if (!gPlayers.length) continue;
+
+      // Statut de complétion du groupe
+      const groupIsComplete = isGroupComplete(gPlayers, gMatches);
 
       // Stats globales pour le groupe
       const stats = computeStats(gPlayers, gMatches);
 
       // Tri selon les règles GroupTable
       const sorted = [...gPlayers].sort((a, b) => {
-        const sa = stats.get(a.id);
-        const sb = stats.get(b.id);
-        if (!sa || !sb) return 0;
-        const dWins = sb.wins - sa.wins;
+        const ga = stats.get(Number(a.id));
+        const gb = stats.get(Number(b.id));
+        if (!ga || !gb) return 0;
+
+        // 1) Victoires (desc)
+        const dWins = gb.wins - ga.wins;
         if (dWins !== 0) return dWins;
+
+        // 2) Confrontation directe si 2 ou 3 joueurs ex æquo sur les victoires
         const tied = gPlayers.filter(
-          (p) => (stats.get(p.id)?.wins ?? -1) === sa.wins
+          (p) => (stats.get(Number(p.id))?.wins ?? -1) === ga.wins
         );
         if (tied.length === 2 || tied.length === 3) {
           const dStats = directStats(tied, gMatches);
-          const da = dStats.get(a.id);
-          const db = dStats.get(b.id);
+          const da = dStats.get(Number(a.id));
+          const db = dStats.get(Number(b.id));
           if (da && db) {
-            const setDiff =
-              db.setsWon - db.setsLost - (da.setsWon - da.setsLost);
-            if (setDiff !== 0) return setDiff;
-            const goalDiff =
-              db.goalsFor - db.goalsAgainst - (da.goalsFor - da.goalsAgainst);
-            if (goalDiff !== 0) return goalDiff;
+            // 2.a) Diff sets (desc)
+            const setDiffH2HA = da.setsWon - da.setsLost;
+            const setDiffH2HB = db.setsWon - db.setsLost;
+            if (setDiffH2HA !== setDiffH2HB) return setDiffH2HB - setDiffH2HA;
+            // 2.b) Diff points (desc)
+            const goalDiffH2HA = da.goalsFor - da.goalsAgainst;
+            const goalDiffH2HB = db.goalsFor - db.goalsAgainst;
+            if (goalDiffH2HA !== goalDiffH2HB)
+              return goalDiffH2HB - goalDiffH2HA;
           }
         }
-        return (a.lastname || "").localeCompare(b.lastname || "", undefined, {
-          sensitivity: "base",
-        });
+
+        // 3) Diff sets global (desc)
+        const setDiffGA = ga.setsWon - ga.setsLost;
+        const setDiffGB = gb.setsWon - gb.setsLost;
+        if (setDiffGA !== setDiffGB) return setDiffGB - setDiffGA;
+
+        // 4) Diff points global (desc)
+        const goalDiffGA = ga.goalsFor - ga.goalsAgainst;
+        const goalDiffGB = gb.goalsFor - gb.goalsAgainst;
+        if (goalDiffGA !== goalDiffGB) return goalDiffGB - goalDiffGA;
+
+        // 5) Fallback stable : ordre alphabétique sur le nom de famille
+        return (a.lastname || "").localeCompare(b.lastname || "");
       });
 
       // Attribution des places
-      const start = Number(g.highest_position) || 1;
+      const start = Number(g.highest_position);
       sorted.forEach((p, idx) => {
-        const club = clubsById.get(p.club_id);
-        const clubName = club?.name || "";
-        const clubAbbrev = club?.abbreviation || "";
-        const prov = clubName
-          ? `${clubName}${clubAbbrev ? ` (${clubAbbrev})` : ""}`
-          : "—";
+        // Résolution robuste du club
+        const pickFirst = (arr) =>
+          Array.isArray(arr) && arr.length ? arr[0] : undefined;
+        const rawClubId =
+          (Array.isArray(p.club_id) ? pickFirst(p.club_id) : p.club_id) ??
+          p.clubId ??
+          p.club?.id;
+        const clubIdNum = Number(rawClubId);
+
+        let club = Number.isFinite(clubIdNum)
+          ? clubsById.get(clubIdNum)
+          : undefined;
+        if (!club && p.club && (p.club.name || p.club.abbreviation)) {
+          club = p.club;
+        }
+
+        let clubName = "";
+        let clubAbbrev = "";
+        let provenance = "—";
+
+        if (Array.isArray(p.club_id) && p.club_id.length > 1) {
+          const names = p.club_id
+            .map((cid) => clubsById.get(Number(cid)))
+            .filter(Boolean)
+            .map((c) =>
+              c.abbreviation ? `${c.name} (${c.abbreviation})` : `${c.name}`
+            );
+          if (names.length) {
+            provenance = names.join(", ");
+            clubName = clubsById.get(Number(p.club_id[0]))?.name || "";
+            clubAbbrev =
+              clubsById.get(Number(p.club_id[0]))?.abbreviation || "";
+          }
+        } else if (club) {
+          clubName = club.name || "";
+          clubAbbrev = club.abbreviation || "";
+          provenance = clubName
+            ? `${clubName}${clubAbbrev ? ` (${clubAbbrev})` : ""}`
+            : "—";
+        }
+
         allRows.push({
           playerId: p.id,
           firstname: p.firstname || "",
@@ -289,10 +336,11 @@ const RankingEdit = () => {
           groupName: g.name,
           groupType: g.group_type || "unknown",
           finalPosition: start + idx,
-          provenance: prov,
-          clubId: club?.id || null,
+          provenance,
+          clubId: Number.isFinite(clubIdNum) ? clubIdNum : null,
           clubName,
           clubAbbrev,
+          provisional: !groupIsComplete,
         });
       });
     }
@@ -333,7 +381,7 @@ const RankingEdit = () => {
     const header = "Position;Player;Provenance";
     const esc = (v) => {
       const s = String(v ?? "");
-      // Si le champ contient ; ou \" ou des retours, on l'encadre de quotes et on double les quotes
+      // Si le champ contient ; ou " ou des retours, on l'encadre de quotes et on double les quotes
       if (/[;"\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
       return s;
     };
@@ -383,7 +431,10 @@ const RankingEdit = () => {
       if (!list || list.length === 0) continue;
       sections.push(
         <section key={gt}>
-          <h2 className="text-xl font-semibold mb-3">{label(gt)}</h2>
+          <h2 className="text-xl font-semibold mb-3">
+            {label(gt)}
+            {list?.some((r) => r.provisional) ? " (provisoire)" : ""}
+          </h2>
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse">
               <thead>
@@ -437,7 +488,10 @@ const RankingEdit = () => {
       if (!list || list.length === 0) continue;
       sections.push(
         <section key={gt}>
-          <h2 className="text-xl font-semibold mb-3">{label(gt)}</h2>
+          <h2 className="text-xl font-semibold mb-3">
+            {label(gt)}
+            {list?.some((r) => r.provisional) ? " (provisoire)" : ""}
+          </h2>
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse">
               <thead>
@@ -490,7 +544,10 @@ const RankingEdit = () => {
 
   return (
     <div className="container mx-auto px-4 py-6">
-      <h1 className="text-2xl font-semibold mb-4">{t("adminRanking")}</h1>
+      <h1 className="text-2xl font-semibold mb-4">
+        {t("adminRanking", { defaultValue: "Classement (admin)" })}
+      </h1>
+
       <div className="mb-4">
         <button
           type="button"
@@ -508,14 +565,16 @@ const RankingEdit = () => {
       {loading && <p>{t("loading", { defaultValue: "Chargement…" })}</p>}
       {error && (
         <div className="text-red-600 mb-4">
-          {t("error_loading", { defaultValue: "Erreur de chargement:" })}{" "}
+          {t("error_loading", {
+            defaultValue: "Erreur de chargement:",
+          })}{" "}
           {error}
         </div>
       )}
 
       {!loading && !error && (!rowsByType || rowsByType.size === 0) && (
         <p>
-          {t("no_data", {
+          {t("no_data_ranking", {
             defaultValue: "Aucune donnée de match pour calculer le classement.",
           })}
         </p>
