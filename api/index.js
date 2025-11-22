@@ -425,9 +425,6 @@ async function handleAdminChangePassword(req, res, id, body) {
   }
   if (type === "user") {
     patch.user_password_hash = newHash;
-    // is_private suit le mot de passe user :
-    // - mot de passe non vide => tournoi privé
-    // - mot de passe vide     => tournoi public
     patch.is_private = !!newPassword;
   }
   if (type === "ereferee") {

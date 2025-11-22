@@ -283,13 +283,6 @@ const TournamentForm = ({
         <div className="mb-3">
           <label className="form-label">{t("passwordAdmin")}</label>
           <div className="d-flex gap-2">
-            <input
-              type="password"
-              className="form-control"
-              value={tournamentData.admin_password ? "********" : ""}
-              readOnly
-              disabled
-            />
             <button
               type="button"
               className="btn btn-outline-secondary"
@@ -305,13 +298,6 @@ const TournamentForm = ({
         <div className="mb-3">
           <label className="form-label">{t("passwordUser")}</label>
           <div className="d-flex gap-2">
-            <input
-              type="password"
-              className="form-control"
-              value={tournamentData.user_password ? "********" : ""}
-              readOnly
-              disabled
-            />
             <button
               type="button"
               className="btn btn-outline-secondary"
@@ -327,13 +313,6 @@ const TournamentForm = ({
         <div className="mb-3">
           <label className="form-label">{t("passwordReferee")}</label>
           <div className="d-flex gap-2">
-            <input
-              type="password"
-              className="form-control"
-              value={tournamentData.ereferee_password ? "********" : ""}
-              readOnly
-              disabled
-            />
             <button
               type="button"
               className="btn btn-outline-secondary"
