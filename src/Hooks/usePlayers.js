@@ -8,7 +8,7 @@ import { get, ApiError } from "../Helpers/apiClient";
  *  - Try PUBLIC endpoints first: /api/public/tournaments/:id/players and /api/public/tournaments/:id/groups
  *  - If they don't exist (404) or are disabled, fall back to protected endpoints.
  */
-const usePlayers = (tournamentId) => {
+const usePlayers = (tournamentId, refreshTrigger = false) => {
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -115,7 +115,7 @@ const usePlayers = (tournamentId) => {
     return () => {
       cancelled = true;
     };
-  }, [tournamentId]);
+  }, [tournamentId, refreshTrigger]);
 
   return { players, loading, error };
 };
