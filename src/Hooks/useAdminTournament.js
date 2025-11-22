@@ -27,9 +27,6 @@ const useAdminTournament = (id) => {
     endDay: "",
     mix: false,
     email: "",
-    admin_password: "",
-    user_password: "",
-    ereferee_password: "",
     table_count: 0,
     match_duration: 0,
     location: "",
@@ -79,6 +76,10 @@ const useAdminTournament = (id) => {
 
       try {
         const resp = await firstOk([
+          // Endpoints côté admin en priorité
+          `/api/admin/tournaments/${idNum}`,
+          `/api/admin/tournaments?id=${idNum}`,
+          // Fallback sur les endpoints génériques si besoin
           `/api/tournaments/${idNum}`,
           `/api/tournaments?id=${idNum}`,
         ]);
@@ -166,7 +167,7 @@ const useAdminTournament = (id) => {
     setSuccessMessage("");
 
     try {
-      const res = await fetch(`/api/tournaments/${idNum}`, {
+      const res = await fetch(`/api/admin/tournaments/${idNum}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
