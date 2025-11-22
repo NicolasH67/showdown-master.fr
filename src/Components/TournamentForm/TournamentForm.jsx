@@ -377,7 +377,7 @@ const TournamentForm = ({
             >
               <div className="modal-dialog" role="document">
                 <div className="modal-content">
-                  <form onSubmit={handlePasswordSubmit}>
+                  <div>
                     <div className="modal-header">
                       <h5 className="modal-title">
                         {t("changePassword", {
@@ -457,16 +457,17 @@ const TournamentForm = ({
                         {t("cancel", { defaultValue: "Annuler" })}
                       </button>
                       <button
-                        type="submit"
+                        type="button"
                         className="btn btn-primary"
                         disabled={pwdLoading}
+                        onClick={handlePasswordSubmit}
                       >
                         {pwdLoading
                           ? t("saving", { defaultValue: "Enregistrement..." })
                           : t("save", { defaultValue: "Enregistrer" })}
                       </button>
                     </div>
-                  </form>
+                  </div>
                 </div>
               </div>
             </div>
