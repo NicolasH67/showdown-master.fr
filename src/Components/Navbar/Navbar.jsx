@@ -181,20 +181,52 @@ const Navbar = () => {
                     : t("logout", { defaultValue: "Logout" })
                 }
                 onClick={async () => {
+                  const currentTournamentId = id ? Number(id) : null;
+                  let savedPwd = null;
+                  try {
+                    if (currentTournamentId != null) {
+                      savedPwd = sessionStorage.getItem(
+                        `tournamentPassword:${currentTournamentId}`
+                      );
+                    }
+                  } catch (_) {
+                    // ignore storage issues
+                  }
+
                   try {
                     setLoggingOut(true);
+                    // 1) On déconnecte complètement (admin + viewer)
                     await fetch("/api/auth/logout", {
                       method: "POST",
                       credentials: "include",
                       headers: { "Content-Type": "application/json" },
                     });
-                  } catch (_) {}
+
+                    // 2) Si on a mémorisé un mot de passe user pour ce tournoi,
+                    //    on restaure immédiatement la session utilisateur.
+                    if (savedPwd && currentTournamentId != null) {
+                      await fetch("/api/auth/tournament/login", {
+                        method: "POST",
+                        credentials: "include",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          tournamentId: currentTournamentId,
+                          password: savedPwd,
+                        }),
+                      });
+                    }
+                  } catch (_) {
+                    // ignore network errors
+                  }
+
                   try {
                     await refresh?.();
                   } catch (_) {}
+
                   try {
                     setIsNavbarCollapsed(true);
                   } catch (_) {}
+
                   const onTournamentPage =
                     location.pathname.includes("/tournament/");
                   if (onTournamentPage && id) {
