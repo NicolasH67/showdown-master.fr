@@ -151,6 +151,19 @@ const TournamentForm = ({
         },
       });
 
+      // Si c'est le mot de passe user, on met à jour isPrivate :
+      // - mot de passe non vide => isPrivate = true
+      // - mot de passe vide     => isPrivate = false
+      if (passwordModal.field === "user_password") {
+        handleChange({
+          target: {
+            name: "isPrivate",
+            value: !!pwdForm.newPassword,
+            type: "checkbox",
+          },
+        });
+      }
+
       closePasswordModal();
     } catch (err) {
       console.error("[TournamentForm] handlePasswordSubmit error:", err);
