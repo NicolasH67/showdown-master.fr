@@ -29,6 +29,7 @@ const TournamentForm = ({
   });
 
   const [pwdError, setPwdError] = useState("");
+  const [pwdLoading, setPwdLoading] = useState(false);
 
   const openPasswordModal = (field) => {
     setPasswordModal({ open: true, field });
@@ -46,31 +47,21 @@ const TournamentForm = ({
     setPwdForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handlePasswordSubmit = (e) => {
+  const handlePasswordSubmit = async (e) => {
     e.preventDefault();
     if (!passwordModal.field) return;
 
+    setPwdError("");
     const isAdmin = passwordModal.field === "admin_password";
-    const current = tournamentData[passwordModal.field] || "";
 
-    // Ancien mot de passe obligatoire uniquement s'il y en a déjà un
-    if (current) {
-      if (!pwdForm.oldPassword) {
-        setPwdError(
-          t("oldPasswordRequired", {
-            defaultValue: "L'ancien mot de passe est obligatoire.",
-          })
-        );
-        return;
-      }
-      if (pwdForm.oldPassword !== current) {
-        setPwdError(
-          t("oldPasswordInvalid", {
-            defaultValue: "L'ancien mot de passe est incorrect.",
-          })
-        );
-        return;
-      }
+    // Vérif de confirmation en front (pour user/ereferee, newPassword peut être vide)
+    if (pwdForm.newPassword !== pwdForm.confirmNewPassword) {
+      setPwdError(
+        t("passwordsDoNotMatch", {
+          defaultValue: "Les mots de passe ne correspondent pas.",
+        })
+      );
+      return;
     }
 
     // Pour l'admin, le nouveau mot de passe est obligatoire
@@ -83,29 +74,94 @@ const TournamentForm = ({
       return;
     }
 
-    // Vérif de confirmation (pour user/ereferee, newPassword peut être vide)
-    if (pwdForm.newPassword !== pwdForm.confirmNewPassword) {
+    const idNum = Number(id);
+    if (!Number.isFinite(idNum)) {
       setPwdError(
-        t("passwordsDoNotMatch", {
-          defaultValue: "Les mots de passe ne correspondent pas.",
+        t("invalidTournamentId", {
+          defaultValue: "Identifiant de tournoi invalide.",
         })
       );
       return;
     }
 
-    // On applique le nouveau mot de passe dans les données du formulaire parent.
-    // Pour user/ereferee, newPassword peut être vide -> on vide le mot de passe.
-    const newValue = pwdForm.newPassword;
+    const type =
+      passwordModal.field === "admin_password"
+        ? "admin"
+        : passwordModal.field === "user_password"
+        ? "user"
+        : "ereferee";
 
-    handleChange({
-      target: {
-        name: passwordModal.field,
-        value: newValue,
-        type: "text",
-      },
-    });
+    setPwdLoading(true);
+    try {
+      const res = await fetch(`/api/admin/tournaments/${idNum}/password`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          type,
+          oldPassword: pwdForm.oldPassword || "",
+          newPassword: pwdForm.newPassword || "",
+        }),
+      });
 
-    closePasswordModal();
+      if (!res.ok) {
+        let message =
+          t("errorUpdatingPassword", {
+            defaultValue: "Erreur lors de la mise à jour du mot de passe.",
+          }) || "Erreur lors de la mise à jour du mot de passe.";
+        try {
+          const errJson = await res.json();
+          const code = errJson?.error;
+          if (code === "old_password_required") {
+            message =
+              t("oldPasswordRequired", {
+                defaultValue: "L'ancien mot de passe est obligatoire.",
+              }) || message;
+          } else if (code === "old_password_invalid") {
+            message =
+              t("oldPasswordInvalid", {
+                defaultValue: "L'ancien mot de passe est incorrect.",
+              }) || message;
+          } else if (code === "new_password_required_for_admin") {
+            message =
+              t("newPasswordRequiredForAdmin", {
+                defaultValue: "Un nouveau mot de passe admin est obligatoire.",
+              }) || message;
+          } else if (code === "unauthorized") {
+            message =
+              t("unauthorized", {
+                defaultValue: "Accès non autorisé.",
+              }) || message;
+          }
+        } catch (_) {
+          // ignore json parse errors
+        }
+        setPwdError(message);
+        return;
+      }
+
+      // Succès : on marque localement qu'un mot de passe existe (ou a été vidé)
+      const newValue = pwdForm.newPassword ? "********" : "";
+      handleChange({
+        target: {
+          name: passwordModal.field,
+          value: newValue,
+          type: "text",
+        },
+      });
+
+      closePasswordModal();
+    } catch (err) {
+      console.error("[TournamentForm] handlePasswordSubmit error:", err);
+      setPwdError(
+        t("errorUpdatingPassword", {
+          defaultValue: "Erreur lors de la mise à jour du mot de passe.",
+        }) || "Erreur lors de la mise à jour du mot de passe."
+      );
+    } finally {
+      setPwdLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -396,11 +452,18 @@ const TournamentForm = ({
                         type="button"
                         className="btn btn-secondary"
                         onClick={closePasswordModal}
+                        disabled={pwdLoading}
                       >
                         {t("cancel", { defaultValue: "Annuler" })}
                       </button>
-                      <button type="submit" className="btn btn-primary">
-                        {t("save", { defaultValue: "Enregistrer" })}
+                      <button
+                        type="submit"
+                        className="btn btn-primary"
+                        disabled={pwdLoading}
+                      >
+                        {pwdLoading
+                          ? t("saving", { defaultValue: "Enregistrement..." })
+                          : t("save", { defaultValue: "Enregistrer" })}
                       </button>
                     </div>
                   </form>

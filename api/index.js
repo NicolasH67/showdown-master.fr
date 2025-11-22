@@ -348,6 +348,109 @@ async function handleAdminPatchTournament(req, res, id, body) {
 
   return send(res, status, ok ? JSON.parse(text) : text);
 }
+
+// Handler: Change admin/user/ereferee password for a tournament
+async function handleAdminChangePassword(req, res, id, body) {
+  // Only admin of this tournament can change passwords
+  const admin = await isAdminForTournament(req, id);
+  if (!admin) {
+    return send(res, 401, { error: "unauthorized" });
+  }
+
+  const bcrypt = await getBcrypt();
+  if (!bcrypt) {
+    return send(res, 500, { error: "bcrypt_unavailable" });
+  }
+
+  const type = String(body?.type || "").trim(); // "admin" | "user" | "ereferee"
+  const oldPassword = String(body?.oldPassword || "").trim();
+  const newPassword = String(body?.newPassword || "").trim();
+
+  if (!type || !["admin", "user", "ereferee"].includes(type)) {
+    return send(res, 400, { error: "invalid_type" });
+  }
+
+  // Pour l'admin, le nouveau mot de passe est obligatoire
+  if (type === "admin" && !newPassword) {
+    return send(res, 400, { error: "new_password_required_for_admin" });
+  }
+
+  // On récupère les hash actuels
+  const { ok, status, text } = await sFetch(
+    `/rest/v1/tournament?id=eq.${id}&select=id,admin_password_hash,user_password_hash,ereferee_password_hash`,
+    { headers: headers(process.env.SUPABASE_SERVICE_KEY) }
+  );
+  if (!ok) return send(res, status, text, "application/json");
+
+  let arr = [];
+  try {
+    arr = JSON.parse(text || "[]");
+  } catch {}
+  const t = Array.isArray(arr) ? arr[0] : null;
+  if (!t) {
+    return send(res, 404, { error: "not_found" });
+  }
+
+  let currentHash = null;
+  if (type === "admin") currentHash = t.admin_password_hash || null;
+  if (type === "user") currentHash = t.user_password_hash || null;
+  if (type === "ereferee") currentHash = t.ereferee_password_hash || null;
+
+  // Si un mot de passe existe déjà, on vérifie l'ancien
+  if (currentHash) {
+    if (!oldPassword) {
+      return send(res, 400, { error: "old_password_required" });
+    }
+    let passOk = false;
+    if (typeof currentHash === "string" && currentHash.startsWith("$2")) {
+      passOk = await bcrypt.compare(oldPassword, currentHash);
+    } else {
+      // fallback legacy plaintext
+      passOk = oldPassword === String(currentHash);
+    }
+    if (!passOk) {
+      return send(res, 401, { error: "old_password_invalid" });
+    }
+  }
+
+  // Pour user/ereferee, newPassword peut être vide -> on efface le mot de passe
+  let newHash = null;
+  if (newPassword) {
+    newHash = await bcrypt.hash(newPassword, 10);
+  }
+
+  const patch = {};
+  if (type === "admin") patch.admin_password_hash = newHash;
+  if (type === "user") patch.user_password_hash = newHash;
+  if (type === "ereferee") patch.ereferee_password_hash = newHash;
+
+  const {
+    ok: ok2,
+    status: status2,
+    text: text2,
+  } = await sFetch(`/rest/v1/tournament?id=eq.${id}&select=id`, {
+    method: "PATCH",
+    headers: {
+      ...headers(process.env.SUPABASE_SERVICE_KEY),
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+    },
+    body: JSON.stringify(patch),
+  });
+
+  if (!ok2) return send(res, status2, text2, "application/json");
+  let updatedArr = [];
+  try {
+    updatedArr = JSON.parse(text2 || "[]");
+  } catch {}
+
+  const updated = Array.isArray(updatedArr) ? updatedArr[0] : updatedArr;
+  return send(res, 200, {
+    ok: true,
+    id: updated?.id ?? id,
+    type,
+  });
+}
 async function handleCreateTournament(req, res, body) {
   const payload = {
     title: body?.title,
@@ -1092,6 +1195,18 @@ export default async function handler(req, res) {
         const body = await readJson(req);
         return handleAdminPatchTournament(req, res, idNum, body);
       }
+    }
+
+    const mAdminPwd = pathname.match(
+      /^\/api\/admin\/tournaments\/(\d+)\/password\/?$/
+    );
+    if (mAdminPwd && req.method === "POST") {
+      const idNum = Number(mAdminPwd[1]);
+      if (!Number.isFinite(idNum)) {
+        return send(res, 400, { error: "invalid_tournament_id" });
+      }
+      const body = await readJson(req);
+      return handleAdminChangePassword(req, res, idNum, body);
     }
 
     // Aliases with query ?id=
