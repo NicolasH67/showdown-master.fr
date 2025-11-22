@@ -240,7 +240,7 @@ async function handleGetTournament(req, res, id) {
 // ---- Admin-specific tournament helpers (do not alter public handlers) ----
 async function handleAdminGetTournament(req, res, id) {
   const { ok, status, text } = await sFetch(
-    `/rest/v1/tournament?id=eq.${id}&select=id,title,startday,endday,is_private,email,mix,table_count,match_duration,location`,
+    `/rest/v1/tournament?id=eq.${id}&select=id,title,startday,endday,is_private,email,table_count,match_duration,location`,
     { headers: headers(process.env.SUPABASE_SERVICE_KEY) }
   );
   if (!ok) return send(res, status, text, "application/json");
@@ -254,7 +254,7 @@ async function handleAdminGetTournament(req, res, id) {
 
 async function handleAdminListTournaments(req, res, searchParams) {
   const { ok, status, text } = await sFetch(
-    `/rest/v1/tournament?select=id,title,startday,endday,is_private,email,mix,table_count,match_duration,location&order=startday.asc`,
+    `/rest/v1/tournament?select=id,title,startday,endday,is_private,email,table_count,match_duration,location&order=startday.asc`,
     { headers: headers(process.env.SUPABASE_SERVICE_KEY) }
   );
   if (!ok) return send(res, status, text, "application/json");
@@ -304,9 +304,6 @@ function normalizeAdminTournamentPatchBody(body) {
   if (body.endDay !== undefined) out.endday = body.endDay;
   if (body.endday !== undefined) out.endday = body.endday;
 
-  // Mix flag
-  if (body.mix !== undefined) out.mix = body.mix;
-
   // Email
   if (body.email !== undefined) out.email = body.email;
 
@@ -337,7 +334,7 @@ async function handleAdminPatchTournament(req, res, id, body) {
   }
 
   const { ok, status, text } = await sFetch(
-    `/rest/v1/tournament?id=eq.${id}&select=id,title,startday,endday,is_private,email,mix,table_count,match_duration,location`,
+    `/rest/v1/tournament?id=eq.${id}&select=id,title,startday,endday,is_private,email,table_count,match_duration,location`,
     {
       method: "PATCH",
       headers: {
