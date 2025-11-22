@@ -17,7 +17,7 @@ const TournamentForm = ({
 
   const { id } = useParams();
 
-  console.log(tournamentData);
+  console.log(tournamentData.startDay);
 
   useEffect(() => {
     const timer = setTimeout(() => {
