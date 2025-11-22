@@ -458,6 +458,28 @@ async function handleAdminChangePassword(req, res, id, body) {
     type,
   });
 }
+// Delete a tournament as admin
+async function handleAdminDeleteTournament(req, res, id) {
+  // Only admin of this tournament can delete it
+  const admin = await isAdminForTournament(req, id);
+  if (!admin) {
+    return send(res, 401, { error: "unauthorized" });
+  }
+
+  const { ok, status, text } = await sFetch(`/rest/v1/tournament?id=eq.${id}`, {
+    method: "DELETE",
+    headers: {
+      ...headers(process.env.SUPABASE_SERVICE_KEY),
+      Prefer: "return=minimal",
+    },
+  });
+
+  if (!ok) {
+    return send(res, status, text, "application/json");
+  }
+
+  return send(res, 200, { ok: true, deleted: true, id });
+}
 async function handleCreateTournament(req, res, body) {
   const payload = {
     title: body?.title,
@@ -1201,6 +1223,9 @@ export default async function handler(req, res) {
       if (req.method === "PATCH") {
         const body = await readJson(req);
         return handleAdminPatchTournament(req, res, idNum, body);
+      }
+      if (req.method === "DELETE") {
+        return handleAdminDeleteTournament(req, res, idNum);
       }
     }
 
