@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import AdminLogin from "../AdminLogin/AdminLogin";
 import Button from "../Button/Button";
 import useAuth from "../../auth/useAuth";
+import { post } from "../../Helpers/apiClient";
 
 /**
  * Navbar component that provides navigation links and language selection.
@@ -183,6 +184,8 @@ const Navbar = () => {
                 onClick={async () => {
                   const currentTournamentId = id ? Number(id) : null;
                   let savedPwd = null;
+
+                  // Récupère le mot de passe user mémorisé pour ce tournoi
                   try {
                     if (currentTournamentId != null) {
                       savedPwd = sessionStorage.getItem(
@@ -193,35 +196,37 @@ const Navbar = () => {
                     // ignore storage issues
                   }
 
+                  setLoggingOut(true);
                   try {
-                    setLoggingOut(true);
                     // 1) On déconnecte complètement (admin + viewer)
                     await fetch("/api/auth/logout", {
                       method: "POST",
                       credentials: "include",
                       headers: { "Content-Type": "application/json" },
                     });
+                  } catch (e) {
+                    // on log l'erreur mais on continue quand même
+                    console.error("[Navbar] logout error", e);
+                  }
 
-                    // 2) Si on a mémorisé un mot de passe user pour ce tournoi,
-                    //    on restaure immédiatement la session utilisateur.
-                    if (savedPwd && currentTournamentId != null) {
-                      await fetch("/api/auth/tournament/login", {
-                        method: "POST",
-                        credentials: "include",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({
-                          tournamentId: currentTournamentId,
-                          password: savedPwd,
-                        }),
+                  // 2) Si on a mémorisé un mot de passe user pour ce tournoi,
+                  //    on essaie de restaurer immédiatement la session utilisateur
+                  if (savedPwd && currentTournamentId != null) {
+                    try {
+                      await post("/api/auth/tournament/login", {
+                        tournamentId: currentTournamentId,
+                        password: savedPwd,
                       });
+                    } catch (e) {
+                      console.error("[Navbar] auto user relogin failed", e);
                     }
-                  } catch (_) {
-                    // ignore network errors
                   }
 
                   try {
                     await refresh?.();
-                  } catch (_) {}
+                  } catch (e) {
+                    console.error("[Navbar] refresh error", e);
+                  }
 
                   try {
                     setIsNavbarCollapsed(true);
