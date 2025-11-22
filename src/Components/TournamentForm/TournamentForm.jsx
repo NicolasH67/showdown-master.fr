@@ -17,8 +17,6 @@ const TournamentForm = ({
 
   const { id } = useParams();
 
-  console.log(tournamentData.startDay);
-
   useEffect(() => {
     const timer = setTimeout(() => {
       const title = document.getElementById("page-title");
@@ -69,17 +67,17 @@ const TournamentForm = ({
         </div>
 
         <div className="mb-3">
-          <label className="form-label">{t("titleStartDay")}</label>
+          <label className="form-label">{t("titlestartDay")}</label>
           <input
             type="date"
-            name="startday"
+            name="startDay"
             value={
-              tournamentData.startday
-                ? tournamentData.startday.includes("/")
+              tournamentData.startDay
+                ? tournamentData.startDay.includes("/")
                   ? // cas JJ/MM/AAAA -> on convertit en AAAA-MM-JJ
-                    tournamentData.startday.split("/").reverse().join("-")
+                    tournamentData.startDay.split("/").reverse().join("-")
                   : // cas déjà AAAA-MM-JJ ou ISO -> on tronque à 10 caractères
-                    tournamentData.startday.slice(0, 10)
+                    tournamentData.startDay.slice(0, 10)
                 : ""
             }
             onChange={handleChange}
@@ -89,17 +87,17 @@ const TournamentForm = ({
         </div>
 
         <div className="mb-3">
-          <label className="form-label">{t("titleEndDay")}</label>
+          <label className="form-label">{t("titleendDay")}</label>
           <input
             type="date"
-            name="endday"
+            name="endDay"
             value={
-              tournamentData.endday
-                ? tournamentData.endday.includes("/")
+              tournamentData.endDay
+                ? tournamentData.endDay.includes("/")
                   ? // cas JJ/MM/AAAA -> on convertit en AAAA-MM-JJ
-                    tournamentData.endday.split("/").reverse().join("-")
+                    tournamentData.endDay.split("/").reverse().join("-")
                   : // cas déjà AAAA-MM-JJ ou ISO -> on tronque à 10 caractères
-                    tournamentData.endday.slice(0, 10)
+                    tournamentData.endDay.slice(0, 10)
                 : ""
             }
             onChange={handleChange}
