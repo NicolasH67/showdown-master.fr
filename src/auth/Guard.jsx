@@ -26,7 +26,7 @@ export function AdminGuard({ children }) {
     setModalMessage("");
     try {
       // Ici, on est sur le guard ADMIN → utiliser le login ADMIN
-      await post("/auth/admin/login", { tournamentId: id, password });
+      await post("/api/auth/admin/login", { tournamentId: id, password });
       setModalMessage("Mot de passe correct");
       setShowModal(false);
       window.location.reload();
@@ -84,7 +84,7 @@ export function ViewerGuard({ children }) {
     e.preventDefault();
     setModalMessage("");
     try {
-      await post("/auth/tournament/login", { tournamentId: id, password });
+      await post("/api/auth/tournament/login", { tournamentId: id, password });
       setModalMessage("Mot de passe correct");
       setShowModal(false);
       window.location.reload();
