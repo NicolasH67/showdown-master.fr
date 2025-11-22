@@ -481,18 +481,54 @@ async function handleAdminDeleteTournament(req, res, id) {
   return send(res, 200, { ok: true, deleted: true, id });
 }
 async function handleCreateTournament(req, res, body) {
+  // Lecture des champs de base
+  const title = body?.title;
+  const startday = body?.startday;
+  const endday = body?.endday;
+  const email = body?.email;
+  const table_count = body?.table_count ?? 4;
+  const match_duration = body?.match_duration ?? 30;
+  const location = body?.location ?? null;
+
+  // Mot de passe fourni côté frontend pour la création
+  const rawAdminPwd =
+    typeof body?.adminPassword === "string" ? body.adminPassword.trim() : "";
+
+  let passwordHash = null;
+
+  if (rawAdminPwd) {
+    const bcrypt = await getBcrypt();
+    if (!bcrypt) {
+      return send(res, 500, { error: "bcrypt_unavailable" });
+    }
+    passwordHash = await bcrypt.hash(rawAdminPwd, 10);
+  }
+
+  // is_private :
+  // - si un mot de passe est fourni -> on force true
+  // - sinon on reprend le comportement d'avant (défaut true si non précisé)
+  let is_private = body?.is_private;
+  if (typeof is_private !== "boolean") {
+    is_private = true;
+  }
+  if (passwordHash) {
+    is_private = true;
+  }
+
   const payload = {
-    title: body?.title,
-    startday: body?.startday,
-    endday: body?.endday,
-    email: body?.email,
-    table_count: body?.table_count ?? 4,
-    match_duration: body?.match_duration ?? 30,
-    location: body?.location ?? null,
-    is_private: body?.is_private ?? true,
-    admin_password_hash: body?.admin_password_hash ?? null,
-    user_password_hash: body?.user_password_hash ?? null,
+    title,
+    startday,
+    endday,
+    email,
+    table_count,
+    match_duration,
+    location,
+    is_private,
+    // On applique le même hash aux deux colonnes comme demandé
+    admin_password_hash: passwordHash,
+    user_password_hash: passwordHash,
   };
+
   const { ok, status, text } = await sFetch(
     `/rest/v1/tournament?select=id,title,startday,endday,is_private`,
     {
