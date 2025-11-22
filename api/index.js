@@ -1180,7 +1180,8 @@ export default async function handler(req, res) {
       return send(res, 500, { error: "supabase_env_missing" });
     }
 
-    const { pathname, searchParams } = parseUrl(req);
+    const { pathname: rawPathname, searchParams } = parseUrl(req);
+    const pathname = rawPathname.replace(/\/{2,}/g, "/");
 
     // ---- DEBUG
     if (req.method === "GET" && pathname === "/api/debug/health") {
