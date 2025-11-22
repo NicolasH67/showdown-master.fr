@@ -1226,11 +1226,15 @@ export default async function handler(req, res) {
     }
 
     // ---- EMAIL CODE
-    if (req.method === "POST" && pathname === "/api/send-email-code") {
+    // Support optional trailing slash to be more tolerant with frontend base URLs
+    if (req.method === "POST" && /^\/api\/send-email-code\/?$/.test(pathname)) {
       const body = await readJson(req);
       return handleSendEmailCode(req, res, body);
     }
-    if (req.method === "POST" && pathname === "/api/verify-email-code") {
+    if (
+      req.method === "POST" &&
+      /^\/api\/verify-email-code\/?$/.test(pathname)
+    ) {
       const body = await readJson(req);
       return handleVerifyEmailCode(req, res, body);
     }
