@@ -308,7 +308,6 @@ const GroupTableEdit = ({ groups, players, onEdit, onDelete, allGroups }) => {
                           >
                             <X size={20} color="white" />
                           </button>
-                          ;
                         </div>
                       ))}
                       <br />
