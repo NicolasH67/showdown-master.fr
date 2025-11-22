@@ -1037,6 +1037,47 @@ async function handleViewerLogin(req, res, body) {
     return send(res, 500, { error: "server_error_login" });
   }
 }
+
+// Switch current session from admin to viewer for the same tournament
+async function handleSwitchToViewer(req, res) {
+  try {
+    const COOKIE = process.env.COOKIE_NAME || "sm_session";
+    const SECRET = process.env.JWT_SECRET || "change-me";
+
+    // On récupère le payload actuel depuis le cookie
+    const payload = await getAuthFromCookie(req);
+    const tid = Number(payload?.tournament_id);
+
+    // On n'autorise ce switch que si la session actuelle est bien admin
+    // pour un tournoi valide.
+    if (!payload || payload.scope !== "admin" || !Number.isFinite(tid)) {
+      return send(res, 401, { error: "not_admin" });
+    }
+
+    // On signe un nouveau JWT en scope "viewer" pour le même tournoi
+    const token = await signJWT(
+      { scope: "viewer", tournament_id: tid },
+      SECRET
+    );
+    // On réécrit le cookie de session
+    setCookie(res, COOKIE, token, 12 * 60 * 60 * 1000);
+
+    return send(res, 200, {
+      ok: true,
+      scope: "viewer",
+      tournamentId: tid,
+    });
+  } catch (e) {
+    const DEBUG = String(process.env.DEBUG_AUTH || "false") === "true";
+    if (DEBUG) {
+      return send(res, 500, {
+        error: "server_error_switch_to_viewer",
+        message: e?.message || null,
+      });
+    }
+    return send(res, 500, { error: "server_error_switch_to_viewer" });
+  }
+}
 function handleLogout(_req, res) {
   const COOKIE = process.env.COOKIE_NAME || "sm_session";
   clearCookie(res, COOKIE);
@@ -1169,6 +1210,12 @@ export default async function handler(req, res) {
     if (req.method === "POST" && pathname === "/api/auth/tournament/login") {
       const body = await readJson(req);
       return handleViewerLogin(req, res, body);
+    }
+    if (
+      req.method === "POST" &&
+      pathname === "/api/auth/tournament/switch-to-viewer"
+    ) {
+      return handleSwitchToViewer(req, res);
     }
     if (req.method === "POST" && pathname === "/api/auth/logout") {
       return handleLogout(req, res);

@@ -4,7 +4,6 @@ import { useTranslation } from "react-i18next";
 import AdminLogin from "../AdminLogin/AdminLogin";
 import Button from "../Button/Button";
 import useAuth from "../../auth/useAuth";
-import { post } from "../../Helpers/apiClient";
 
 /**
  * Navbar component that provides navigation links and language selection.
@@ -182,73 +181,74 @@ const Navbar = () => {
                     : t("logout", { defaultValue: "Logout" })
                 }
                 onClick={async () => {
-                  const currentTournamentId = id ? Number(id) : null;
-                  let savedPwd = null;
-
-                  // Récupère le mot de passe user mémorisé pour ce tournoi
-                  try {
-                    if (currentTournamentId != null) {
-                      savedPwd = sessionStorage.getItem(
-                        `tournamentPassword:${currentTournamentId}`
-                      );
+                  // Si on n'est pas sur une page tournoi, on fait un logout simple
+                  if (!id) {
+                    setLoggingOut(true);
+                    try {
+                      await fetch("/api/auth/logout", {
+                        method: "POST",
+                        credentials: "include",
+                        headers: { "Content-Type": "application/json" },
+                      });
+                    } catch (e) {
+                      console.error("[Navbar] logout error", e);
                     }
-                  } catch (_) {
-                    // ignore storage issues
+                    navigate("/", { replace: true });
+                    setLoggingOut(false);
+                    return;
                   }
 
+                  const currentTournamentId = Number(id);
                   setLoggingOut(true);
 
-                  // 1) On déconnecte complètement (admin + viewer)
                   try {
-                    await fetch("/api/auth/logout", {
-                      method: "POST",
-                      credentials: "include",
-                      headers: { "Content-Type": "application/json" },
-                    });
-                  } catch (e) {
-                    console.error("[Navbar] logout error", e);
-                  }
+                    // 1) On demande au backend de transformer la session admin
+                    //    en session viewer pour CE tournoi, sans redemander de mot de passe.
+                    const resp = await fetch(
+                      "/api/auth/tournament/switch-to-viewer",
+                      {
+                        method: "POST",
+                        credentials: "include",
+                        headers: { "Content-Type": "application/json" },
+                      }
+                    );
 
-                  // 2) Si on a mémorisé un mot de passe user pour ce tournoi,
-                  //    on tente une reconnexion immédiate côté viewer
-                  if (savedPwd && currentTournamentId != null) {
-                    try {
-                      await post("/api/auth/tournament/login", {
-                        tournamentId: currentTournamentId,
-                        password: savedPwd,
+                    if (!resp.ok) {
+                      console.error(
+                        "[Navbar] switch-to-viewer failed",
+                        resp.status
+                      );
+                      // Fallback : si le backend ne supporte pas (encore) ce flux,
+                      // on fait un logout complet.
+                      await fetch("/api/auth/logout", {
+                        method: "POST",
+                        credentials: "include",
+                        headers: { "Content-Type": "application/json" },
                       });
-
-                      // Reconnexion viewer réussie : on force un rechargement
-                      // complet sur la page joueurs du tournoi pour que les guards
-                      // et useAuth soient parfaitement synchronisés.
-                      window.location.href = `/tournament/${currentTournamentId}/players`;
+                      navigate("/", { replace: true });
+                      setLoggingOut(false);
                       return;
-                    } catch (e) {
-                      console.error("[Navbar] auto user relogin failed", e);
-                      // on continue le flux normal vers la home ou players
                     }
-                  }
 
-                  // 3) Pas de mot de passe sauvegardé ou relogin échoué :
-                  //    on rafraîchit l'état d'auth et on redirige comme avant.
-                  try {
-                    await refresh?.();
+                    // 2) Session viewer créée : on force un rechargement complet
+                    //    sur la page joueurs du tournoi pour que les guards et useAuth
+                    //    soient parfaitement synchronisés.
+                    window.location.href = `/tournament/${currentTournamentId}/players`;
+                    return;
                   } catch (e) {
-                    console.error("[Navbar] refresh error", e);
-                  }
-
-                  try {
-                    setIsNavbarCollapsed(true);
-                  } catch (_) {}
-
-                  const onTournamentPage =
-                    location.pathname.includes("/tournament/");
-                  if (onTournamentPage && id) {
-                    navigate(`/tournament/${id}/players`, { replace: true });
-                  } else {
+                    console.error("[Navbar] switch-to-viewer error", e);
+                    // Fallback ultime : logout complet et retour à l'accueil
+                    try {
+                      await fetch("/api/auth/logout", {
+                        method: "POST",
+                        credentials: "include",
+                        headers: { "Content-Type": "application/json" },
+                      });
+                    } catch (_) {}
                     navigate("/", { replace: true });
+                  } finally {
+                    setLoggingOut(false);
                   }
-                  setLoggingOut(false);
                 }}
                 active
                 disabled={loggingOut}
