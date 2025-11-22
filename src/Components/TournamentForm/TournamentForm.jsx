@@ -17,6 +17,8 @@ const TournamentForm = ({
 
   const { id } = useParams();
 
+  console.log(tournamentData.startday);
+
   useEffect(() => {
     const timer = setTimeout(() => {
       const title = document.getElementById("page-title");
