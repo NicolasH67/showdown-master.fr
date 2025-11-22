@@ -197,31 +197,40 @@ const Navbar = () => {
                   }
 
                   setLoggingOut(true);
+
+                  // 1) On déconnecte complètement (admin + viewer)
                   try {
-                    // 1) On déconnecte complètement (admin + viewer)
                     await fetch("/api/auth/logout", {
                       method: "POST",
                       credentials: "include",
                       headers: { "Content-Type": "application/json" },
                     });
                   } catch (e) {
-                    // on log l'erreur mais on continue quand même
                     console.error("[Navbar] logout error", e);
                   }
 
                   // 2) Si on a mémorisé un mot de passe user pour ce tournoi,
-                  //    on essaie de restaurer immédiatement la session utilisateur
+                  //    on tente une reconnexion immédiate côté viewer
                   if (savedPwd && currentTournamentId != null) {
                     try {
                       await post("/api/auth/tournament/login", {
                         tournamentId: currentTournamentId,
                         password: savedPwd,
                       });
+
+                      // Reconnexion viewer réussie : on force un rechargement
+                      // complet sur la page joueurs du tournoi pour que les guards
+                      // et useAuth soient parfaitement synchronisés.
+                      window.location.href = `/tournament/${currentTournamentId}/players`;
+                      return;
                     } catch (e) {
                       console.error("[Navbar] auto user relogin failed", e);
+                      // on continue le flux normal vers la home ou players
                     }
                   }
 
+                  // 3) Pas de mot de passe sauvegardé ou relogin échoué :
+                  //    on rafraîchit l'état d'auth et on redirige comme avant.
                   try {
                     await refresh?.();
                   } catch (e) {
