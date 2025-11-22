@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import supabase from "../../Helpers/supabaseClient";
 import { useParams, useLocation } from "react-router-dom";
@@ -16,6 +16,97 @@ const TournamentForm = ({
   const location = useLocation();
 
   const { id } = useParams();
+
+  const [passwordModal, setPasswordModal] = useState({
+    open: false,
+    field: null, // "admin_password" | "user_password" | "ereferee_password"
+  });
+
+  const [pwdForm, setPwdForm] = useState({
+    oldPassword: "",
+    newPassword: "",
+    confirmNewPassword: "",
+  });
+
+  const [pwdError, setPwdError] = useState("");
+
+  const openPasswordModal = (field) => {
+    setPasswordModal({ open: true, field });
+    setPwdForm({ oldPassword: "", newPassword: "", confirmNewPassword: "" });
+    setPwdError("");
+  };
+
+  const closePasswordModal = () => {
+    setPasswordModal({ open: false, field: null });
+    setPwdError("");
+  };
+
+  const handlePasswordFieldChange = (e) => {
+    const { name, value } = e.target;
+    setPwdForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handlePasswordSubmit = (e) => {
+    e.preventDefault();
+    if (!passwordModal.field) return;
+
+    const isAdmin = passwordModal.field === "admin_password";
+    const current = tournamentData[passwordModal.field] || "";
+
+    // Ancien mot de passe obligatoire uniquement s'il y en a déjà un
+    if (current) {
+      if (!pwdForm.oldPassword) {
+        setPwdError(
+          t("oldPasswordRequired", {
+            defaultValue: "L'ancien mot de passe est obligatoire.",
+          })
+        );
+        return;
+      }
+      if (pwdForm.oldPassword !== current) {
+        setPwdError(
+          t("oldPasswordInvalid", {
+            defaultValue: "L'ancien mot de passe est incorrect.",
+          })
+        );
+        return;
+      }
+    }
+
+    // Pour l'admin, le nouveau mot de passe est obligatoire
+    if (isAdmin && !pwdForm.newPassword) {
+      setPwdError(
+        t("newPasswordRequiredForAdmin", {
+          defaultValue: "Un nouveau mot de passe admin est obligatoire.",
+        })
+      );
+      return;
+    }
+
+    // Vérif de confirmation (pour user/ereferee, newPassword peut être vide)
+    if (pwdForm.newPassword !== pwdForm.confirmNewPassword) {
+      setPwdError(
+        t("passwordsDoNotMatch", {
+          defaultValue: "Les mots de passe ne correspondent pas.",
+        })
+      );
+      return;
+    }
+
+    // On applique le nouveau mot de passe dans les données du formulaire parent.
+    // Pour user/ereferee, newPassword peut être vide -> on vide le mot de passe.
+    const newValue = pwdForm.newPassword;
+
+    handleChange({
+      target: {
+        name: passwordModal.field,
+        value: newValue,
+        type: "text",
+      },
+    });
+
+    closePasswordModal();
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -120,36 +211,68 @@ const TournamentForm = ({
 
         <div className="mb-3">
           <label className="form-label">{t("passwordAdmin")}</label>
-          <input
-            type="text"
-            name="admin_password"
-            value={tournamentData.admin_password || ""}
-            onChange={handleChange}
-            required
-            className="form-control"
-          />
+          <div className="d-flex gap-2">
+            <input
+              type="password"
+              className="form-control"
+              value={tournamentData.admin_password ? "********" : ""}
+              readOnly
+              disabled
+            />
+            <button
+              type="button"
+              className="btn btn-outline-secondary"
+              onClick={() => openPasswordModal("admin_password")}
+            >
+              {t("changePassword", {
+                defaultValue: "Changer le mot de passe",
+              })}
+            </button>
+          </div>
         </div>
 
         <div className="mb-3">
           <label className="form-label">{t("passwordUser")}</label>
-          <input
-            type="text"
-            name="user_password"
-            value={tournamentData.user_password || ""}
-            onChange={handleChange}
-            className="form-control"
-          />
+          <div className="d-flex gap-2">
+            <input
+              type="password"
+              className="form-control"
+              value={tournamentData.user_password ? "********" : ""}
+              readOnly
+              disabled
+            />
+            <button
+              type="button"
+              className="btn btn-outline-secondary"
+              onClick={() => openPasswordModal("user_password")}
+            >
+              {t("changePassword", {
+                defaultValue: "Changer le mot de passe",
+              })}
+            </button>
+          </div>
         </div>
 
         <div className="mb-3">
           <label className="form-label">{t("passwordReferee")}</label>
-          <input
-            type="text"
-            name="ereferee_password"
-            value={tournamentData.ereferee_password || ""}
-            onChange={handleChange}
-            className="form-control"
-          />
+          <div className="d-flex gap-2">
+            <input
+              type="password"
+              className="form-control"
+              value={tournamentData.ereferee_password ? "********" : ""}
+              readOnly
+              disabled
+            />
+            <button
+              type="button"
+              className="btn btn-outline-secondary"
+              onClick={() => openPasswordModal("ereferee_password")}
+            >
+              {t("changePassword", {
+                defaultValue: "Changer le mot de passe",
+              })}
+            </button>
+          </div>
         </div>
 
         <div className="mb-3">
@@ -186,6 +309,106 @@ const TournamentForm = ({
             className="form-control"
           />
         </div>
+
+        {passwordModal.open && (
+          <>
+            <div className="modal-backdrop fade show" />
+            <div
+              className="modal fade show"
+              tabIndex="-1"
+              role="dialog"
+              style={{ display: "block" }}
+            >
+              <div className="modal-dialog" role="document">
+                <div className="modal-content">
+                  <form onSubmit={handlePasswordSubmit}>
+                    <div className="modal-header">
+                      <h5 className="modal-title">
+                        {t("changePassword", {
+                          defaultValue: "Changer le mot de passe",
+                        })}
+                      </h5>
+                      <button
+                        type="button"
+                        className="btn-close"
+                        aria-label={t("close", { defaultValue: "Fermer" })}
+                        onClick={closePasswordModal}
+                      />
+                    </div>
+                    <div className="modal-body">
+                      {pwdError && (
+                        <div className="alert alert-danger">{pwdError}</div>
+                      )}
+                      <div className="mb-3">
+                        <label className="form-label">
+                          {t("oldPassword", {
+                            defaultValue: "Ancien mot de passe",
+                          })}
+                        </label>
+                        <input
+                          type="password"
+                          name="oldPassword"
+                          value={pwdForm.oldPassword}
+                          onChange={handlePasswordFieldChange}
+                          className="form-control"
+                        />
+                      </div>
+                      <div className="mb-3">
+                        <label className="form-label">
+                          {t("newPassword", {
+                            defaultValue: "Nouveau mot de passe",
+                          })}
+                          {passwordModal.field === "admin_password" && " *"}
+                        </label>
+                        <input
+                          type="password"
+                          name="newPassword"
+                          value={pwdForm.newPassword}
+                          onChange={handlePasswordFieldChange}
+                          className="form-control"
+                        />
+                        {passwordModal.field === "admin_password" && (
+                          <small className="form-text text-muted">
+                            {t("newAdminPasswordRequired", {
+                              defaultValue:
+                                "Le nouveau mot de passe admin est obligatoire.",
+                            })}
+                          </small>
+                        )}
+                      </div>
+                      <div className="mb-3">
+                        <label className="form-label">
+                          {t("confirmNewPassword", {
+                            defaultValue: "Confirmer le nouveau mot de passe",
+                          })}
+                        </label>
+                        <input
+                          type="password"
+                          name="confirmNewPassword"
+                          value={pwdForm.confirmNewPassword}
+                          onChange={handlePasswordFieldChange}
+                          className="form-control"
+                        />
+                      </div>
+                    </div>
+                    <div className="modal-footer">
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={closePasswordModal}
+                      >
+                        {t("cancel", { defaultValue: "Annuler" })}
+                      </button>
+                      <button type="submit" className="btn btn-primary">
+                        {t("save", { defaultValue: "Enregistrer" })}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
 
         <button
           type="submit"
