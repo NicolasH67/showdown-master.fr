@@ -17,7 +17,7 @@ import useReferee from "./useReferee";
  * Note : `refreshTrigger` est supporté en dépendance via les hooks enfants
  * s'ils l'acceptent ; sinon il n'a pas d'effet.
  */
-const useTournamentData = (tournamentId, refreshTrigger) => {
+const useTournamentData = (tournamentId, refreshTrigger = false) => {
   // Données de base
   const {
     groups,
@@ -66,7 +66,7 @@ const useTournamentData = (tournamentId, refreshTrigger) => {
         .join(", ");
       return { ...p, groupNames: names };
     });
-  }, [players, groups]);
+  }, [players, groups, refreshTrigger]);
 
   return {
     groups,
