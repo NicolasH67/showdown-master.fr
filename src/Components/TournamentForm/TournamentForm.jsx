@@ -71,7 +71,15 @@ const TournamentForm = ({
           <input
             type="date"
             name="startday"
-            value={tournamentData.startday || ""}
+            value={
+              tournamentData.startday
+                ? tournamentData.startday.includes("/")
+                  ? // cas JJ/MM/AAAA -> on convertit en AAAA-MM-JJ
+                    tournamentData.startday.split("/").reverse().join("-")
+                  : // cas déjà AAAA-MM-JJ ou ISO -> on tronque à 10 caractères
+                    tournamentData.startday.slice(0, 10)
+                : ""
+            }
             onChange={handleChange}
             required
             className="form-control"
@@ -83,7 +91,15 @@ const TournamentForm = ({
           <input
             type="date"
             name="endday"
-            value={tournamentData.endday || ""}
+            value={
+              tournamentData.endday
+                ? tournamentData.endday.includes("/")
+                  ? // cas JJ/MM/AAAA -> on convertit en AAAA-MM-JJ
+                    tournamentData.endday.split("/").reverse().join("-")
+                  : // cas déjà AAAA-MM-JJ ou ISO -> on tronque à 10 caractères
+                    tournamentData.endday.slice(0, 10)
+                : ""
+            }
             onChange={handleChange}
             required
             className="form-control"
