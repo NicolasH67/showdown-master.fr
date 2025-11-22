@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import supabase from "../../Helpers/supabaseClient";
 import { useParams, useLocation } from "react-router-dom";
 
 const TournamentForm = ({
@@ -193,16 +192,50 @@ const TournamentForm = ({
   const deleteTournament = async (e) => {
     e.preventDefault();
     const confirmation = window.prompt(t("confirmDeleteTournamentPrompt"));
-    if (confirmation === "DELETE") {
-      const { error } = await supabase.from("tournament").delete().eq("id", id);
-      if (error) {
-        console.error(error.message);
-      } else {
-        console.log("Le tournoi a été supprimé");
-        window.location.href = "/";
-      }
-    } else {
+    if (confirmation !== "DELETE") {
       return;
+    }
+
+    const idNum = Number(id);
+    if (!Number.isFinite(idNum)) {
+      console.error("Invalid tournament id");
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/admin/tournaments/${idNum}`, {
+        method: "DELETE",
+        headers: {
+          Accept: "application/json",
+        },
+      });
+
+      if (!res.ok) {
+        let msg =
+          t("errorDeletingTournament", {
+            defaultValue: "Erreur lors de la suppression du tournoi.",
+          }) || "Erreur lors de la suppression du tournoi.";
+        try {
+          const errJson = await res.json();
+          if (errJson && errJson.error) {
+            msg += ` (${errJson.error})`;
+          }
+        } catch (_) {
+          // ignore JSON parse error
+        }
+        alert(msg);
+        return;
+      }
+
+      console.log("Le tournoi a été supprimé");
+      window.location.href = "/";
+    } catch (err) {
+      console.error(err);
+      alert(
+        t("errorDeletingTournament", {
+          defaultValue: "Erreur lors de la suppression du tournoi.",
+        }) || "Erreur lors de la suppression du tournoi."
+      );
     }
   };
 
