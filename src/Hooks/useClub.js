@@ -24,7 +24,7 @@ const firstOk = async (paths) => {
  * @param {string|number} tournamentIdParam - Optional tournament id. If omitted, falls back to route param `id`.
  * @returns {{ clubs: Array, loading: boolean, error: any }}
  */
-export default function useClub(tournamentIdParam) {
+export default function useClub(tournamentIdParam, refreshTrigger = false) {
   const { id: routeId } = useParams();
   const tid = tournamentIdParam ?? routeId;
 
@@ -65,7 +65,7 @@ export default function useClub(tournamentIdParam) {
     return () => {
       alive = false;
     };
-  }, [tid]);
+  }, [tid, refreshTrigger]);
 
   return { clubs, loading, error };
 }
