@@ -237,6 +237,120 @@ async function handleGetTournament(req, res, id) {
   const obj = Array.isArray(arr) ? arr[0] : null;
   return obj ? send(res, 200, obj) : send(res, 404, { error: "not_found" });
 }
+// ---- Admin-specific tournament helpers (do not alter public handlers) ----
+async function handleAdminGetTournament(req, res, id) {
+  const { ok, status, text } = await sFetch(
+    `/rest/v1/tournament?id=eq.${id}&select=id,title,startday,endday,is_private,email,mix,table_count,match_duration,location`,
+    { headers: headers(process.env.SUPABASE_SERVICE_KEY) }
+  );
+  if (!ok) return send(res, status, text, "application/json");
+  let arr = [];
+  try {
+    arr = JSON.parse(text);
+  } catch {}
+  const obj = Array.isArray(arr) ? arr[0] : null;
+  return obj ? send(res, 200, obj) : send(res, 404, { error: "not_found" });
+}
+
+async function handleAdminListTournaments(req, res, searchParams) {
+  const { ok, status, text } = await sFetch(
+    `/rest/v1/tournament?select=id,title,startday,endday,is_private,email,mix,table_count,match_duration,location&order=startday.asc`,
+    { headers: headers(process.env.SUPABASE_SERVICE_KEY) }
+  );
+  if (!ok) return send(res, status, text, "application/json");
+  let data = [];
+  try {
+    data = JSON.parse(text);
+  } catch {}
+
+  // Reprend la même logique de filtrage "past" que handleListTournaments
+  const past = searchParams.get("past");
+  if (past !== null) {
+    const isPast = past === "1" || past === "true";
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const ts = +today;
+    data = data.filter((t) => {
+      const s = Date.parse(t?.startday || "");
+      const e = Date.parse(t?.endday || "");
+      const current =
+        (Number.isFinite(s) ? s <= ts : true) &&
+        (Number.isFinite(e) ? ts <= e : true);
+      const future = Number.isFinite(s)
+        ? s > ts
+        : Number.isFinite(e)
+        ? e > ts
+        : true;
+      const pastT = Number.isFinite(e) ? e < ts : false;
+      return isPast ? pastT : current || future;
+    });
+  }
+
+  return send(res, 200, data);
+}
+
+// Normalize PATCH payload from admin frontend into DB column names
+function normalizeAdminTournamentPatchBody(body) {
+  const out = {};
+
+  if (body == null || typeof body !== "object") return out;
+
+  // Title
+  if (body.title !== undefined) out.title = body.title;
+
+  // Dates (frontend can send startDay/endDay or startday/endday)
+  if (body.startDay !== undefined) out.startday = body.startDay;
+  if (body.startday !== undefined) out.startday = body.startday;
+  if (body.endDay !== undefined) out.endday = body.endDay;
+  if (body.endday !== undefined) out.endday = body.endday;
+
+  // Mix flag
+  if (body.mix !== undefined) out.mix = body.mix;
+
+  // Email
+  if (body.email !== undefined) out.email = body.email;
+
+  // Table count (table_count or tableCount)
+  if (body.table_count !== undefined) out.table_count = body.table_count;
+  if (body.tableCount !== undefined) out.table_count = body.tableCount;
+
+  // Match duration (match_duration or matchDuration)
+  if (body.match_duration !== undefined)
+    out.match_duration = body.match_duration;
+  if (body.matchDuration !== undefined) out.match_duration = body.matchDuration;
+
+  // Location
+  if (body.location !== undefined) out.location = body.location;
+
+  // Privacy flag (is_private or isPrivate)
+  if (body.is_private !== undefined) out.is_private = body.is_private;
+  if (body.isPrivate !== undefined) out.is_private = body.isPrivate;
+
+  return out;
+}
+
+async function handleAdminPatchTournament(req, res, id, body) {
+  const payload = normalizeAdminTournamentPatchBody(body);
+
+  if (!payload || Object.keys(payload).length === 0) {
+    return send(res, 400, { error: "empty_patch" });
+  }
+
+  const { ok, status, text } = await sFetch(
+    `/rest/v1/tournament?id=eq.${id}&select=id,title,startday,endday,is_private,email,mix,table_count,match_duration,location`,
+    {
+      method: "PATCH",
+      headers: {
+        ...headers(process.env.SUPABASE_SERVICE_KEY),
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  return send(res, status, ok ? JSON.parse(text) : text);
+}
 async function handleCreateTournament(req, res, body) {
   const payload = {
     title: body?.title,
@@ -952,6 +1066,35 @@ export default async function handler(req, res) {
     if (req.method === "POST" && /^\/api\/tournaments\/?$/.test(pathname)) {
       const body = await readJson(req);
       return handleCreateTournament(req, res, body);
+    }
+
+    // ---- ADMIN TOURNAMENTS (separate admin API, without altering public ones)
+    if (
+      req.method === "GET" &&
+      /^\/api\/admin\/tournaments\/?$/.test(pathname)
+    ) {
+      const idQ = searchParams.get("id");
+      if (idQ != null) {
+        const idNum = Number(idQ);
+        if (!Number.isFinite(idNum)) {
+          return send(res, 400, { error: "invalid_tournament_id" });
+        }
+        return handleAdminGetTournament(req, res, idNum);
+      }
+      // no id -> list tournaments for admin
+      return handleAdminListTournaments(req, res, searchParams);
+    }
+
+    const mAdminT = pathname.match(/^\/api\/admin\/tournaments\/(\d+)\/?$/);
+    if (mAdminT) {
+      const idNum = Number(mAdminT[1]);
+      if (req.method === "GET") {
+        return handleAdminGetTournament(req, res, idNum);
+      }
+      if (req.method === "PATCH") {
+        const body = await readJson(req);
+        return handleAdminPatchTournament(req, res, idNum, body);
+      }
     }
 
     // Aliases with query ?id=
