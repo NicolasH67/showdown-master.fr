@@ -48,10 +48,25 @@ const History = () => {
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
     try {
-      await post("/auth/tournament/login", {
+      await post("/api/auth/tournament/login", {
         tournamentId: selectedTournament.id,
         password,
       });
+
+      // Optionnel mais cohérent avec Home :
+      // on mémorise le mot de passe pour ce tournoi afin de pouvoir
+      // restaurer une session viewer (par ex. après un logout admin).
+      try {
+        if (selectedTournament?.id) {
+          sessionStorage.setItem(
+            `tournamentPassword:${selectedTournament.id}`,
+            password
+          );
+        }
+      } catch (_) {
+        // ignore storage errors
+      }
+
       setModalMessage(
         t("passwordCorrect", { defaultValue: "Mot de passe correct." })
       );
