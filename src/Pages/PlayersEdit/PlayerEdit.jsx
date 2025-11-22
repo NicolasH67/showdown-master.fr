@@ -1,159 +1,67 @@
-import { useState, useEffect, useMemo } from "react";
-import { useParams, useLocation } from "react-router-dom";
-import useTournamentData from "../../Hooks/useTournamentData";
-import PlayerForm from "../../Components/PlayerForm/PlayerForm";
-import RefereeForm from "../../Components/RefereeForm/RefereeForm";
-import ClubForm from "../../Components/ClubForm/ClubForm";
-import Button from "../../Components/Button/Button";
-import { useTranslation } from "react-i18next";
-import PlayerTableEdit from "../../Components/PlayerTableEdit/PlayerTableEdit";
-import ClubsTableEdit from "../../Components/ClubsTableEdit/ClubsTableEdit";
-import RefereeTableEdit from "../../Components/RefereeTableEdit/RefereeTableEdit";
-import useEntityActions from "../../Hooks/useEntityActions";
+import { useState, useEffect } from "react";
 
-const PlayersEdit = () => {
-  const { id } = useParams();
-
-  const [refreshTrigger, setRefreshTrigger] = useState(false);
-
-  const {
-    groups,
-    clubs,
-    players,
-    referees,
-    loading,
-    error: tournamentError,
-  } = useTournamentData(id, refreshTrigger);
-
-  const [formType, setFormType] = useState("player");
-  const { t } = useTranslation();
-  const location = useLocation();
-  const { onDelete, onEdit, error, successMessage } = useEntityActions();
-
-  const groupType = "default";
-
-  const firstRoundGroups = useMemo(() => {
-    if (!Array.isArray(groups)) return [];
-    return groups.filter((g) => g.round_type === "1st round");
-  }, [groups]);
+export default function useTournamentData(
+  tournamentId,
+  refreshTrigger = false
+) {
+  const [groups, setGroups] = useState([]);
+  const [clubs, setClubs] = useState([]);
+  const [players, setPlayers] = useState([]);
+  const [referees, setReferees] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (players.length > 0 || clubs.length > 0 || referees.length > 0) {
-      const title = document.getElementById("page-title");
-      if (title) {
-        title.focus();
+    let cancelled = false;
+
+    async function fetchData() {
+      setLoading(true);
+      setError(null);
+      try {
+        const groupsResponse = await fetch(
+          `/api/tournaments/${tournamentId}/groups`
+        );
+        const clubsResponse = await fetch(
+          `/api/tournaments/${tournamentId}/clubs`
+        );
+        const playersResponse = await fetch(
+          `/api/tournaments/${tournamentId}/players`
+        );
+        const refereesResponse = await fetch(
+          `/api/tournaments/${tournamentId}/referees`
+        );
+
+        if (!groupsResponse.ok) throw new Error("Failed to fetch groups");
+        if (!clubsResponse.ok) throw new Error("Failed to fetch clubs");
+        if (!playersResponse.ok) throw new Error("Failed to fetch players");
+        if (!refereesResponse.ok) throw new Error("Failed to fetch referees");
+
+        const groupsData = await groupsResponse.json();
+        const clubsData = await clubsResponse.json();
+        const playersData = await playersResponse.json();
+        const refereesData = await refereesResponse.json();
+
+        if (!cancelled) {
+          setGroups(groupsData);
+          setClubs(clubsData);
+          setPlayers(playersData);
+          setReferees(refereesData);
+          setLoading(false);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err.message);
+          setLoading(false);
+        }
       }
     }
-  }, [location.pathname, players.length, clubs.length, referees.length]);
 
-  if (loading) return <p>{t("loading")}</p>;
-  if (tournamentError) return <p>{tournamentError}</p>; // Affiche l'erreur du tournoi
+    fetchData();
 
-  const handleDelete = async (entity, entityId) => {
-    await onDelete(entity, entityId);
-    setRefreshTrigger((prev) => !prev); // Force un re-render
-  };
+    return () => {
+      cancelled = true;
+    };
+  }, [tournamentId, refreshTrigger]);
 
-  const handleEdit = async (entity, entityId, updatedData) => {
-    await onEdit(entity, entityId, updatedData);
-    setRefreshTrigger((prev) => !prev); // Force un re-render
-  };
-
-  return (
-    <div className="container mt-5">
-      <h1 id="page-title" tabIndex="-1">
-        {t("editParticipants")}
-      </h1>
-      <div className="d-flex justify-content-center my-3">
-        <Button
-          label={t("createClubs")}
-          onClick={() => setFormType("club")}
-          active={formType === "club"}
-        />
-        <Button
-          label={t("createPlayer")}
-          onClick={() => setFormType("player")}
-          active={formType === "player"}
-        />
-        <Button
-          label={t("createReferee")}
-          onClick={() => setFormType("referee")}
-          active={formType === "referee"}
-        />
-      </div>
-
-      {formType === "club" && (
-        <ClubForm
-          tournamentId={id}
-          onAddSuccess={() => setRefreshTrigger((prev) => !prev)}
-        />
-      )}
-      {formType === "player" && (
-        <PlayerForm
-          tournamentId={id}
-          clubs={clubs}
-          groups={firstRoundGroups}
-          onAddSuccess={() => setRefreshTrigger((prev) => !prev)}
-        />
-      )}
-      {formType === "referee" && (
-        <RefereeForm
-          tournamentId={id}
-          clubs={clubs}
-          onAddSuccess={() => setRefreshTrigger((prev) => !prev)}
-        />
-      )}
-
-      <div className="mt-4">
-        {formType === "club" && (
-          <div>
-            <h3>{t("clubsList")}</h3>
-            <ClubsTableEdit
-              clubs={clubs}
-              onDelete={(clubId) => handleDelete("club", clubId)}
-              onEdit={(clubId, updatedData) =>
-                handleEdit("club", clubId, updatedData)
-              }
-            />
-          </div>
-        )}
-
-        {formType === "player" && (
-          <div>
-            <h3>{t("titlePlayersList")}</h3>
-            <PlayerTableEdit
-              clubs={clubs}
-              players={players}
-              groupType={groupType}
-              groups={firstRoundGroups}
-              onDelete={(playerId) => handleDelete("player", playerId)}
-              onEdit={(playerId, updatedData) =>
-                handleEdit("player", playerId, updatedData)
-              }
-            />
-          </div>
-        )}
-
-        {formType === "referee" && (
-          <div>
-            <RefereeTableEdit
-              referees={referees}
-              onDelete={(refereeId) => handleDelete("referee", refereeId)}
-              onEdit={(refereeId, updatedData) =>
-                handleEdit("referee", refereeId, updatedData)
-              }
-              clubs={clubs}
-            />
-          </div>
-        )}
-      </div>
-
-      {successMessage && (
-        <div className="alert alert-success">{successMessage}</div>
-      )}
-      {error && <div className="alert alert-danger">{error}</div>}
-    </div>
-  );
-};
-
-export default PlayersEdit;
+  return { groups, clubs, players, referees, loading, error };
+}
