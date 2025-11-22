@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import supabase from "../../Helpers/supabaseClient";
+
 import { useTranslation } from "react-i18next";
 import { X, Plus, Trash2 } from "lucide-react";
 
@@ -55,15 +55,35 @@ const GroupTableEdit = ({ groups, players, onEdit, onDelete, allGroups }) => {
             : null,
       };
 
-      const { error } = await supabase
-        .from("group")
-        .update(updatedGroup)
-        .eq("id", currentGroup.id);
+      const res = await fetch(`/api/admin/groups/${currentGroup.id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(updatedGroup),
+      });
 
-      if (error) {
-        console.error(t("groupUpdateError"), error);
+      if (!res.ok) {
+        let errDetail = null;
+        try {
+          errDetail = await res.json();
+        } catch (_) {
+          // ignore json parse error
+        }
+        console.error(t("groupUpdateError"), errDetail || res.statusText);
       } else {
-        onEdit({ ...currentGroup, ...updatedGroup });
+        // On essaie de récupérer le groupe retourné par l'API,
+        // sinon on retombe sur la fusion locale.
+        let saved = null;
+        try {
+          saved = await res.json();
+        } catch (_) {
+          // certains endpoints peuvent renvoyer 204 No Content
+        }
+        const effective = saved || { ...currentGroup, ...updatedGroup };
+        onEdit(effective);
         setShowModal(false);
       }
     } catch (error) {
@@ -80,13 +100,22 @@ const GroupTableEdit = ({ groups, players, onEdit, onDelete, allGroups }) => {
     if (!confirmDelete) return;
 
     try {
-      const { error } = await supabase
-        .from("group")
-        .delete()
-        .eq("id", currentGroup.id);
+      const res = await fetch(`/api/admin/groups/${currentGroup.id}`, {
+        method: "DELETE",
+        credentials: "include",
+        headers: {
+          Accept: "application/json",
+        },
+      });
 
-      if (error) {
-        console.error(t("deleteGroupError"), error);
+      if (!res.ok) {
+        let errDetail = null;
+        try {
+          errDetail = await res.json();
+        } catch (_) {
+          // ignore json parse error
+        }
+        console.error(t("deleteGroupError"), errDetail || res.statusText);
       } else {
         onDelete(currentGroup.id);
         setShowModal(false);

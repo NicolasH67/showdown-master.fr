@@ -722,6 +722,115 @@ async function handleCreateGroup(req, res, id, body) {
   } catch {}
   return send(res, 201, Array.isArray(arr) ? arr : [arr]);
 }
+
+// Helper: load a group by id (for admin operations)
+async function loadGroupById(id) {
+  const { ok, status, text } = await sFetch(
+    `/rest/v1/group?id=eq.${id}&select=id,tournament_id,name,group_type,round_type,highest_position,group_former`,
+    { headers: headers(process.env.SUPABASE_SERVICE_KEY) }
+  );
+  if (!ok) return null;
+  let arr = [];
+  try {
+    arr = JSON.parse(text || "[]");
+  } catch {}
+  return Array.isArray(arr) ? arr[0] : null;
+}
+
+// Normalize PATCH body for admin group updates
+function normalizeAdminGroupPatchBody(body) {
+  const out = {};
+
+  if (!body || typeof body !== "object") return out;
+
+  if (body.name !== undefined) out.name = body.name;
+
+  if (body.group_type !== undefined) out.group_type = body.group_type;
+  if (body.groupType !== undefined) out.group_type = body.groupType;
+
+  if (body.round_type !== undefined) out.round_type = body.round_type;
+  if (body.roundType !== undefined) out.round_type = body.roundType;
+
+  if (body.highest_position !== undefined)
+    out.highest_position = body.highest_position;
+  if (body.highestPosition !== undefined)
+    out.highest_position = body.highestPosition;
+
+  if (body.group_former !== undefined) out.group_former = body.group_former;
+  if (body.groupFormer !== undefined) out.group_former = body.groupFormer;
+
+  return out;
+}
+
+// Admin: PATCH a group
+async function handleAdminPatchGroup(req, res, id, body) {
+  const group = await loadGroupById(id);
+  if (!group) {
+    return send(res, 404, { error: "group_not_found" });
+  }
+
+  // Vérifie que l'admin est bien admin de CE tournoi
+  const admin = await isAdminForTournament(req, group.tournament_id);
+  if (!admin) {
+    return send(res, 401, { error: "unauthorized" });
+  }
+
+  const payload = normalizeAdminGroupPatchBody(body);
+  if (!payload || Object.keys(payload).length === 0) {
+    return send(res, 400, { error: "empty_patch" });
+  }
+
+  const { ok, status, text } = await sFetch(
+    `/rest/v1/group?id=eq.${id}&select=id,name,group_type,round_type,tournament_id,highest_position,group_former,created_at,updated_at`,
+    {
+      method: "PATCH",
+      headers: {
+        ...headers(process.env.SUPABASE_SERVICE_KEY),
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  if (!ok) {
+    return send(res, status, text, "application/json");
+  }
+
+  let arr = [];
+  try {
+    arr = JSON.parse(text || "[]");
+  } catch {}
+  const updated = Array.isArray(arr) ? arr[0] : arr;
+  return send(res, 200, updated);
+}
+
+// Admin: DELETE a group
+async function handleAdminDeleteGroup(req, res, id) {
+  const group = await loadGroupById(id);
+  if (!group) {
+    return send(res, 404, { error: "group_not_found" });
+  }
+
+  const admin = await isAdminForTournament(req, group.tournament_id);
+  if (!admin) {
+    return send(res, 401, { error: "unauthorized" });
+  }
+
+  const { ok, status, text } = await sFetch(`/rest/v1/group?id=eq.${id}`, {
+    method: "DELETE",
+    headers: {
+      ...headers(process.env.SUPABASE_SERVICE_KEY),
+      Prefer: "return=minimal",
+    },
+  });
+
+  if (!ok) {
+    return send(res, status, text, "application/json");
+  }
+
+  return send(res, 200, { ok: true, deleted: true, id });
+}
 async function handleListClubs(req, res, id) {
   const { ok, status, text } = await sFetch(
     `/rest/v1/club?tournament_id=eq.${id}&select=id,name,abbreviation,tournament_id,created_at,updated_at&order=name.asc`,
@@ -1314,6 +1423,21 @@ export default async function handler(req, res) {
       }
       if (req.method === "DELETE") {
         return handleAdminDeleteTournament(req, res, idNum);
+      }
+    }
+
+    const mAdminGroup = pathname.match(/^\/api\/admin\/groups\/(\d+)\/?$/);
+    if (mAdminGroup) {
+      const gid = Number(mAdminGroup[1]);
+      if (!Number.isFinite(gid)) {
+        return send(res, 400, { error: "invalid_group_id" });
+      }
+      if (req.method === "PATCH") {
+        const body = await readJson(req);
+        return handleAdminPatchGroup(req, res, gid, body);
+      }
+      if (req.method === "DELETE") {
+        return handleAdminDeleteGroup(req, res, gid);
       }
     }
 
