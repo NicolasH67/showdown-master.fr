@@ -6,17 +6,20 @@ import { get, ApiError } from "../Helpers/apiClient";
 /**
  * useAdminTournament
  *
- * Récupère et met à jour un tournoi côté admin **via les routes /api**,
+ * Récupère et met à jour un tournoi côté admin via les routes /api/admin,
  * sans appel direct à Supabase.
  *
  * Stratégie de fetch :
  *  - Essaye plusieurs endpoints dans l'ordre :
+ *      /api/admin/tournaments/:id
+ *      /api/admin/tournaments?id=:id
  *      /api/tournaments/:id
  *      /api/tournaments?id=:id
  *  - Le premier qui répond correctement est utilisé.
  *
  * Mise à jour :
- *  - PATCH sur /api/tournaments/:id avec le payload complet `tournamentData`.
+ *  - PATCH sur /api/admin/tournaments/:id avec un payload normalisé
+ *    (startday/endday, table_count, match_duration, etc.).
  */
 const useAdminTournament = (id) => {
   const { t } = useTranslation();
@@ -25,11 +28,12 @@ const useAdminTournament = (id) => {
     title: "",
     startDay: "",
     endDay: "",
-    mix: false,
     email: "",
     table_count: 0,
     match_duration: 0,
     location: "",
+    // champ purement frontend pour l’instant (la BDD n’a pas mix)
+    mix: false,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -67,7 +71,6 @@ const useAdminTournament = (id) => {
               e?.status || e?.message || e
             );
             errors.push(e);
-            continue;
           }
         }
         if (errors.length) throw errors[errors.length - 1];
@@ -88,7 +91,7 @@ const useAdminTournament = (id) => {
         if (Array.isArray(resp)) {
           tournament = resp[0] || null;
         } else if (resp && typeof resp === "object") {
-          // cas où la réponse est de la forme { tournament: {...} } ou similaire
+          // cas où la réponse serait de la forme { tournament: {...} }
           if (resp.tournament) tournament = resp.tournament;
           else tournament = resp;
         }
@@ -99,8 +102,6 @@ const useAdminTournament = (id) => {
             // Champs simples
             title: tournament.title ?? prev.title,
             email: tournament.email ?? prev.email,
-            mix:
-              typeof tournament.mix === "boolean" ? tournament.mix : prev.mix,
             location: tournament.location ?? prev.location,
             // Dates : la base renvoie startday/endday, le state utilise startDay/endDay
             startDay:
@@ -120,7 +121,8 @@ const useAdminTournament = (id) => {
                 : typeof tournament.matchDuration === "number"
                 ? tournament.matchDuration
                 : prev.match_duration,
-            // On NE TOUCHE PAS aux mots de passe ici (admin/user/ereferee)
+            // mix : pas en BDD pour l’instant, on garde la valeur locale
+            mix: prev.mix,
           }));
         }
       } catch (e) {
@@ -167,20 +169,36 @@ const useAdminTournament = (id) => {
     setSuccessMessage("");
 
     try {
+      // On construit un payload propre, mappé sur les colonnes BDD
+      const payload = {
+        title: tournamentData.title,
+        startday: tournamentData.startDay || null,
+        endday: tournamentData.endDay || null,
+        email: tournamentData.email,
+        location: tournamentData.location,
+        table_count: Number.isFinite(Number(tournamentData.table_count))
+          ? Number(tournamentData.table_count)
+          : 0,
+        match_duration: Number.isFinite(Number(tournamentData.match_duration))
+          ? Number(tournamentData.match_duration)
+          : 0,
+        // is_private : si tu veux le piloter ici, sinon on ne l’envoie pas
+      };
+
       const res = await fetch(`/api/admin/tournaments/${idNum}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(tournamentData),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
         let msg = t("errorUpdatingTournament") || "Error updating tournament";
         try {
           const errJson = await res.json();
-          if (errJson && errJson.message) {
-            msg += ` (${errJson.message})`;
+          if (errJson && (errJson.message || errJson.error)) {
+            msg += ` (${errJson.message || errJson.error})`;
           }
         } catch (_) {
           // ignore JSON parse errors
@@ -198,7 +216,19 @@ const useAdminTournament = (id) => {
       if (updated && typeof updated === "object" && !Array.isArray(updated)) {
         setTournamentData((prev) => ({
           ...prev,
-          ...updated,
+          title: updated.title ?? prev.title,
+          email: updated.email ?? prev.email,
+          location: updated.location ?? prev.location,
+          startDay: updated.startDay ?? updated.startday ?? prev.startDay,
+          endDay: updated.endDay ?? updated.endday ?? prev.endDay,
+          table_count:
+            typeof updated.table_count === "number"
+              ? updated.table_count
+              : prev.table_count,
+          match_duration:
+            typeof updated.match_duration === "number"
+              ? updated.match_duration
+              : prev.match_duration,
         }));
       }
 
