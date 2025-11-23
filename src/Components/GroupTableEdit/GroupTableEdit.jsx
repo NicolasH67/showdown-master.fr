@@ -13,6 +13,8 @@ const GroupTableEdit = ({ groups, players, onEdit, onDelete, allGroups }) => {
   const [highestPosition, setHighestPosition] = useState("");
   const [groupFormer, setGroupFormer] = useState([]);
 
+  console.log(groups);
+
   const sortedGroups = [...groups].sort((a, b) => a.id - b.id);
 
   const handleEditClick = (group) => {
