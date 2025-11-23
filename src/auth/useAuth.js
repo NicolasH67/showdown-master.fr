@@ -119,22 +119,6 @@ function useAuth() {
     };
   }, [fetchMe]);
 
-  // --- Auto-refresh quand l'onglet reprend le focus ---
-  useEffect(() => {
-    const onFocus = () => {
-      // évite d'enchaîner plusieurs refresh simultanés si l'utilisateur spam le focus
-      const nowId = lastReqIdRef.current;
-      refresh().catch(() => {
-        // pas d'alertes utilisateur depuis le hook
-      });
-      // si besoin, on pourrait vérifier nowId vs lastReqIdRef.current pour déduire un enchaînement
-    };
-    if (typeof window !== "undefined") {
-      window.addEventListener("focus", onFocus);
-      return () => window.removeEventListener("focus", onFocus);
-    }
-  }, [refresh]);
-
   return { ...state, refresh, logout };
 }
 
