@@ -17,6 +17,9 @@ const ScheduleEdit = () => {
   const [generatedMatches, setGeneratedMatches] = useState({});
   const [selectedRound, setSelectedRound] = useState("1st round");
   const tournamentStartDate = useTournamentStartDate(id);
+  const [defaultMatchDate, setDefaultMatchDate] = useState(
+    tournamentStartDate || ""
+  );
   const [editingMatch, setEditingMatch] = useState(null);
   const [editForm, setEditForm] = useState({
     match_day: "",
@@ -43,6 +46,14 @@ const ScheduleEdit = () => {
   useEffect(() => {
     setMatchesState(matches || {});
   }, [matches]);
+
+  useEffect(() => {
+    // Initialise ou réinitialise la date par défaut quand
+    // la date de début du tournoi change.
+    if (tournamentStartDate) {
+      setDefaultMatchDate((prev) => prev || tournamentStartDate);
+    }
+  }, [tournamentStartDate]);
 
   const showFeedback = (title, message, variant = "info") => {
     setFeedbackModal({
@@ -136,7 +147,7 @@ const ScheduleEdit = () => {
         player1_group_position: player1 ? null : p1,
         player2_id: player2 ? player2.id : null,
         player2_group_position: player2 ? null : p2,
-        match_date: tournamentStartDate || "",
+        match_date: defaultMatchDate || tournamentStartDate || "",
         match_time: "",
         table_number: "",
       };
@@ -146,6 +157,12 @@ const ScheduleEdit = () => {
   };
 
   const updateGeneratedMatch = (groupId, matchIndex, field, value) => {
+    // Si l'utilisateur change la date d'un match généré,
+    // on met à jour la "date par défaut" pour les prochains matches.
+    if (field === "match_date" && value) {
+      setDefaultMatchDate(value);
+    }
+
     setGeneratedMatches((prev) => {
       const updatedMatches = { ...prev };
 
