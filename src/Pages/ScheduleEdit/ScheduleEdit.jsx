@@ -235,6 +235,7 @@ const ScheduleEdit = () => {
         };
       });
 
+      let createdMatches = [];
       // 1) Tente d'abord les routes backend (bypass RLS). Deux variantes possibles.
       let backendOk = false;
       const backends = [
@@ -253,6 +254,16 @@ const ScheduleEdit = () => {
 
           if (resp.ok) {
             backendOk = true;
+            try {
+              const json = await resp.json().catch(() => null);
+              if (Array.isArray(json)) {
+                createdMatches = json;
+              } else if (json && Array.isArray(json.matches)) {
+                createdMatches = json.matches;
+              }
+            } catch {
+              // si la route ne renvoie rien ou pas de JSON, on laissera createdMatches vide
+            }
             break;
           }
 
@@ -276,7 +287,10 @@ const ScheduleEdit = () => {
 
       // 2) Fallback direct Supabase si aucune route backend n'a fonctionné
       if (!backendOk) {
-        const { error } = await supabase.from("match").insert(validMatches);
+        const { data, error } = await supabase
+          .from("match")
+          .insert(validMatches)
+          .select();
         if (error) {
           if (
             error?.code === "PGRST301" ||
@@ -291,6 +305,20 @@ const ScheduleEdit = () => {
           }
           throw new Error(error.message || "insert_failed");
         }
+        if (Array.isArray(data)) {
+          createdMatches = data;
+        }
+      }
+
+      // Mise à jour locale des matchs existants pour ce groupe sans recharger la page
+      if (createdMatches && createdMatches.length > 0) {
+        setMatchesState((prev) => {
+          const next = { ...(prev || {}) };
+          const key = gId;
+          const existingForGroup = Array.isArray(next[key]) ? next[key] : [];
+          next[key] = [...existingForGroup, ...createdMatches];
+          return next;
+        });
       }
 
       showFeedback(
