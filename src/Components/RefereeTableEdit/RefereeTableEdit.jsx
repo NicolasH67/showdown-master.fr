@@ -16,7 +16,14 @@ const RefereeTableEdit = ({ referees, onDelete, onEdit, clubs }) => {
     setSelectedReferee(referee);
     setFirstname(referee.firstname || "");
     setLastname(referee.lastname || "");
-    setClub(referee.club?.id || "");
+    // Prefer explicit club_id if present, fallback to nested club.id, else empty string
+    const initialClubId =
+      referee.club_id != null
+        ? String(referee.club_id)
+        : referee.club?.id != null
+        ? String(referee.club.id)
+        : "";
+    setClub(initialClubId);
     setShowModal(true);
   };
 
@@ -25,27 +32,110 @@ const RefereeTableEdit = ({ referees, onDelete, onEdit, clubs }) => {
     setSelectedReferee(null);
   };
 
-  const handleEdit = () => {
+  const handleEdit = async () => {
     if (!selectedReferee || !selectedReferee.id) {
       return;
     }
 
+    const parsedClubId = club === "" ? null : Number(club);
     const updatedData = {
-      firstname,
-      lastname,
-      club_id: club,
+      firstname: firstname.trim(),
+      lastname: lastname.trim(),
+      club_id: parsedClubId,
     };
 
-    onEdit(selectedReferee.id, updatedData);
-    handleCloseModal();
+    try {
+      const res = await fetch(
+        `/api/admin/tournaments/${id}/referees/${selectedReferee.id}`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify(updatedData),
+        }
+      );
+
+      if (!res.ok) {
+        let errDetail = null;
+        try {
+          errDetail = await res.json();
+        } catch (_) {
+          // ignore parse error
+        }
+        console.error(
+          "[RefereeTableEdit] update referee error",
+          errDetail || res.statusText
+        );
+        return;
+      }
+
+      let saved = null;
+      try {
+        saved = await res.json();
+      } catch (_) {
+        // some endpoints might return 204
+      }
+      const effective = saved || { ...selectedReferee, ...updatedData };
+
+      if (typeof onEdit === "function") {
+        onEdit(selectedReferee.id, effective);
+      }
+
+      handleCloseModal();
+    } catch (err) {
+      console.error("[RefereeTableEdit] update referee exception", err);
+    }
   };
 
-  const handleDelete = () => {
-    if (selectedReferee && selectedReferee.id) {
-      onDelete(selectedReferee.id);
-      handleCloseModal();
-    } else {
+  const handleDelete = async () => {
+    if (!selectedReferee || !selectedReferee.id) {
       console.error("Aucun arbitre sélectionné pour suppression !");
+      return;
+    }
+
+    const confirmDelete = window.confirm(
+      t("confirmDeleteReferee", {
+        defaultValue: "Are you sure you want to delete this referee?",
+      })
+    );
+    if (!confirmDelete) return;
+
+    try {
+      const res = await fetch(
+        `/api/admin/tournaments/${id}/referees/${selectedReferee.id}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+          },
+        }
+      );
+
+      if (!res.ok) {
+        let errDetail = null;
+        try {
+          errDetail = await res.json();
+        } catch (_) {
+          // ignore parse error
+        }
+        console.error(
+          "[RefereeTableEdit] delete referee error",
+          errDetail || res.statusText
+        );
+        return;
+      }
+
+      if (typeof onDelete === "function") {
+        onDelete(selectedReferee.id);
+      }
+
+      handleCloseModal();
+    } catch (err) {
+      console.error("[RefereeTableEdit] delete referee exception", err);
     }
   };
 

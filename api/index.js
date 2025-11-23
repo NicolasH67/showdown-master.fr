@@ -1031,6 +1031,113 @@ async function handleCreateReferee(req, res, id, body) {
   const obj = Array.isArray(arr) ? arr[0] : null;
   return send(res, 201, obj || { ok: true });
 }
+
+// Helper: load a referee by id (for admin operations)
+async function loadRefereeById(id) {
+  const { ok, status, text } = await sFetch(
+    `/rest/v1/referee?id=eq.${id}&select=id,firstname,lastname,club_id,tournament_id,created_at,updated_at`,
+    { headers: headers(process.env.SUPABASE_SERVICE_KEY) }
+  );
+  if (!ok) return null;
+  let arr = [];
+  try {
+    arr = JSON.parse(text || "[]");
+  } catch {}
+  return Array.isArray(arr) ? arr[0] : null;
+}
+
+// Normalize PATCH body for admin referee updates
+function normalizeAdminRefereePatchBody(body) {
+  const out = {};
+  if (!body || typeof body !== "object") return out;
+
+  if (body.firstname !== undefined) out.firstname = body.firstname;
+  if (body.lastname !== undefined) out.lastname = body.lastname;
+
+  if (body.club_id !== undefined) out.club_id = body.club_id;
+  if (body.clubId !== undefined) out.club_id = body.clubId;
+
+  return out;
+}
+
+// Admin: PATCH a referee
+async function handleAdminPatchReferee(
+  req,
+  res,
+  tournamentId,
+  refereeId,
+  body
+) {
+  const ref = await loadRefereeById(refereeId);
+  if (!ref) {
+    return send(res, 404, { error: "referee_not_found" });
+  }
+
+  // Vérifie que l'admin est bien admin de CE tournoi
+  const admin = await isAdminForTournament(req, ref.tournament_id);
+  if (!admin) {
+    return send(res, 401, { error: "unauthorized" });
+  }
+
+  const payload = normalizeAdminRefereePatchBody(body);
+  if (!payload || Object.keys(payload).length === 0) {
+    return send(res, 400, { error: "empty_patch" });
+  }
+
+  const { ok, status, text } = await sFetch(
+    `/rest/v1/referee?id=eq.${refereeId}&select=id,firstname,lastname,club_id,tournament_id,created_at,updated_at`,
+    {
+      method: "PATCH",
+      headers: {
+        ...headers(process.env.SUPABASE_SERVICE_KEY),
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  if (!ok) {
+    return send(res, status, text, "application/json");
+  }
+
+  let arr = [];
+  try {
+    arr = JSON.parse(text || "[]");
+  } catch {}
+  const updated = Array.isArray(arr) ? arr[0] : arr;
+  return send(res, 200, updated);
+}
+
+// Admin: DELETE a referee
+async function handleAdminDeleteReferee(req, res, tournamentId, refereeId) {
+  const ref = await loadRefereeById(refereeId);
+  if (!ref) {
+    return send(res, 404, { error: "referee_not_found" });
+  }
+
+  const admin = await isAdminForTournament(req, ref.tournament_id);
+  if (!admin) {
+    return send(res, 401, { error: "unauthorized" });
+  }
+
+  const { ok, status, text } = await sFetch(
+    `/rest/v1/referee?id=eq.${refereeId}`,
+    {
+      method: "DELETE",
+      headers: {
+        ...headers(process.env.SUPABASE_SERVICE_KEY),
+        Prefer: "return=minimal",
+      },
+    }
+  );
+
+  if (!ok) {
+    return send(res, status, text, "application/json");
+  }
+
+  return send(res, 200, { ok: true, deleted: true, id: refereeId });
+}
 async function handleListMatches(req, res, id) {
   const { ok, status, text } = await sFetch(
     `/rest/v1/match?tournament_id=eq.${id}&select=id,tournament_id,group_id,match_day,match_time,table_number,player1:player1_id(id,firstname,lastname,club_id),player2:player2_id(id,firstname,lastname,club_id),group:group_id(id,name,group_type,group_former,highest_position),referee_1:referee1_id(id,firstname,lastname),referee_2:referee2_id(id,firstname,lastname),player1_group_position,player2_group_position,result&order=match_day.asc&order=match_time.asc&order=table_number.asc`,
@@ -1537,6 +1644,25 @@ export default async function handler(req, res) {
       }
       if (req.method === "DELETE") {
         return handleAdminDeleteGroup(req, res, gid);
+      }
+    }
+
+    // Admin referees: /api/admin/tournaments/:tid/referees/:rid
+    const mAdminRef = pathname.match(
+      /^\/api\/admin\/tournaments\/(\d+)\/referees\/(\d+)\/?$/
+    );
+    if (mAdminRef) {
+      const tid = Number(mAdminRef[1]);
+      const rid = Number(mAdminRef[2]);
+      if (!Number.isFinite(tid) || !Number.isFinite(rid)) {
+        return send(res, 400, { error: "invalid_ids" });
+      }
+      if (req.method === "PATCH") {
+        const body = await readJson(req);
+        return handleAdminPatchReferee(req, res, tid, rid, body);
+      }
+      if (req.method === "DELETE") {
+        return handleAdminDeleteReferee(req, res, tid, rid);
       }
     }
 
