@@ -40,8 +40,8 @@ const PlayerForm = ({ tournamentId, clubs, groups, onAddSuccess }) => {
         tournament_id: idNum,
       };
 
-      // Admin endpoint only, no direct Supabase fallback
-      await post(`/api/admin/tournaments/${idNum}/players`, payload);
+      // Use the non-admin tournaments endpoint (previous working version)
+      await post(`/api/tournaments/${idNum}/players`, payload);
 
       setMessage(t("playerAdded"));
       setFirstname("");
