@@ -77,72 +77,15 @@ const GroupList = ({
 }) => {
   const { t } = useTranslation();
 
-  const handleEditClick = async (match) => {
-    // Si un handler est fourni par le parent, on le privilégie
+  const handleEditClick = (match) => {
     if (typeof onEditMatch === "function") {
       onEditMatch(match);
-      return;
-    }
-
-    // Fallback simple : édition du créneau horaire via prompt + appel API
-    const currentTime = match.match_time || "";
-    const newTime = window.prompt(
-      t("editMatchTimePrompt") || "Nouvelle heure du match (HH:MM) :",
-      currentTime
-    );
-
-    if (newTime == null || newTime === currentTime) return;
-
-    try {
-      const res = await fetch(`/api/admin/matches/${match.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ match_time: newTime }),
-      });
-
-      if (!res.ok) {
-        console.error(
-          "Erreur lors de la mise à jour du match",
-          await res.text()
-        );
-        return;
-      }
-
-      // Rechargement simple pour refléter les changements
-      window.location.reload();
-    } catch (err) {
-      console.error("Erreur réseau lors de la mise à jour du match", err);
     }
   };
 
-  const handleDeleteClick = async (match) => {
-    // Si un handler est fourni par le parent, on le privilégie
+  const handleDeleteClick = (match) => {
     if (typeof onDeleteMatch === "function") {
       onDeleteMatch(match);
-      return;
-    }
-
-    const confirmText =
-      t("confirmDeleteMatch") || "Supprimer ce match définitivement ?";
-    if (!window.confirm(confirmText)) return;
-
-    try {
-      const res = await fetch(`/api/admin/matches/${match.id}`, {
-        method: "DELETE",
-      });
-
-      if (!res.ok) {
-        console.error(
-          "Erreur lors de la suppression du match",
-          await res.text()
-        );
-        return;
-      }
-
-      // Recharger la page pour actualiser la liste
-      window.location.reload();
-    } catch (err) {
-      console.error("Erreur réseau lors de la suppression du match", err);
     }
   };
 
