@@ -38,7 +38,7 @@ const PlayerTableEdit = ({
     setSelectedPlayer(null);
   };
 
-  const handleEdit = () => {
+  const handleEdit = async () => {
     if (!selectedPlayer || !selectedPlayer.id) {
       return;
     }
@@ -53,16 +53,97 @@ const PlayerTableEdit = ({
       group_id: parsedGroupIdArray,
     };
 
-    onEdit(selectedPlayer.id, updatedData);
-    handleCloseModal();
+    try {
+      const res = await fetch(
+        `/api/admin/tournaments/${id}/players/${selectedPlayer.id}`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify(updatedData),
+        }
+      );
+
+      if (!res.ok) {
+        let errDetail = null;
+        try {
+          errDetail = await res.json();
+        } catch (_) {
+          // ignore parse error
+        }
+        console.error(
+          "[PlayerTableEdit] update player error",
+          errDetail || res.statusText
+        );
+        return;
+      }
+
+      let saved = null;
+      try {
+        saved = await res.json();
+      } catch (_) {
+        // some endpoints might return 204 No Content
+      }
+      const effective = saved || { ...selectedPlayer, ...updatedData };
+
+      if (typeof onEdit === "function") {
+        onEdit(selectedPlayer.id, effective);
+      }
+
+      handleCloseModal();
+    } catch (err) {
+      console.error("[PlayerTableEdit] update player exception", err);
+    }
   };
 
-  const handleDelete = () => {
-    if (selectedPlayer && selectedPlayer.id) {
-      onDelete(selectedPlayer.id);
-      handleCloseModal();
-    } else {
+  const handleDelete = async () => {
+    if (!selectedPlayer || !selectedPlayer.id) {
       return;
+    }
+
+    const confirmDelete = window.confirm(
+      t("confirmDeletePlayer", {
+        defaultValue: "Are you sure you want to delete this player?",
+      })
+    );
+    if (!confirmDelete) return;
+
+    try {
+      const res = await fetch(
+        `/api/admin/tournaments/${id}/players/${selectedPlayer.id}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+          },
+        }
+      );
+
+      if (!res.ok) {
+        let errDetail = null;
+        try {
+          errDetail = await res.json();
+        } catch (_) {
+          // ignore parse error
+        }
+        console.error(
+          "[PlayerTableEdit] delete player error",
+          errDetail || res.statusText
+        );
+        return;
+      }
+
+      if (typeof onDelete === "function") {
+        onDelete(selectedPlayer.id);
+      }
+
+      handleCloseModal();
+    } catch (err) {
+      console.error("[PlayerTableEdit] delete player exception", err);
     }
   };
 

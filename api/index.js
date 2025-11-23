@@ -611,6 +611,41 @@ async function handleCreatePlayers(req, res, id, body) {
   } catch {}
   return send(res, 201, Array.isArray(arr) ? arr : [arr]);
 }
+
+// Helper: load a player by id (for admin operations)
+async function loadPlayerById(id) {
+  const { ok, status, text } = await sFetch(
+    `/rest/v1/player?id=eq.${id}&select=id,firstname,lastname,club_id,group_id,tournament_id,category,created_at,updated_at`,
+    { headers: headers(process.env.SUPABASE_SERVICE_KEY) }
+  );
+  if (!ok) {
+    return null;
+  }
+  let arr = [];
+  try {
+    arr = JSON.parse(text || "[]");
+  } catch {}
+  return Array.isArray(arr) ? arr[0] : null;
+}
+
+// Normalize PATCH body for admin player updates
+function normalizeAdminPlayerPatchBody(body) {
+  const out = {};
+  if (!body || typeof body !== "object") return out;
+
+  if (body.firstname !== undefined) out.firstname = body.firstname;
+  if (body.lastname !== undefined) out.lastname = body.lastname;
+
+  if (body.club_id !== undefined) out.club_id = body.club_id;
+  if (body.clubId !== undefined) out.club_id = body.clubId;
+
+  if (body.group_id !== undefined) out.group_id = body.group_id;
+  if (body.groupId !== undefined) out.group_id = body.groupId;
+
+  if (body.category !== undefined) out.category = body.category;
+
+  return out;
+}
 async function handlePatchPlayer(req, res, playerId, body) {
   const { ok, status, text } = await sFetch(
     `/rest/v1/player?id=eq.${playerId}&select=*`,
@@ -625,6 +660,88 @@ async function handlePatchPlayer(req, res, playerId, body) {
     }
   );
   return send(res, status, ok ? JSON.parse(text) : text);
+}
+
+// Admin: PATCH a player (with tournament ownership + admin check)
+async function handleAdminPatchPlayer(req, res, tournamentId, playerId, body) {
+  const player = await loadPlayerById(playerId);
+  if (!player) {
+    return send(res, 404, { error: "player_not_found" });
+  }
+
+  // Ensure the player belongs to the tournament in the URL
+  if (Number(player.tournament_id) !== Number(tournamentId)) {
+    return send(res, 400, { error: "tournament_mismatch" });
+  }
+
+  // Only admin of this tournament can update the player
+  const admin = await isAdminForTournament(req, tournamentId);
+  if (!admin) {
+    return send(res, 401, { error: "unauthorized" });
+  }
+
+  const payload = normalizeAdminPlayerPatchBody(body);
+  if (!payload || Object.keys(payload).length === 0) {
+    return send(res, 400, { error: "empty_patch" });
+  }
+
+  const { ok, status, text } = await sFetch(
+    `/rest/v1/player?id=eq.${playerId}&select=id,firstname,lastname,club_id,group_id,tournament_id,category,created_at,updated_at`,
+    {
+      method: "PATCH",
+      headers: {
+        ...headers(process.env.SUPABASE_SERVICE_KEY),
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(payload),
+    }
+  );
+
+  if (!ok) {
+    return send(res, status, text, "application/json");
+  }
+
+  let arr = [];
+  try {
+    arr = JSON.parse(text || "[]");
+  } catch {}
+  const updated = Array.isArray(arr) ? arr[0] : arr;
+  return send(res, 200, updated);
+}
+
+// Admin: DELETE a player (with tournament ownership + admin check)
+async function handleAdminDeletePlayer(req, res, tournamentId, playerId) {
+  const player = await loadPlayerById(playerId);
+  if (!player) {
+    return send(res, 404, { error: "player_not_found" });
+  }
+
+  if (Number(player.tournament_id) !== Number(tournamentId)) {
+    return send(res, 400, { error: "tournament_mismatch" });
+  }
+
+  const admin = await isAdminForTournament(req, tournamentId);
+  if (!admin) {
+    return send(res, 401, { error: "unauthorized" });
+  }
+
+  const { ok, status, text } = await sFetch(
+    `/rest/v1/player?id=eq.${playerId}`,
+    {
+      method: "DELETE",
+      headers: {
+        ...headers(process.env.SUPABASE_SERVICE_KEY),
+        Prefer: "return=minimal",
+      },
+    }
+  );
+
+  if (!ok) {
+    return send(res, status, text, "application/json");
+  }
+
+  return send(res, 200, { ok: true, deleted: true, id: playerId });
 }
 
 // Fetch a single player by id
@@ -1438,6 +1555,25 @@ export default async function handler(req, res) {
       }
       if (req.method === "DELETE") {
         return handleAdminDeleteGroup(req, res, gid);
+      }
+    }
+
+    // Admin players: /api/admin/tournaments/:tid/players/:pid
+    const mAdminPlayer = pathname.match(
+      /^\/api\/admin\/tournaments\/(\d+)\/players\/(\d+)\/?$/
+    );
+    if (mAdminPlayer) {
+      const tid = Number(mAdminPlayer[1]);
+      const pid = Number(mAdminPlayer[2]);
+      if (!Number.isFinite(tid) || !Number.isFinite(pid)) {
+        return send(res, 400, { error: "invalid_ids" });
+      }
+      if (req.method === "PATCH") {
+        const body = await readJson(req);
+        return handleAdminPatchPlayer(req, res, tid, pid, body);
+      }
+      if (req.method === "DELETE") {
+        return handleAdminDeletePlayer(req, res, tid, pid);
       }
     }
 
