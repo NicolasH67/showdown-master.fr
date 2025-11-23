@@ -1265,6 +1265,84 @@ async function handleListMatchesByGroup(req, res, groupIdRaw) {
   return send(res, 200, data);
 }
 
+// Helper: load a match by id (for admin operations)
+async function loadMatchById(id) {
+  const { ok, status, text } = await sFetch(
+    `/rest/v1/match?id=eq.${id}&select=id,tournament_id`,
+    { headers: headers(process.env.SUPABASE_SERVICE_KEY) }
+  );
+  if (!ok) return null;
+  let arr = [];
+  try {
+    arr = JSON.parse(text || "[]");
+  } catch {}
+  return Array.isArray(arr) ? arr[0] : null;
+}
+
+// Admin: PATCH a match
+async function handleAdminPatchMatch(req, res, matchId, body) {
+  const match = await loadMatchById(matchId);
+  if (!match) {
+    return send(res, 404, { error: "match_not_found" });
+  }
+
+  const admin = await isAdminForTournament(req, match.tournament_id);
+  if (!admin) {
+    return send(res, 401, { error: "unauthorized" });
+  }
+
+  const { ok, status, text } = await sFetch(
+    `/rest/v1/match?id=eq.${matchId}&select=*`,
+    {
+      method: "PATCH",
+      headers: {
+        ...headers(process.env.SUPABASE_SERVICE_KEY),
+        "Content-Type": "application/json",
+        Prefer: "return=representation",
+      },
+      body: JSON.stringify(body || {}),
+    }
+  );
+
+  if (!ok) {
+    return send(res, status, text, "application/json");
+  }
+
+  let arr = [];
+  try {
+    arr = JSON.parse(text || "[]");
+  } catch {}
+  const updated = Array.isArray(arr) ? arr[0] : arr;
+  return send(res, 200, updated);
+}
+
+// Admin: DELETE a match
+async function handleAdminDeleteMatch(req, res, matchId) {
+  const match = await loadMatchById(matchId);
+  if (!match) {
+    return send(res, 404, { error: "match_not_found" });
+  }
+
+  const admin = await isAdminForTournament(req, match.tournament_id);
+  if (!admin) {
+    return send(res, 401, { error: "unauthorized" });
+  }
+
+  const { ok, status, text } = await sFetch(`/rest/v1/match?id=eq.${matchId}`, {
+    method: "DELETE",
+    headers: {
+      ...headers(process.env.SUPABASE_SERVICE_KEY),
+      Prefer: "return=minimal",
+    },
+  });
+
+  if (!ok) {
+    return send(res, status, text, "application/json");
+  }
+
+  return send(res, 200, { ok: true, deleted: true, id: matchId });
+}
+
 //
 // Small helper to load bcryptjs in both CJS/ESM environments
 async function getBcrypt() {
@@ -1682,6 +1760,22 @@ export default async function handler(req, res) {
       }
       if (req.method === "DELETE") {
         return handleAdminDeletePlayer(req, res, tid, pid);
+      }
+    }
+
+    // Admin matches: /api/admin/matches/:mid
+    const mAdminMatch = pathname.match(/^\/api\/admin\/matches\/(\d+)\/?$/);
+    if (mAdminMatch) {
+      const mid = Number(mAdminMatch[1]);
+      if (!Number.isFinite(mid)) {
+        return send(res, 400, { error: "invalid_match_id" });
+      }
+      if (req.method === "PATCH") {
+        const body = await readJson(req);
+        return handleAdminPatchMatch(req, res, mid, body);
+      }
+      if (req.method === "DELETE") {
+        return handleAdminDeleteMatch(req, res, mid);
       }
     }
 
