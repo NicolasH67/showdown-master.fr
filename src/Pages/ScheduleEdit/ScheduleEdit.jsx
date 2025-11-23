@@ -381,6 +381,11 @@ const ScheduleEdit = () => {
   };
   const handleEditFormChange = (e) => {
     const { name, value } = e.target;
+    if (name === "match_day" && value) {
+      // si on change la date dans le popup d'édition,
+      // on met à jour la date par défaut pour les futurs matchs générés
+      setDefaultMatchDate(value);
+    }
     setEditForm((prev) => ({ ...prev, [name]: value }));
   };
 
