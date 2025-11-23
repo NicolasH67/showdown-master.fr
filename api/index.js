@@ -757,7 +757,7 @@ async function handleListPlayersByGroupId(req, res, groupId) {
 }
 async function handleListGroups(req, res, id) {
   const { ok, status, text } = await sFetch(
-    `/rest/v1/group?tournament_id=eq.${id}&select=id,name,group_type,round_type,tournament_id,highest_position&order=name.asc`,
+    `/rest/v1/group?tournament_id=eq.${id}&select=id,name,group_type,round_type,tournament_id,highest_position,group_former&order=name.asc`,
     { headers: headers(process.env.SUPABASE_SERVICE_KEY) }
   );
   if (!ok) return send(res, status, text, "application/json");
