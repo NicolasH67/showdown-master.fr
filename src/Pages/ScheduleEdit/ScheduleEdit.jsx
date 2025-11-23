@@ -13,6 +13,7 @@ const ScheduleEdit = () => {
   const location = useLocation();
   const { id } = useParams();
   const { groups, players, matches, clubs, loading, error } = useMatchData();
+  const [matchesState, setMatchesState] = useState(matches || {});
   const [generatedMatches, setGeneratedMatches] = useState({});
   const [selectedRound, setSelectedRound] = useState("1st round");
   const tournamentStartDate = useTournamentStartDate(id);
@@ -31,6 +32,10 @@ const ScheduleEdit = () => {
       }
     }
   }, [location.pathname, groups.length]);
+
+  useEffect(() => {
+    setMatchesState(matches || {});
+  }, [matches]);
 
   // Normaliser les joueurs en dictionnaire { group_id: Player[] }
   const playersByGroup = useMemo(() => {
@@ -348,9 +353,42 @@ const ScheduleEdit = () => {
         return;
       }
 
+      // Mise à jour locale du match sans recharger la page
+      setMatchesState((prev) => {
+        if (!prev) return prev;
+        const next = { ...prev };
+        let groupKey = editingMatch.group_id;
+
+        if (groupKey == null) {
+          for (const [gid, arr] of Object.entries(next)) {
+            if (
+              Array.isArray(arr) &&
+              arr.some((m) => m.id === editingMatch.id)
+            ) {
+              groupKey = Number(gid);
+              break;
+            }
+          }
+        }
+
+        if (groupKey == null || !next[groupKey]) return prev;
+
+        next[groupKey] = next[groupKey].map((m) =>
+          m.id === editingMatch.id
+            ? {
+                ...m,
+                match_day: newDate,
+                match_time: newTime,
+                table_number: tableNum,
+              }
+            : m
+        );
+
+        return next;
+      });
+
       alert(t("matchUpdated", "Match mis à jour."));
       setEditingMatch(null);
-      window.location.reload();
     } catch (err) {
       console.error("Erreur réseau lors de la modification du match", err);
       alert(
@@ -386,8 +424,28 @@ const ScheduleEdit = () => {
         return;
       }
 
+      // Mise à jour locale: on enlève le match supprimé sans recharger
+      setMatchesState((prev) => {
+        if (!prev) return prev;
+        const next = { ...prev };
+        let groupKey = match.group_id;
+
+        if (groupKey == null) {
+          for (const [gid, arr] of Object.entries(next)) {
+            if (Array.isArray(arr) && arr.some((m) => m.id === match.id)) {
+              groupKey = Number(gid);
+              break;
+            }
+          }
+        }
+
+        if (groupKey == null || !next[groupKey]) return prev;
+
+        next[groupKey] = next[groupKey].filter((m) => m.id !== match.id);
+        return next;
+      });
+
       alert(t("matchDeleted", "Match supprimé."));
-      window.location.reload();
     } catch (e) {
       console.error("Erreur réseau lors de la suppression du match", e);
       alert(
@@ -500,7 +558,7 @@ const ScheduleEdit = () => {
           groups={filteredSortedGroups}
           players={sortedPlayers}
           clubs={clubs}
-          matches={matches}
+          matches={matchesState}
           generateMatches={generateMatches}
           generatedMatches={generatedMatches}
           updateGeneratedMatch={updateGeneratedMatch}
