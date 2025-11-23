@@ -29,6 +29,7 @@ const ScheduleEdit = () => {
     message: "",
     variant: "info",
   });
+  const [matchToDelete, setMatchToDelete] = useState(null);
 
   useEffect(() => {
     if (groups.length > 0) {
@@ -469,11 +470,14 @@ const ScheduleEdit = () => {
     }
   };
 
-  const handleDeleteMatch = async (match) => {
-    const confirmed = window.confirm(
-      t("confirmDeleteMatch", "Voulez-vous vraiment supprimer ce match ?")
-    );
-    if (!confirmed) return;
+  // Ouverture du modal de confirmation de suppression
+  const handleDeleteMatch = (match) => {
+    setMatchToDelete(match);
+  };
+
+  const confirmDeleteMatch = async () => {
+    if (!matchToDelete) return;
+    const match = matchToDelete;
 
     try {
       const resp = await fetch(`/api/admin/matches/${match.id}`, {
@@ -531,7 +535,13 @@ const ScheduleEdit = () => {
         ),
         "danger"
       );
+    } finally {
+      setMatchToDelete(null);
     }
+  };
+
+  const cancelDeleteMatch = () => {
+    setMatchToDelete(null);
   };
 
   const getFakePlayerLabel = (group, position) => {
@@ -546,6 +556,54 @@ const ScheduleEdit = () => {
       }
     }
     return arr[position - 1] || `(${position})`;
+  };
+
+  const renderDeleteModal = () => {
+    if (!matchToDelete) return null;
+    return (
+      <div
+        className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+        style={{
+          backgroundColor: "rgba(0,0,0,0.5)",
+          zIndex: 1050,
+        }}
+      >
+        <div className="card shadow" style={{ maxWidth: 400, width: "100%" }}>
+          <div className="card-header">
+            <strong>
+              {t(
+                "confirmDeleteMatch",
+                "Voulez-vous vraiment supprimer ce match ?"
+              )}
+            </strong>
+          </div>
+          <div className="card-body">
+            <p className="mb-3">
+              {t(
+                "deleteMatchWarning",
+                "Cette action est définitive et supprimera le match de la planification."
+              )}
+            </p>
+            <div className="d-flex justify-content-end gap-2">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={cancelDeleteMatch}
+              >
+                {t("cancel", "Annuler")}
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger"
+                onClick={confirmDeleteMatch}
+              >
+                {t("delete", "Supprimer")}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   const renderEditModal = () => {
@@ -652,6 +710,7 @@ const ScheduleEdit = () => {
     <>
       {renderFeedbackModal()}
       {renderEditModal()}
+      {renderDeleteModal()}
       <div>
         <h1 id="page-title" tabIndex="-1">
           {t("scheduleEdit")}
