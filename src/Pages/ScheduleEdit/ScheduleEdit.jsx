@@ -16,6 +16,12 @@ const ScheduleEdit = () => {
   const [generatedMatches, setGeneratedMatches] = useState({});
   const [selectedRound, setSelectedRound] = useState("1st round");
   const tournamentStartDate = useTournamentStartDate(id);
+  const [editingMatch, setEditingMatch] = useState(null);
+  const [editForm, setEditForm] = useState({
+    match_day: "",
+    match_time: "",
+    table_number: "",
+  });
 
   useEffect(() => {
     if (groups.length > 0) {
@@ -279,49 +285,54 @@ const ScheduleEdit = () => {
   if (error) return <div>{error}</div>;
 
   // Handlers for editing and deleting matches
-  const handleEditMatch = async (match) => {
+  const handleEditMatch = (match) => {
     const currentDate = match.match_day || tournamentStartDate || "";
     const currentTime = match.match_time || "";
     const currentTable = match.table_number || "";
 
-    const newDate = window.prompt(
-      t("editMatchDatePrompt", "Nouvelle date du match (YYYY-MM-DD) :"),
-      currentDate
-    );
-    if (newDate === null) return;
+    setEditingMatch(match);
+    setEditForm({
+      match_day: currentDate,
+      match_time: currentTime,
+      table_number: String(currentTable || ""),
+    });
+  };
+  const handleEditFormChange = (e) => {
+    const { name, value } = e.target;
+    setEditForm((prev) => ({ ...prev, [name]: value }));
+  };
 
-    const newTime = window.prompt(
-      t("editMatchTimePrompt", "Nouvelle heure du match (HH:MM) :"),
-      currentTime
-    );
-    if (newTime === null) return;
+  const handleEditFormCancel = () => {
+    setEditingMatch(null);
+  };
 
-    const newTableStr = window.prompt(
-      t("editMatchTablePrompt", "Numéro de table :"),
-      String(currentTable || "")
-    );
-    if (newTableStr === null) return;
+  const handleEditFormSubmit = async (e) => {
+    e.preventDefault();
+    if (!editingMatch) return;
 
-    const newTable = Number.parseInt(newTableStr, 10);
-    if (!Number.isFinite(newTable)) {
+    const newDate = editForm.match_day || "";
+    const newTime = editForm.match_time || "";
+    const tableNum = Number.parseInt(editForm.table_number, 10);
+
+    if (!newDate || !newTime || !Number.isFinite(tableNum)) {
       alert(
         t(
-          "invalidTableNumber",
-          "Numéro de table invalide. La modification a été annulée."
+          "editMatchInvalidForm",
+          "Veuillez remplir une date, une heure et un numéro de table valides."
         )
       );
       return;
     }
 
     try {
-      const resp = await fetch(`/api/admin/matches/${match.id}`, {
+      const resp = await fetch(`/api/admin/matches/${editingMatch.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
           match_day: newDate,
           match_time: newTime,
-          table_number: newTable,
+          table_number: tableNum,
         }),
       });
 
@@ -338,9 +349,10 @@ const ScheduleEdit = () => {
       }
 
       alert(t("matchUpdated", "Match mis à jour."));
+      setEditingMatch(null);
       window.location.reload();
-    } catch (e) {
-      console.error("Erreur réseau lors de la modification du match", e);
+    } catch (err) {
+      console.error("Erreur réseau lors de la modification du match", err);
       alert(
         t(
           "editMatchErrorNetwork",
@@ -401,31 +413,106 @@ const ScheduleEdit = () => {
     return arr[position - 1] || `(${position})`;
   };
 
+  const renderEditModal = () => {
+    if (!editingMatch) return null;
+    return (
+      <div
+        className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+        style={{
+          backgroundColor: "rgba(0,0,0,0.5)",
+          zIndex: 1050,
+        }}
+      >
+        <div className="card shadow" style={{ maxWidth: 400, width: "100%" }}>
+          <div className="card-header">
+            <strong>{t("editMatch", "Modifier le match")}</strong>
+          </div>
+          <div className="card-body">
+            <form onSubmit={handleEditFormSubmit}>
+              <div className="mb-3">
+                <label className="form-label">
+                  {t("date", "Date")}
+                  <input
+                    type="date"
+                    name="match_day"
+                    className="form-control"
+                    value={editForm.match_day}
+                    onChange={handleEditFormChange}
+                  />
+                </label>
+              </div>
+              <div className="mb-3">
+                <label className="form-label">
+                  {t("time", "Heure")}
+                  <input
+                    type="time"
+                    name="match_time"
+                    className="form-control"
+                    value={editForm.match_time}
+                    onChange={handleEditFormChange}
+                  />
+                </label>
+              </div>
+              <div className="mb-3">
+                <label className="form-label">
+                  {t("table", "Table")}
+                  <input
+                    type="number"
+                    name="table_number"
+                    className="form-control"
+                    value={editForm.table_number}
+                    onChange={handleEditFormChange}
+                    min="1"
+                  />
+                </label>
+              </div>
+              <div className="d-flex justify-content-end gap-2">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={handleEditFormCancel}
+                >
+                  {t("cancel", "Annuler")}
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  {t("save", "Enregistrer")}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div>
-      <h1 id="page-title" tabIndex="-1">
-        {t("scheduleEdit")}
-      </h1>
-      <RoundSelector
-        selectedRound={selectedRound}
-        setSelectedRound={setSelectedRound}
-      />
-      <GroupList
-        groups={filteredSortedGroups}
-        players={sortedPlayers}
-        clubs={clubs}
-        matches={matches}
-        generateMatches={generateMatches}
-        generatedMatches={generatedMatches}
-        updateGeneratedMatch={updateGeneratedMatch}
-        saveMatches={saveMatches}
-        allGroups={groups}
-        onEditMatch={handleEditMatch}
-        onDeleteMatch={handleDeleteMatch}
-        getFakePlayerLabel={getFakePlayerLabel}
-        tournamentStartDate={tournamentStartDate}
-      />
-    </div>
+    <>
+      {renderEditModal()}
+      <div>
+        <h1 id="page-title" tabIndex="-1">
+          {t("scheduleEdit")}
+        </h1>
+        <RoundSelector
+          selectedRound={selectedRound}
+          setSelectedRound={setSelectedRound}
+        />
+        <GroupList
+          groups={filteredSortedGroups}
+          players={sortedPlayers}
+          clubs={clubs}
+          matches={matches}
+          generateMatches={generateMatches}
+          generatedMatches={generatedMatches}
+          updateGeneratedMatch={updateGeneratedMatch}
+          saveMatches={saveMatches}
+          allGroups={groups}
+          onEditMatch={handleEditMatch}
+          onDeleteMatch={handleDeleteMatch}
+          getFakePlayerLabel={getFakePlayerLabel}
+          tournamentStartDate={tournamentStartDate}
+        />
+      </div>
+    </>
   );
 };
 
