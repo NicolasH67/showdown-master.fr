@@ -52,7 +52,7 @@ const MatchList = ({
                   <input
                     type="date"
                     className="form-control"
-                    defaultValue={tournamentStartDate}
+                    value={match.match_date || tournamentStartDate || ""}
                     onChange={(e) =>
                       updateGeneratedMatch(
                         groupId,
@@ -67,6 +67,7 @@ const MatchList = ({
                   <input
                     type="time"
                     className="form-control"
+                    value={match.match_time || ""}
                     onChange={(e) =>
                       updateGeneratedMatch(
                         groupId,
@@ -82,6 +83,7 @@ const MatchList = ({
                     type="text"
                     className="form-control"
                     placeholder={t("table")}
+                    value={match.table_number ?? ""}
                     onChange={(e) =>
                       updateGeneratedMatch(
                         groupId,
