@@ -587,7 +587,6 @@ async function handleCreatePlayers(req, res, id, body) {
     };
     if (r?.club_id != null) obj.club_id = Number(r.club_id) || null;
     if (r?.group_id != null) obj.group_id = r.group_id; // may be array per your schema
-    if (r?.category != null) obj.category = r.category;
     payload.push(obj);
   }
 
@@ -615,7 +614,7 @@ async function handleCreatePlayers(req, res, id, body) {
 // Helper: load a player by id (for admin operations)
 async function loadPlayerById(id) {
   const { ok, status, text } = await sFetch(
-    `/rest/v1/player?id=eq.${id}&select=id,firstname,lastname,club_id,group_id,tournament_id,category,created_at,updated_at`,
+    `/rest/v1/player?id=eq.${id}&select=id,firstname,lastname,club_id,group_id,tournament_id,created_at,updated_at`,
     { headers: headers(process.env.SUPABASE_SERVICE_KEY) }
   );
   if (!ok) {
@@ -642,7 +641,7 @@ function normalizeAdminPlayerPatchBody(body) {
   if (body.group_id !== undefined) out.group_id = body.group_id;
   if (body.groupId !== undefined) out.group_id = body.groupId;
 
-  if (body.category !== undefined) out.category = body.category;
+  // category is no longer handled
 
   return out;
 }
@@ -677,7 +676,7 @@ async function handleAdminPatchPlayer(req, res, tournamentId, playerId, body) {
   }
 
   const { ok, status, text } = await sFetch(
-    `/rest/v1/player?id=eq.${playerId}&select=id,firstname,lastname,club_id,group_id,tournament_id,category,created_at,updated_at`,
+    `/rest/v1/player?id=eq.${playerId}&select=id,firstname,lastname,club_id,group_id,tournament_id,created_at,updated_at`,
     {
       method: "PATCH",
       headers: {
@@ -730,7 +729,7 @@ async function handleAdminDeletePlayer(req, res, tournamentId, playerId) {
 // Fetch a single player by id
 async function handleGetPlayer(req, res, playerId) {
   const { ok, status, text } = await sFetch(
-    `/rest/v1/player?id=eq.${playerId}&select=id,firstname,lastname,club_id,group_id,tournament_id,category,created_at,updated_at`,
+    `/rest/v1/player?id=eq.${playerId}&select=id,firstname,lastname,club_id,group_id,tournament_id,created_at,updated_at`,
     { headers: headers(process.env.SUPABASE_SERVICE_KEY) }
   );
   if (!ok) return send(res, status, text, "application/json");
@@ -746,7 +745,7 @@ async function handleGetPlayer(req, res, playerId) {
 async function handleListPlayersByGroupId(req, res, groupId) {
   const filter = encodeURIComponent(JSON.stringify([Number(groupId)]));
   const { ok, status, text } = await sFetch(
-    `/rest/v1/player?group_id=cs.${filter}&select=id,firstname,lastname,group_id,tournament_id,club_id,category,created_at,updated_at`,
+    `/rest/v1/player?group_id=cs.${filter}&select=id,firstname,lastname,group_id,tournament_id,club_id,created_at,updated_at`,
     { headers: headers(process.env.SUPABASE_SERVICE_KEY) }
   );
   if (!ok) return send(res, status, text, "application/json");
