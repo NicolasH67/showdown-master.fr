@@ -23,6 +23,12 @@ const ScheduleEdit = () => {
     match_time: "",
     table_number: "",
   });
+  const [feedbackModal, setFeedbackModal] = useState({
+    open: false,
+    title: "",
+    message: "",
+    variant: "info",
+  });
 
   useEffect(() => {
     if (groups.length > 0) {
@@ -36,6 +42,19 @@ const ScheduleEdit = () => {
   useEffect(() => {
     setMatchesState(matches || {});
   }, [matches]);
+
+  const showFeedback = (title, message, variant = "info") => {
+    setFeedbackModal({
+      open: true,
+      title,
+      message,
+      variant,
+    });
+  };
+
+  const closeFeedback = () => {
+    setFeedbackModal((prev) => ({ ...prev, open: false }));
+  };
 
   // Normaliser les joueurs en dictionnaire { group_id: Player[] }
   const playersByGroup = useMemo(() => {
@@ -84,10 +103,12 @@ const ScheduleEdit = () => {
 
     const total = groupPlayers.length + groupFormer.length;
     if (total < 2) {
-      alert(
+      showFeedback(
+        t("error", "Erreur"),
         t("needAtLeastTwoPlayers", {
           defaultValue: "Il faut au moins 2 joueurs.",
-        })
+        }),
+        "danger"
       );
       return;
     }
@@ -95,8 +116,10 @@ const ScheduleEdit = () => {
     // Choix de l'ordre en fonction du nombre total de participants (réels + placeholders)
     const order = matchOrder?.["Match Order"]?.[total];
     if (!order) {
-      alert(
-        t("noMatchOrder", { defaultValue: "Aucun ordre de match défini." })
+      showFeedback(
+        t("error", "Erreur"),
+        t("noMatchOrder", { defaultValue: "Aucun ordre de match défini." }),
+        "danger"
       );
       return;
     }
@@ -146,10 +169,12 @@ const ScheduleEdit = () => {
       const matches = generatedMatches[groupId];
 
       if (!Array.isArray(matches) || matches.length === 0) {
-        alert(
+        showFeedback(
+          t("info", "Info"),
           t("matchesNoValidToSave", {
             defaultValue: "Aucun match à enregistrer.",
-          })
+          }),
+          "info"
         );
         return;
       }
@@ -268,13 +293,19 @@ const ScheduleEdit = () => {
         }
       }
 
-      alert(t("matchesSavedSuccess", { defaultValue: "Matchs enregistrés." }));
+      showFeedback(
+        t("success", "Succès"),
+        t("matchesSavedSuccess", { defaultValue: "Matchs enregistrés." }),
+        "success"
+      );
       setGeneratedMatches((prev) => ({ ...prev, [groupId]: [] }));
     } catch (error) {
       console.error(error);
-      alert(
+      showFeedback(
+        t("error", "Erreur"),
         error?.message ||
-          t("unknownError", { defaultValue: "Erreur inconnue." })
+          t("unknownError", { defaultValue: "Erreur inconnue." }),
+        "danger"
       );
     }
   };
@@ -320,11 +351,13 @@ const ScheduleEdit = () => {
     const tableNum = Number.parseInt(editForm.table_number, 10);
 
     if (!newDate || !newTime || !Number.isFinite(tableNum)) {
-      alert(
+      showFeedback(
+        t("error", "Erreur"),
         t(
           "editMatchInvalidForm",
           "Veuillez remplir une date, une heure et un numéro de table valides."
-        )
+        ),
+        "danger"
       );
       return;
     }
@@ -344,11 +377,13 @@ const ScheduleEdit = () => {
       if (!resp.ok) {
         const msg = await resp.text().catch(() => "");
         console.error("Erreur édition match", resp.status, msg);
-        alert(
+        showFeedback(
+          t("error", "Erreur"),
           t(
             "editMatchError",
             "Erreur lors de la modification du match. Vérifiez vos droits administrateur."
-          )
+          ),
+          "danger"
         );
         return;
       }
@@ -387,15 +422,21 @@ const ScheduleEdit = () => {
         return next;
       });
 
-      alert(t("matchUpdated", "Match mis à jour."));
+      showFeedback(
+        t("success", "Succès"),
+        t("matchUpdated", "Match mis à jour."),
+        "success"
+      );
       setEditingMatch(null);
     } catch (err) {
       console.error("Erreur réseau lors de la modification du match", err);
-      alert(
+      showFeedback(
+        t("error", "Erreur"),
         t(
           "editMatchErrorNetwork",
           "Erreur réseau lors de la modification du match."
-        )
+        ),
+        "danger"
       );
     }
   };
@@ -415,11 +456,13 @@ const ScheduleEdit = () => {
       if (!resp.ok) {
         const msg = await resp.text().catch(() => "");
         console.error("Erreur suppression match", resp.status, msg);
-        alert(
+        showFeedback(
+          t("error", "Erreur"),
           t(
             "deleteError",
             "Erreur lors de la suppression du match. Vérifiez vos droits administrateur."
-          )
+          ),
+          "danger"
         );
         return;
       }
@@ -445,14 +488,20 @@ const ScheduleEdit = () => {
         return next;
       });
 
-      alert(t("matchDeleted", "Match supprimé."));
+      showFeedback(
+        t("success", "Succès"),
+        t("matchDeleted", "Match supprimé."),
+        "success"
+      );
     } catch (e) {
       console.error("Erreur réseau lors de la suppression du match", e);
-      alert(
+      showFeedback(
+        t("error", "Erreur"),
         t(
           "deleteErrorNetwork",
           "Erreur réseau lors de la suppression du match."
-        )
+        ),
+        "danger"
       );
     }
   };
@@ -543,8 +592,37 @@ const ScheduleEdit = () => {
     );
   };
 
+  const renderFeedbackModal = () => {
+    if (!feedbackModal.open) return null;
+    return (
+      <div
+        className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+        style={{ backgroundColor: "rgba(0,0,0,0.5)", zIndex: 1050 }}
+      >
+        <div className="card shadow" style={{ maxWidth: 420, width: "100%" }}>
+          <div className="card-header">
+            <strong>{feedbackModal.title}</strong>
+          </div>
+          <div className="card-body">
+            <p className="mb-3">{feedbackModal.message}</p>
+            <div className="d-flex justify-content-end">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={closeFeedback}
+              >
+                {t("ok", "OK")}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <>
+      {renderFeedbackModal()}
       {renderEditModal()}
       <div>
         <h1 id="page-title" tabIndex="-1">
