@@ -662,24 +662,21 @@ async function handlePatchPlayer(req, res, playerId, body) {
   return send(res, status, ok ? JSON.parse(text) : text);
 }
 
-// Admin: PATCH a player (with tournament ownership + admin check)
+// Admin: PATCH a player (with admin check)
 async function handleAdminPatchPlayer(req, res, tournamentId, playerId, body) {
+  // Load the player from Supabase
   const player = await loadPlayerById(playerId);
   if (!player) {
     return send(res, 404, { error: "player_not_found" });
   }
 
-  // Ensure the player belongs to the tournament in the URL
-  if (Number(player.tournament_id) !== Number(tournamentId)) {
-    return send(res, 400, { error: "tournament_mismatch" });
-  }
-
-  // Only admin of this tournament can update the player
+  // Only admin of this tournament (from the URL) can update the player
   const admin = await isAdminForTournament(req, tournamentId);
   if (!admin) {
     return send(res, 401, { error: "unauthorized" });
   }
 
+  // Normalize incoming payload (firstname, lastname, club_id, group_id, category)
   const payload = normalizeAdminPlayerPatchBody(body);
   if (!payload || Object.keys(payload).length === 0) {
     return send(res, 400, { error: "empty_patch" });
@@ -710,17 +707,9 @@ async function handleAdminPatchPlayer(req, res, tournamentId, playerId, body) {
   return send(res, 200, updated);
 }
 
-// Admin: DELETE a player (with tournament ownership + admin check)
+// Admin: DELETE a player (with admin check)
 async function handleAdminDeletePlayer(req, res, tournamentId, playerId) {
-  const player = await loadPlayerById(playerId);
-  if (!player) {
-    return send(res, 404, { error: "player_not_found" });
-  }
-
-  if (Number(player.tournament_id) !== Number(tournamentId)) {
-    return send(res, 400, { error: "tournament_mismatch" });
-  }
-
+  // Only admin of this tournament (from the URL) can delete the player
   const admin = await isAdminForTournament(req, tournamentId);
   if (!admin) {
     return send(res, 401, { error: "unauthorized" });
