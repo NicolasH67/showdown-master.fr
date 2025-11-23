@@ -279,22 +279,112 @@ const ScheduleEdit = () => {
   if (error) return <div>{error}</div>;
 
   // Handlers for editing and deleting matches
-  const handleEditMatch = (match) => {
-    alert(`${t("edit")} - ID: ${match.id}`);
-  };
+  const handleEditMatch = async (match) => {
+    const currentDate = match.match_day || tournamentStartDate || "";
+    const currentTime = match.match_time || "";
+    const currentTable = match.table_number || "";
 
-  const handleDeleteMatch = async (match) => {
-    const confirmed = window.confirm(`${t("confirmDeleteMatch")}`);
-    if (!confirmed) return;
+    const newDate = window.prompt(
+      t("editMatchDatePrompt", "Nouvelle date du match (YYYY-MM-DD) :"),
+      currentDate
+    );
+    if (newDate === null) return;
 
-    const { error } = await supabase.from("match").delete().eq("id", match.id);
-    if (error) {
-      console.error(error.message);
-      alert(t("deleteError"));
+    const newTime = window.prompt(
+      t("editMatchTimePrompt", "Nouvelle heure du match (HH:MM) :"),
+      currentTime
+    );
+    if (newTime === null) return;
+
+    const newTableStr = window.prompt(
+      t("editMatchTablePrompt", "Numéro de table :"),
+      String(currentTable || "")
+    );
+    if (newTableStr === null) return;
+
+    const newTable = Number.parseInt(newTableStr, 10);
+    if (!Number.isFinite(newTable)) {
+      alert(
+        t(
+          "invalidTableNumber",
+          "Numéro de table invalide. La modification a été annulée."
+        )
+      );
       return;
     }
 
-    alert(t("matchDeleted"));
+    try {
+      const resp = await fetch(`/api/admin/matches/${match.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          match_day: newDate,
+          match_time: newTime,
+          table_number: newTable,
+        }),
+      });
+
+      if (!resp.ok) {
+        const msg = await resp.text().catch(() => "");
+        console.error("Erreur édition match", resp.status, msg);
+        alert(
+          t(
+            "editMatchError",
+            "Erreur lors de la modification du match. Vérifiez vos droits administrateur."
+          )
+        );
+        return;
+      }
+
+      alert(t("matchUpdated", "Match mis à jour."));
+      window.location.reload();
+    } catch (e) {
+      console.error("Erreur réseau lors de la modification du match", e);
+      alert(
+        t(
+          "editMatchErrorNetwork",
+          "Erreur réseau lors de la modification du match."
+        )
+      );
+    }
+  };
+
+  const handleDeleteMatch = async (match) => {
+    const confirmed = window.confirm(
+      t("confirmDeleteMatch", "Voulez-vous vraiment supprimer ce match ?")
+    );
+    if (!confirmed) return;
+
+    try {
+      const resp = await fetch(`/api/admin/matches/${match.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+
+      if (!resp.ok) {
+        const msg = await resp.text().catch(() => "");
+        console.error("Erreur suppression match", resp.status, msg);
+        alert(
+          t(
+            "deleteError",
+            "Erreur lors de la suppression du match. Vérifiez vos droits administrateur."
+          )
+        );
+        return;
+      }
+
+      alert(t("matchDeleted", "Match supprimé."));
+      window.location.reload();
+    } catch (e) {
+      console.error("Erreur réseau lors de la suppression du match", e);
+      alert(
+        t(
+          "deleteErrorNetwork",
+          "Erreur réseau lors de la suppression du match."
+        )
+      );
+    }
   };
 
   const getFakePlayerLabel = (group, position) => {
