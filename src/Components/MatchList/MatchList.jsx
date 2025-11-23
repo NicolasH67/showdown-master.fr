@@ -99,6 +99,7 @@ const MatchList = ({
       </div>
 
       <button
+        type="button"
         className="btn btn-success w-100 mt-2"
         onClick={() => saveMatches(groupId)}
       >
