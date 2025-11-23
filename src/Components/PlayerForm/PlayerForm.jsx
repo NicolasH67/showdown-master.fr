@@ -18,13 +18,16 @@ const PlayerForm = ({ tournamentId, clubs, groups, onAddSuccess }) => {
     setSubmitting(true);
     try {
       const idNum = Number(tournamentId);
-      const gid = Number(groupId);
-      const cid = Number(clubId);
+      if (!Number.isFinite(idNum)) {
+        throw new Error("Invalid tournament id");
+      }
+
+      const gid = groupId ? Number(groupId) : null;
+      const cid = clubId ? Number(clubId) : null;
 
       if (
-        !Number.isFinite(idNum) ||
-        !Number.isFinite(gid) ||
-        !Number.isFinite(cid)
+        (groupId && !Number.isFinite(gid)) ||
+        (clubId && !Number.isFinite(cid))
       ) {
         throw new Error("Invalid form values");
       }
@@ -32,28 +35,13 @@ const PlayerForm = ({ tournamentId, clubs, groups, onAddSuccess }) => {
       const payload = {
         firstname: String(firstname).trim(),
         lastname: String(lastname).trim(),
-        group_id: [gid],
+        group_id: gid != null ? [gid] : [],
         club_id: cid,
         tournament_id: idNum,
       };
 
-      // Try backend (admin-protected) endpoint first
-      try {
-        await post(`/api/tournaments/${idNum}/players`, payload);
-      } catch (err) {
-        // If running locally without the serverless endpoint (404/405),
-        // fallback to legacy direct insert via Supabase anon (kept for dev)
-        const status = err?.status || err?.body?.status;
-        if (status !== 404 && status !== 405) {
-          throw err;
-        }
-        // dynamic import to avoid bundling supabase client when not needed
-        const { default: supabase } = await import(
-          "../../Helpers/supabaseClient"
-        );
-        const { error } = await supabase.from("player").insert([payload]);
-        if (error) throw error;
-      }
+      // Admin endpoint only, no direct Supabase fallback
+      await post(`/api/admin/tournaments/${idNum}/players`, payload);
 
       setMessage(t("playerAdded"));
       setFirstname("");
