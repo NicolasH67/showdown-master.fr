@@ -9,7 +9,7 @@ import { get, ApiError } from "../Helpers/apiClient";
  *  - Gracefully fall back on 401/403/404 to the next endpoint.
  *  - If club info is missing on rows, fetch clubs and enrich.
  */
-const useReferees = (tournamentId) => {
+const useReferees = (tournamentId, refreshTrigger = false) => {
   const [referees, setReferees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -115,7 +115,7 @@ const useReferees = (tournamentId) => {
     return () => {
       cancelled = true;
     };
-  }, [tournamentId]);
+  }, [tournamentId, refreshTrigger]);
 
   return { referees, loading, error };
 };
