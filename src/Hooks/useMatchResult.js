@@ -53,6 +53,7 @@ const useMatchesResult = (tournamentId) => {
   const [results, setResults] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [clubs, setClubs] = useState([]);
 
   // données issues des hooks centralisés
   const {
@@ -118,6 +119,39 @@ const useMatchesResult = (tournamentId) => {
   // expose des valeurs dérivées depuis les hooks
   const groups = Array.isArray(hookGroups) ? hookGroups : [];
   const referees = Array.isArray(hookReferees) ? hookReferees : [];
+
+  // Chargement des clubs du tournoi via les routes /api
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadClubs = async () => {
+      const idNum = resolvedIdNum;
+      if (!Number.isFinite(idNum) || idNum <= 0) {
+        if (!cancelled) setClubs([]);
+        return;
+      }
+
+      try {
+        const data = await firstOk([
+          `/api/tournaments/${idNum}/clubs`,
+          `/api/tournaments/clubs?id=${idNum}`,
+        ]);
+        if (!cancelled) {
+          setClubs(Array.isArray(data) ? data : []);
+        }
+      } catch (e) {
+        console.error("Erreur chargement clubs pour le tournoi", idNum, e);
+        if (!cancelled) {
+          setClubs([]);
+        }
+      }
+    };
+
+    loadClubs();
+    return () => {
+      cancelled = true;
+    };
+  }, [resolvedIdNum]);
 
   // Mise à jour des champs d'un match (date, heure, table, arbitres)
   const handleMatchChange = (matchId, field, value) => {
@@ -339,6 +373,7 @@ const useMatchesResult = (tournamentId) => {
     matches,
     groups,
     referees,
+    clubs,
     loading,
     error,
     results,

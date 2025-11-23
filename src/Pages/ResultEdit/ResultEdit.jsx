@@ -6,8 +6,6 @@ import DateSelector from "../../Components/DateSelector/DateSelector";
 import TableSelector from "../../Components/TableSelector/TableSelector";
 import { useTranslation } from "react-i18next";
 
-import supabase from "../../Helpers/supabaseClient";
-
 const ResultEdit = () => {
   const { t } = useTranslation();
   const location = useLocation();
@@ -17,13 +15,13 @@ const ResultEdit = () => {
     matches,
     groups,
     referees,
+    clubs,
     loading,
     error,
     handleMatchChange,
     handleSave,
   } = useMatchesResult(id);
 
-  const [allClubs, setAllClubs] = React.useState([]);
   const [selectedDate, setSelectedDate] = React.useState(null);
   const [selectedTable, setSelectedTable] = React.useState(null);
 
@@ -37,39 +35,6 @@ const ResultEdit = () => {
 
     return () => clearTimeout(timer);
   }, [location.pathname, matches.length]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const fetchClubs = async () => {
-      try {
-        if (!Number.isFinite(tournamentIdNum) || tournamentIdNum <= 0) {
-          setAllClubs([]);
-          return;
-        }
-        const { data: clubs, error: clubsError } = await supabase
-          .from("club")
-          .select("id,name,abbreviation,tournament_id")
-          .eq("tournament_id", tournamentIdNum)
-          .order("name", { ascending: true });
-
-        if (clubsError) {
-          console.error("Erreur de chargement des clubs :", clubsError.message);
-          if (!cancelled) setAllClubs([]);
-          return;
-        }
-        if (!cancelled) setAllClubs(clubs || []);
-      } catch (e) {
-        console.error("Erreur de chargement des clubs :", e?.message || e);
-        if (!cancelled) setAllClubs([]);
-      }
-    };
-
-    fetchClubs();
-    return () => {
-      cancelled = true;
-    };
-  }, [tournamentIdNum]);
 
   const uniqueDates = React.useMemo(() => {
     const set = new Set(
@@ -180,7 +145,7 @@ const ResultEdit = () => {
               <MatchRowResult
                 key={match.id}
                 allgroups={groups}
-                allclubs={allClubs}
+                allclubs={clubs}
                 match={match}
                 index={index}
                 mnr={mnrMap.get(match.id) || index + 1}
