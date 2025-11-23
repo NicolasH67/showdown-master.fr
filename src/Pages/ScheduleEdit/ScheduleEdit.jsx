@@ -5,6 +5,7 @@ import matchOrder from "../../Helpers/matchOrder.json";
 import RoundSelector from "../../Components/RoundSelector/RoundSelector";
 import supabase from "../../Helpers/supabaseClient";
 import { useParams, useLocation } from "react-router-dom";
+import useTournamentStartDate from "../../Hooks/useTournamentStartDate";
 import { useTranslation } from "react-i18next";
 
 const ScheduleEdit = () => {
@@ -14,7 +15,7 @@ const ScheduleEdit = () => {
   const { groups, players, matches, clubs, loading, error } = useMatchData();
   const [generatedMatches, setGeneratedMatches] = useState({});
   const [selectedRound, setSelectedRound] = useState("1st round");
-  const [tournamentStartDate, setTournamentStartDate] = useState("");
+  const tournamentStartDate = useTournamentStartDate(id);
 
   useEffect(() => {
     if (groups.length > 0) {
@@ -24,32 +25,6 @@ const ScheduleEdit = () => {
       }
     }
   }, [location.pathname, groups.length]);
-
-  useEffect(() => {
-    const fetchTournamentStartDate = async () => {
-      const { data, error } = await supabase
-        .from("tournament")
-        .select("startday")
-        .eq("id", id)
-        .maybeSingle();
-
-      if (error) {
-        console.error(
-          "Erreur de récupération de la date de début :",
-          error.message
-        );
-      } else if (data && data.startday) {
-        setTournamentStartDate(data.startday);
-      } else {
-        // pas de ligne pour cet id; garder la valeur par défaut
-        console.warn("Aucune date de début trouvée pour le tournoi", id);
-      }
-    };
-
-    if (id) {
-      fetchTournamentStartDate();
-    }
-  }, [id]);
 
   // Normaliser les joueurs en dictionnaire { group_id: Player[] }
   const playersByGroup = useMemo(() => {

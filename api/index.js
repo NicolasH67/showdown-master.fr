@@ -1795,6 +1795,27 @@ export default async function handler(req, res) {
       return handleCreateMatches(req, res, id, body);
     }
 
+    // Custom: get startday only
+    const mStart = pathname.match(/^\/api\/tournament\/(\d+)\/startday\/?$/);
+    if (req.method === "GET" && mStart) {
+      const id = Number(mStart[1]);
+      if (!Number.isFinite(id)) {
+        return send(res, 400, { error: "invalid_tournament_id" });
+      }
+      const { ok, status, text } = await sFetch(
+        `/rest/v1/tournament?id=eq.${id}&select=startday`,
+        { headers: headers(process.env.SUPABASE_SERVICE_KEY) }
+      );
+      if (!ok) return send(res, status, text, "application/json");
+      let arr = [];
+      try {
+        arr = JSON.parse(text || "[]");
+      } catch {}
+      const obj = Array.isArray(arr) ? arr[0] : null;
+      if (!obj) return send(res, 404, { error: "not_found" });
+      return send(res, 200, { startday: obj.startday || null });
+    }
+
     const mT = pathname.match(/^\/api\/tournaments\/(\d+)\/?$/);
     if (req.method === "GET" && mT) {
       return handleGetTournament(req, res, Number(mT[1]));
