@@ -662,14 +662,8 @@ async function handlePatchPlayer(req, res, playerId, body) {
   return send(res, status, ok ? JSON.parse(text) : text);
 }
 
-// Admin: PATCH a player (with admin check)
+// Admin: PATCH a player (with admin check, no pre-fetch)
 async function handleAdminPatchPlayer(req, res, tournamentId, playerId, body) {
-  // Load the player from Supabase
-  const player = await loadPlayerById(playerId);
-  if (!player) {
-    return send(res, 404, { error: "player_not_found" });
-  }
-
   // Only admin of this tournament (from the URL) can update the player
   const admin = await isAdminForTournament(req, tournamentId);
   if (!admin) {
