@@ -83,8 +83,16 @@ const AdminLogin = () => {
       password: String(password).trim(),
     };
 
-    // Essaye d'abord l'URL serverless Vercel (/api/...), puis fallback monolithe (/auth/...)
-    const urls = ["/api/auth/admin/login", "/auth/admin/login"];
+    // Construit l'URL d'API en tenant compte de VITE_API_BASE (local) ou chemin relatif (Vercel)
+    const baseEnv =
+      (typeof import.meta !== "undefined" &&
+        import.meta.env &&
+        import.meta.env.VITE_API_BASE) ||
+      null;
+    const trimmedBase = baseEnv ? baseEnv.replace(/\/$/, "") : "";
+    const urls = trimmedBase
+      ? [`${trimmedBase}/api/auth/admin/login`]
+      : ["/api/auth/admin/login", "/auth/admin/login"];
 
     let lastError = null;
     let success = false;

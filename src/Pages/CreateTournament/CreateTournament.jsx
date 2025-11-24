@@ -4,6 +4,8 @@ import useTournamentForm from "../../Hooks/useTournamentForm";
 import InputField from "../../Components/InputField/InputField";
 import { useTranslation } from "react-i18next";
 
+const API_BASE = import.meta.env.VITE_API_BASE || "";
+
 /**
  * CreateTournament component - A form for creating a new tournament.
  *
@@ -112,7 +114,7 @@ const CreateTournament = () => {
 
     setEmailSending(true);
     try {
-      const res = await fetch(`/api/send-email-code`, {
+      const res = await fetch(`${API_BASE}/api/send-email-code`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: formData.email }),
@@ -158,7 +160,7 @@ const CreateTournament = () => {
     }
 
     try {
-      const res = await fetch(`/api/verify-email-code`, {
+      const res = await fetch(`${API_BASE}/api/verify-email-code`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ requestId, code }),

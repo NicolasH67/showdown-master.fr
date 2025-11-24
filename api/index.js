@@ -108,15 +108,29 @@ async function verifyJWT(token, secret) {
 
 function setCookie(res, name, value, maxAgeMs) {
   const attrs = [
-    `${name}=${value}`,
+    `${name}=${encodeURIComponent(value)}`,
     "Path=/",
     "HttpOnly",
     "SameSite=Lax",
-    "Secure",
-    `Max-Age=${Math.floor(maxAgeMs / 1000)}`,
   ];
+
+  // Secure seulement en prod / sur Vercel
+  const useSecure =
+    process.env.VERCEL || // Vercel
+    process.env.NODE_ENV === "production" ||
+    /^https:/.test(process.env.NEXT_PUBLIC_SITE_URL || "");
+
+  if (useSecure) {
+    attrs.push("Secure");
+  }
+
+  if (maxAgeMs != null) {
+    attrs.push(`Max-Age=${Math.floor(maxAgeMs / 1000)}`);
+  }
+
   res.setHeader("Set-Cookie", attrs.join("; "));
 }
+
 function clearCookie(res, name) {
   res.setHeader(
     "Set-Cookie",
