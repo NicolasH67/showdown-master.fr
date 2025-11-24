@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
+const API_BASE = import.meta.env.VITE_API_BASE || "";
+
 const ClubForm = ({ tournamentId, onAddSuccess }) => {
   const [name, setName] = useState("");
   const [abbreviation, setAbbreviation] = useState("");
@@ -25,69 +27,50 @@ const ClubForm = ({ tournamentId, onAddSuccess }) => {
     setSubmitting(true);
     const payload = { name: name.trim(), abbreviation: abbreviation.trim() };
 
-    // Essaye d’abord la route serverless Vercel, puis une éventuelle route monolithe
-    const endpoints = [
-      `/api/tournaments/${idNum}/clubs`,
-      `/tournaments/${idNum}/clubs`,
-    ];
+    try {
+      const res = await fetch(`${API_BASE}/api/tournaments/${idNum}/clubs`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
 
-    let lastErr = null;
-    for (const url of endpoints) {
-      try {
-        const res = await fetch(url, {
-          method: "POST",
-          credentials: "include", // cookie admin httpOnly
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+      if (!res.ok) {
+        const text = await res.text();
+        let msg = t("clubAddFailed", {
+          defaultValue: "Échec de l’ajout du club.",
         });
-
-        if (res.ok) {
-          // Certaines implémentations renvoient l’objet inséré, d’autres rien : on gère les deux
-          try {
-            await res.json();
-          } catch {
-            /* pas grave */
-          }
-
-          setMessage(t("clubAdded", { defaultValue: "Club ajouté." }));
-          setName("");
-          setAbbreviation("");
-          if (onAddSuccess) onAddSuccess();
-          setSubmitting(false);
-          return;
+        if (res.status === 401) {
+          msg = t("unauthorized", {
+            defaultValue: "Non autorisé. Connectez-vous en admin.",
+          });
+        } else if (res.status === 403) {
+          msg = t("forbidden", {
+            defaultValue: "Accès interdit. Droit admin requis.",
+          });
         }
-
-        // Récupère le message d’erreur quand dispo
-        let body = null;
-        try {
-          body = await res.json();
-        } catch {}
-        lastErr = body?.error || body || `${res.status}`;
-        // Si 404/405, on essaie l’URL suivante. Sinon on arrête.
-        if (res.status !== 404 && res.status !== 405) break;
-      } catch (err) {
-        lastErr = err?.message || err;
-        // on tente l’URL suivante
+        console.error("Club create failed:", res.status, text);
+        setMessage(msg);
+        setSubmitting(false);
+        return;
       }
-    }
 
-    // Échec sur toutes les variantes
-    let msg = t("clubAddFailed", { defaultValue: "Échec de l’ajout du club." });
-    // Messages un peu plus parlants selon les cas fréquents
-    if (
-      String(lastErr).toLowerCase().includes("unauthorized") ||
-      String(lastErr).includes("401")
-    ) {
-      msg = t("unauthorized", {
-        defaultValue: "Non autorisé. Connectez-vous en admin.",
+      setMessage(t("clubAdded", { defaultValue: "Club ajouté." }));
+      setName("");
+      setAbbreviation("");
+      if (onAddSuccess) onAddSuccess();
+      setSubmitting(false);
+      return;
+    } catch (err) {
+      console.error("Club create error:", err);
+      let msg = t("clubAddFailed", {
+        defaultValue: "Échec de l’ajout du club.",
       });
-    } else if (String(lastErr).includes("403")) {
-      msg = t("forbidden", {
-        defaultValue: "Accès interdit. Droit admin requis.",
-      });
+      setMessage(msg);
+      setSubmitting(false);
     }
-    setMessage(msg);
-    setSubmitting(false);
   };
 
   return (

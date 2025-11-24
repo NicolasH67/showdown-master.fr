@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+const API_BASE = import.meta.env.VITE_API_BASE || "";
 
 /**
  * RefereeForm — backend-first version (no direct Supabase from the browser)
@@ -59,8 +60,8 @@ const RefereeForm = ({ tournamentId, clubs, onAddSuccess }) => {
 
     // Try serverless route first, then alias. Both send cookies.
     const endpoints = [
-      `/api/tournaments/${idNum}/referees`,
-      `/api/tournaments/referees?id=${idNum}`,
+      `${API_BASE}/api/tournaments/${idNum}/referees`,
+      `${API_BASE}/api/tournaments/referees?id=${idNum}`,
     ];
 
     let lastErr = null;
