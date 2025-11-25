@@ -11,6 +11,7 @@ const RefereeTableEdit = ({ referees, onDelete, onEdit, clubs }) => {
   const [firstname, setFirstname] = useState("");
   const [lastname, setLastname] = useState("");
   const [club, setClub] = useState("");
+  const API_BASE = import.meta.env.VITE_API_BASE || "";
 
   const handleShowModal = (referee) => {
     setSelectedReferee(referee);
@@ -46,7 +47,7 @@ const RefereeTableEdit = ({ referees, onDelete, onEdit, clubs }) => {
 
     try {
       const res = await fetch(
-        `/api/admin/tournaments/${id}/referees/${selectedReferee.id}`,
+        `${API_BASE}/api/admin/tournaments/${id}/referees/${selectedReferee.id}`,
         {
           method: "PATCH",
           credentials: "include",
@@ -105,7 +106,7 @@ const RefereeTableEdit = ({ referees, onDelete, onEdit, clubs }) => {
 
     try {
       const res = await fetch(
-        `/api/admin/tournaments/${id}/referees/${selectedReferee.id}`,
+        `${API_BASE}/api/admin/tournaments/${id}/referees/${selectedReferee.id}`,
         {
           method: "DELETE",
           credentials: "include",

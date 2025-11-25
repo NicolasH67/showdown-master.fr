@@ -2,7 +2,6 @@ import React, { useState } from "react";
 
 import { useTranslation } from "react-i18next";
 import { X, Plus, Trash2 } from "lucide-react";
-const API_BASE = import.meta.env.VITE_API_BASE || "";
 
 const GroupTableEdit = ({ groups, players, onEdit, onDelete, allGroups }) => {
   const { t } = useTranslation();
@@ -13,6 +12,7 @@ const GroupTableEdit = ({ groups, players, onEdit, onDelete, allGroups }) => {
   const [groupType, setGroupType] = useState("");
   const [highestPosition, setHighestPosition] = useState("");
   const [groupFormer, setGroupFormer] = useState([]);
+  const API_BASE = import.meta.env.VITE_API_BASE || "";
 
   console.log(groups);
 

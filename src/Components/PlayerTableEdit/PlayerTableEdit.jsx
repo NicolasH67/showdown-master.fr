@@ -19,6 +19,7 @@ const PlayerTableEdit = ({
   const [lastname, setLastname] = useState("");
   const [club, setClub] = useState("");
   const [group, setGroup] = useState("");
+  const API_BASE = import.meta.env.VITE_API_BASE || "";
 
   const handleShowModal = (player) => {
     setSelectedPlayer(player);
@@ -55,7 +56,7 @@ const PlayerTableEdit = ({
 
     try {
       const res = await fetch(
-        `/api/admin/tournaments/${id}/players/${selectedPlayer.id}`,
+        `${API_BASE}/api/admin/tournaments/${id}/players/${selectedPlayer.id}`,
         {
           method: "PATCH",
           credentials: "include",
@@ -113,7 +114,7 @@ const PlayerTableEdit = ({
 
     try {
       const res = await fetch(
-        `/api/admin/tournaments/${id}/players/${selectedPlayer.id}`,
+        `${API_BASE}/api/admin/tournaments/${id}/players/${selectedPlayer.id}`,
         {
           method: "DELETE",
           credentials: "include",
