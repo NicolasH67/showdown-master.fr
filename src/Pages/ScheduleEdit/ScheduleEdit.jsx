@@ -33,6 +33,7 @@ const ScheduleEdit = () => {
     variant: "info",
   });
   const [matchToDelete, setMatchToDelete] = useState(null);
+  const API_BASE = import.meta.env.VITE_API_BASE || "";
 
   useEffect(() => {
     if (groups.length > 0) {
@@ -257,8 +258,8 @@ const ScheduleEdit = () => {
       // 1) Tente d'abord les routes backend (bypass RLS). Deux variantes possibles.
       let backendOk = false;
       const backends = [
-        `/api/tournaments/${tournamentId}/matches`,
-        `/api/tournaments/matches?id=${tournamentId}`,
+        `${API_BASE}/api/tournaments/${tournamentId}/matches`,
+        `${API_BASE}/api/tournaments/matches?id=${tournamentId}`,
       ];
 
       for (const url of backends) {
@@ -303,30 +304,29 @@ const ScheduleEdit = () => {
         }
       }
 
-      // 2) Fallback direct Supabase si aucune route backend n'a fonctionné
-      if (!backendOk) {
-        const { data, error } = await supabase
-          .from("match")
-          .insert(validMatches)
-          .select();
-        if (error) {
-          if (
-            error?.code === "PGRST301" ||
-            /permission|RLS/i.test(error?.message || "")
-          ) {
-            throw new Error(
-              t("rlsRejectInsert", {
-                defaultValue:
-                  "Insertion refusée par les règles de sécurité (RLS). Connectez‑vous en admin ou activez la route backend /api/tournaments/:id/matches.",
-              })
-            );
-          }
-          throw new Error(error.message || "insert_failed");
-        }
-        if (Array.isArray(data)) {
-          createdMatches = data;
-        }
-      }
+      // if (!backendOk) {
+      //   const { data, error } = await supabase
+      //     .from("match")
+      //     .insert(validMatches)
+      //     .select();
+      //   if (error) {
+      //     if (
+      //       error?.code === "PGRST301" ||
+      //       /permission|RLS/i.test(error?.message || "")
+      //     ) {
+      //       throw new Error(
+      //         t("rlsRejectInsert", {
+      //           defaultValue:
+      //             "Insertion refusée par les règles de sécurité (RLS). Connectez‑vous en admin ou activez la route backend /api/tournaments/:id/matches.",
+      //         })
+      //       );
+      //     }
+      //     throw new Error(error.message || "insert_failed");
+      //   }
+      //   if (Array.isArray(data)) {
+      //     createdMatches = data;
+      //   }
+      // }
 
       // Mise à jour locale des matchs existants pour ce groupe sans recharger la page
       if (createdMatches && createdMatches.length > 0) {
@@ -414,16 +414,19 @@ const ScheduleEdit = () => {
     }
 
     try {
-      const resp = await fetch(`/api/admin/matches/${editingMatch.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          match_day: newDate,
-          match_time: newTime,
-          table_number: tableNum,
-        }),
-      });
+      const resp = await fetch(
+        `${API_BASE}/api/admin/matches/${editingMatch.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            match_day: newDate,
+            match_time: newTime,
+            table_number: tableNum,
+          }),
+        }
+      );
 
       if (!resp.ok) {
         const msg = await resp.text().catch(() => "");
@@ -502,7 +505,7 @@ const ScheduleEdit = () => {
     const match = matchToDelete;
 
     try {
-      const resp = await fetch(`/api/admin/matches/${match.id}`, {
+      const resp = await fetch(`${API_BASE}/api/admin/matches/${match.id}`, {
         method: "DELETE",
         credentials: "include",
       });

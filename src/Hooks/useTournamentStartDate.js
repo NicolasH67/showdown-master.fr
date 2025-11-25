@@ -2,13 +2,16 @@ import { useState, useEffect } from "react";
 
 const useTournamentStartDate = (id) => {
   const [startDate, setStartDate] = useState("");
+  const API_BASE = import.meta.env.VITE_API_BASE || "";
 
   useEffect(() => {
     if (!id) return;
 
     const fetchTournamentStartDate = async () => {
       try {
-        const response = await fetch(`/api/tournament/${id}/startday`);
+        const response = await fetch(
+          `${API_BASE}/api/tournament/${id}/startday`
+        );
 
         if (!response.ok) {
           console.error(
