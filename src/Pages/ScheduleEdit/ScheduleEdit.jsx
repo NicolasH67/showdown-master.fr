@@ -304,30 +304,6 @@ const ScheduleEdit = () => {
         }
       }
 
-      // if (!backendOk) {
-      //   const { data, error } = await supabase
-      //     .from("match")
-      //     .insert(validMatches)
-      //     .select();
-      //   if (error) {
-      //     if (
-      //       error?.code === "PGRST301" ||
-      //       /permission|RLS/i.test(error?.message || "")
-      //     ) {
-      //       throw new Error(
-      //         t("rlsRejectInsert", {
-      //           defaultValue:
-      //             "Insertion refusée par les règles de sécurité (RLS). Connectez‑vous en admin ou activez la route backend /api/tournaments/:id/matches.",
-      //         })
-      //       );
-      //     }
-      //     throw new Error(error.message || "insert_failed");
-      //   }
-      //   if (Array.isArray(data)) {
-      //     createdMatches = data;
-      //   }
-      // }
-
       // Mise à jour locale des matchs existants pour ce groupe sans recharger la page
       if (createdMatches && createdMatches.length > 0) {
         setMatchesState((prev) => {

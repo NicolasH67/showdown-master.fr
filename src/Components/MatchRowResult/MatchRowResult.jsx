@@ -1,63 +1,7 @@
-import React, { useState, useEffect, useRef } from "react";
-
-const apiFetch = async (url, options = {}) => {
-  const finalOptions = {
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {}),
-    },
-    ...options,
-  };
-
-  const res = await fetch(url, finalOptions);
-
-  if (!res.ok) {
-    let message = `HTTP ${res.status}`;
-    try {
-      const data = await res.json();
-      if (data) {
-        // Priorité aux champs renvoyés par notre backend
-        if (data.error || data.message) {
-          const parts = [];
-          if (data.error) parts.push(String(data.error));
-          if (data.message && data.message !== data.error) {
-            parts.push(String(data.message));
-          }
-          if (data.path) {
-            parts.push(`path=${data.path}`);
-          }
-          message = parts.join(" — ");
-        } else {
-          // Si c'est une erreur PostgREST brute
-          const raw = JSON.stringify(data);
-          if (raw && raw !== "{}") {
-            message = raw;
-          }
-        }
-      }
-    } catch {
-      try {
-        const text = await res.text();
-        if (text) message = text;
-      } catch {
-        // ignore
-      }
-    }
-    throw new Error(message);
-  }
-
-  if (res.status === 204) {
-    return null;
-  }
-
-  try {
-    return await res.json();
-  } catch {
-    return null;
-  }
-};
+import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
+import useMatchRowApi from "../../Hooks/useMatchRowApi";
 
 const MatchRowResult = ({
   match,
@@ -69,8 +13,14 @@ const MatchRowResult = ({
   onSave,
   allclubs,
   tournamentId,
+  onRefresh, // 👈 nouvelle prop optionnelle
 }) => {
   const { t } = useTranslation();
+  const { saveMatch, postProcessAfterSave } = useMatchRowApi(
+    tournamentId,
+    allgroups
+  );
+
   const getClubAbbr = (clubId) => {
     if (!clubId || !Array.isArray(allclubs)) return "";
     const club = allclubs.find((c) => String(c.id) === String(clubId));
@@ -87,6 +37,7 @@ const MatchRowResult = ({
       (typeof club.name === "string" ? club.name.split(" ")[0] : "");
     return abbr ? String(abbr).trim().toUpperCase() : "";
   };
+
   const [localResults, setLocalResults] = useState(
     match.result?.map((v) => (v === null ? "" : v.toString())) ||
       Array(10).fill("")
@@ -94,8 +45,6 @@ const MatchRowResult = ({
   const [resultText, setResultText] = useState("");
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-
-  console.log("console log dans matchRowResul", match);
 
   // Local edit buffers to avoid re-filtering/remount while typing
   const [editDay, setEditDay] = useState(match.match_day || "");
@@ -125,7 +74,6 @@ const MatchRowResult = ({
   const isValidResultText = (text) => {
     const trimmed = (text || "").trim();
     if (!RESULT_REGEX.test(trimmed)) return false;
-    // optional: cap total items to 10 (5 sets)
     const parts = trimmed.split("-");
     return parts.length >= 2 && parts.length <= 10 && parts.length % 2 === 0;
   };
@@ -141,7 +89,7 @@ const MatchRowResult = ({
   }, [match.result]);
 
   useEffect(() => {
-    // Initialisation quand on change de match
+    // Initialisation quand on change de match ou que ses champs sont mis à jour depuis l'API
     setEditDay(match.match_day || "");
     setEditTime(match.match_time ? toHHMM(match.match_time) : "");
     setEditTable(match.table_number ?? "");
@@ -161,7 +109,16 @@ const MatchRowResult = ({
         ? match.referee_2.id
         : ""
     );
-  }, [match.id]);
+  }, [
+    match.id,
+    match.match_day,
+    match.match_time,
+    match.table_number,
+    match.referee1_id,
+    match.referee2_id,
+    match.referee_1,
+    match.referee_2,
+  ]);
 
   const calculateStats = (result) => {
     let sets = [0, 0];
@@ -183,412 +140,6 @@ const MatchRowResult = ({
     // Sinon (égalité), on garde [0, 0]
 
     return { points, sets, goals };
-  };
-
-  // --- Helpers post-save ---
-  const fetchGroupMatches = async (groupId) => {
-    // Si pas de groupId valable, on ne fait pas d’appel API
-    if (groupId === undefined || groupId === null || groupId === "") {
-      console.warn("[fetchGroupMatches] groupId invalide:", groupId);
-      return [];
-    }
-
-    const idNum = Number(groupId);
-    if (!Number.isFinite(idNum)) {
-      console.warn("[fetchGroupMatches] groupId non numérique:", groupId);
-      return [];
-    }
-
-    const data = await apiFetch(`/api/groups/${idNum}/matches`, {
-      method: "GET",
-    });
-    return data || [];
-  };
-
-  const matchesAreComplete = (matches) =>
-    matches.length > 0 &&
-    matches.every((m) => Array.isArray(m.result) && m.result.length >= 2);
-
-  // Helper: checks if all matches in a group are complete
-  const isGroupComplete = async (groupId) => {
-    const matches = await fetchGroupMatches(groupId);
-    return matchesAreComplete(matches);
-  };
-
-  const computeRankingFromMatches = (matches) => {
-    // Collect unique player IDs present in these matches
-    const playerIds = new Set();
-    for (const m of matches) {
-      if (m.player1_id) playerIds.add(m.player1_id);
-      if (m.player2_id) playerIds.add(m.player2_id);
-    }
-
-    // Compute overall stats
-    const overall = {}; // id -> { wins, setsWon, setsLost, goalsFor, goalsAgainst }
-    for (const pid of playerIds) {
-      overall[pid] = {
-        wins: 0,
-        setsWon: 0,
-        setsLost: 0,
-        goalsFor: 0,
-        goalsAgainst: 0,
-      };
-    }
-
-    for (const m of matches) {
-      const r = Array.isArray(m.result) ? m.result : [];
-      let sA = 0,
-        sB = 0,
-        gA = 0,
-        gB = 0;
-      for (let i = 0; i < r.length; i += 2) {
-        const a = r[i];
-        const b = r[i + 1];
-        if (a == null || b == null) continue;
-        if (a > b) sA++;
-        else if (b > a) sB++;
-        gA += a;
-        gB += b;
-      }
-      if (overall[m.player1_id]) {
-        overall[m.player1_id].setsWon += sA;
-        overall[m.player1_id].setsLost += sB;
-        overall[m.player1_id].goalsFor += gA;
-        overall[m.player1_id].goalsAgainst += gB;
-      }
-      if (overall[m.player2_id]) {
-        overall[m.player2_id].setsWon += sB;
-        overall[m.player2_id].setsLost += sA;
-        overall[m.player2_id].goalsFor += gB;
-        overall[m.player2_id].goalsAgainst += gA;
-      }
-      if (sA > sB && overall[m.player1_id]) overall[m.player1_id].wins += 1;
-      else if (sB > sA && overall[m.player2_id])
-        overall[m.player2_id].wins += 1;
-    }
-
-    // Helper: compute stats restricted to a subset of player IDs (direct encounters only)
-    const directStats = (subsetIds) => {
-      const ds = {};
-      subsetIds.forEach((pid) => {
-        ds[pid] = {
-          setsWon: 0,
-          setsLost: 0,
-          goalsFor: 0,
-          goalsAgainst: 0,
-        };
-      });
-      for (const m of matches) {
-        const a = m.player1_id;
-        const b = m.player2_id;
-        if (!subsetIds.includes(a) || !subsetIds.includes(b)) continue;
-        const r = Array.isArray(m.result) ? m.result : [];
-        let sA = 0,
-          sB = 0,
-          gA = 0,
-          gB = 0;
-        for (let i = 0; i < r.length; i += 2) {
-          const va = r[i];
-          const vb = r[i + 1];
-          if (va == null || vb == null) continue;
-          if (va > vb) sA++;
-          else if (vb > va) sB++;
-          gA += va;
-          gB += vb;
-        }
-        ds[a].setsWon += sA;
-        ds[a].setsLost += sB;
-        ds[a].goalsFor += gA;
-        ds[a].goalsAgainst += gB;
-        ds[b].setsWon += sB;
-        ds[b].setsLost += sA;
-        ds[b].goalsFor += gB;
-        ds[b].goalsAgainst += gA;
-      }
-      return ds;
-    };
-
-    const idsArray = Array.from(playerIds);
-
-    // Sort using the same rules as GroupTable: wins desc, then direct encounters set diff, then direct encounters goal diff
-    idsArray.sort((idA, idB) => {
-      const pa = overall[idA];
-      const pb = overall[idB];
-      if (pb.wins !== pa.wins) return pb.wins - pa.wins;
-
-      // Build the tie group: all players having the same number of wins as A
-      const tiedIds = idsArray.filter((pid) => overall[pid].wins === pa.wins);
-      if (tiedIds.length === 2 || tiedIds.length === 3) {
-        const sub = directStats(tiedIds);
-        const setDiffA = sub[idA].setsWon - sub[idA].setsLost;
-        const setDiffB = sub[idB].setsWon - sub[idB].setsLost;
-        if (setDiffA !== setDiffB) return setDiffB - setDiffA;
-        const goalDiffA = sub[idA].goalsFor - sub[idA].goalsAgainst;
-        const goalDiffB = sub[idB].goalsFor - sub[idB].goalsAgainst;
-        if (goalDiffA !== goalDiffB) return goalDiffB - goalDiffA;
-      }
-
-      // Fallback: overall set diff, then overall goal diff, then stable by id
-      const oSetDiffA = pa.setsWon - pa.setsLost;
-      const oSetDiffB = pb.setsWon - pb.setsLost;
-      if (oSetDiffA !== oSetDiffB) return oSetDiffB - oSetDiffA;
-      const oGoalDiffA = pa.goalsFor - pa.goalsAgainst;
-      const oGoalDiffB = pb.goalsFor - pb.goalsAgainst;
-      if (oGoalDiffA !== oGoalDiffB) return oGoalDiffB - oGoalDiffA;
-      return String(idA).localeCompare(String(idB));
-    });
-
-    // Return in the expected shape used later (playerId + stats)
-    return idsArray.map((pid) => ({
-      playerId: pid,
-      ...overall[pid],
-    }));
-  };
-
-  // Cache de ranking pour éviter des re-fetchs multiples entre rendus
-  const rankingCacheRef = useRef(new Map()); // groupId -> ranking array
-
-  const getRankingForGroup = async (groupId) => {
-    const cache = rankingCacheRef.current;
-    if (cache.has(groupId)) return cache.get(groupId);
-    const matches = await fetchGroupMatches(groupId);
-    if (!matches || matches.length === 0) {
-      cache.set(groupId, []);
-      return [];
-    }
-    const ranking = computeRankingFromMatches(matches);
-    cache.set(groupId, ranking);
-    return ranking;
-  };
-
-  // Trouver les groupes *cibles* qui référencent le groupe courant dans leur group_former
-  const findDestinationGroups = (currentGroupId) => {
-    return (allgroups || []).filter((g) => {
-      if (!g.group_former) return false;
-      try {
-        const arr = JSON.parse(g.group_former);
-        return (
-          Array.isArray(arr) &&
-          arr.some(([pos, srcId]) => Number(srcId) === Number(currentGroupId))
-        );
-      } catch {
-        return false;
-      }
-    });
-  };
-
-  const ensureFormerArray = (v) => {
-    if (!v) return [];
-    if (Array.isArray(v)) return v; // déjà JSON côté DB
-    if (typeof v === "string") {
-      try {
-        return JSON.parse(v);
-      } catch {
-        return [];
-      }
-    }
-    return [];
-  };
-
-  // Supprime un group_id d'un joueur si présent
-  const removeGroupFromPlayerIfPresent = async (playerId, groupIdToRemove) => {
-    const p = await apiFetch(`/api/players/${playerId}`, {
-      method: "GET",
-    });
-
-    const current = Array.isArray(p?.group_id) ? p.group_id : [];
-    const next = current.filter(
-      (gid) => Number(gid) !== Number(groupIdToRemove)
-    );
-    if (next.length === current.length) return; // rien à faire
-
-    await apiFetch(`/api/players/${playerId}`, {
-      method: "PATCH",
-      body: JSON.stringify({ group_id: next }),
-    });
-  };
-
-  // Récupère tous les joueurs qui ont ce group_id dans leur tableau
-  const fetchPlayersHavingGroupId = async (groupId) => {
-    const data = await apiFetch(`/api/players?groupId=${Number(groupId)}`, {
-      method: "GET",
-    });
-    return data || [];
-  };
-
-  // Ajouter un group_id au joueur si pas déjà présent
-  const addGroupToPlayerIfMissing = async (playerId, newGroupId) => {
-    console.log("[addGroupToPlayerIfMissing] read player", {
-      playerId,
-      newGroupId,
-    });
-
-    const p = await apiFetch(`/api/players/${playerId}`, {
-      method: "GET",
-    });
-
-    const current = Array.isArray(p?.group_id) ? p.group_id : [];
-    const already = current.map(String).includes(String(newGroupId));
-    if (already) return;
-
-    const next = [...current, newGroupId];
-
-    console.log("[addGroupToPlayerIfMissing] updating player group_id", {
-      playerId,
-      next,
-    });
-
-    await apiFetch(`/api/players/${playerId}`, {
-      method: "PATCH",
-      body: JSON.stringify({ group_id: next }),
-    });
-
-    console.log("[addGroupToPlayerIfMissing] update ok", { playerId });
-  };
-
-  // Remplit de façon idempotente et écrasante tous les matchs et joueurs du groupe cible en fonction de l'état courant des groupes sources
-  const fillScheduledMatchesForGroup = async (destGroupId) => {
-    const destGroup = (allgroups || []).find(
-      (g) => Number(g.id) === Number(destGroupId)
-    );
-    if (!destGroup) return;
-
-    const former = ensureFormerArray(destGroup.group_former);
-    if (!former.length) return;
-
-    // 1) Construire la liste des joueurs attendus pour ce groupe cible,
-    //    en fonction des groupes sources et de leur complétude
-    const desiredByPosition = new Map(); // key: index (0-based in former) -> playerId|null
-
-    // On va mémoriser les joueurs "désirés" issus de chaque sourceGroupId
-    const desiredGlobal = new Set();
-
-    // Former est un tableau de paires [positionDansSource, sourceGroupId]
-    for (let idx = 0; idx < former.length; idx++) {
-      const entry = former[idx];
-      if (!Array.isArray(entry) || entry.length < 2) {
-        desiredByPosition.set(idx, null);
-        continue;
-      }
-      const [posInSource, sourceGroupId] = entry;
-      const complete = await isGroupComplete(Number(sourceGroupId));
-      if (!complete) {
-        desiredByPosition.set(idx, null);
-        continue;
-      }
-      const ranking = await getRankingForGroup(Number(sourceGroupId));
-      const pick = ranking[Number(posInSource) - 1];
-      const pid = pick?.playerId || null;
-      if (pid) desiredGlobal.add(pid);
-      desiredByPosition.set(idx, pid || null);
-    }
-
-    // 2) Mettre à jour les MATCHS du groupe cible en écrasant systématiquement
-    const mlist =
-      (await apiFetch(`/api/groups/${destGroupId}/matches`, {
-        method: "GET",
-      })) || [];
-
-    const matchUpdatePromises = [];
-
-    const computeExpectedPlayer = (groupPos) => {
-      if (!groupPos) return null;
-      const idx = Number(groupPos) - 1; // 1-based -> 0-based index in former
-      const entry = former[idx];
-      if (!entry || !Array.isArray(entry) || entry.length < 2) return null;
-      const desired = desiredByPosition.get(idx) ?? null;
-      return desired || null; // null si groupe source incomplet
-    };
-
-    for (const m of mlist || []) {
-      const expectedP1 = computeExpectedPlayer(m.player1_group_position);
-      const expectedP2 = computeExpectedPlayer(m.player2_group_position);
-      const patch = {};
-      // Ecrase toujours pour rester idempotent
-      if (m.player1_group_position) patch.player1_id = expectedP1;
-      if (m.player2_group_position) patch.player2_id = expectedP2;
-      if (Object.keys(patch).length) {
-        matchUpdatePromises.push(
-          apiFetch(`/api/tournaments/${tournamentId}/matches/${m.id}`, {
-            method: "PATCH",
-            body: JSON.stringify(patch),
-          })
-        );
-      }
-    }
-
-    if (matchUpdatePromises.length) {
-      await Promise.all(matchUpdatePromises);
-    }
-
-    // 3) Mettre à jour les JOUEURS: ajouter/retirer le group_id
-    //    a) Ajouter le group_id aux joueurs attendus s'ils ne l'ont pas
-    await Promise.all(
-      Array.from(desiredGlobal).map((pid) =>
-        addGroupToPlayerIfMissing(pid, destGroupId)
-      )
-    );
-
-    //    b) Retirer le group_id à tous les joueurs qui l'ont mais ne sont pas (ou plus) désirés
-    const currentPlayers = await fetchPlayersHavingGroupId(destGroupId);
-    const removals = currentPlayers
-      .filter((p) => !desiredGlobal.has(p.id))
-      .map((p) => removeGroupFromPlayerIfPresent(p.id, destGroupId));
-    if (removals.length) await Promise.all(removals);
-
-    console.log("[fillScheduledMatchesForGroup] sync done", {
-      destGroupId,
-      desiredCount: desiredGlobal.size,
-      updatedMatches: matchUpdatePromises.length,
-      removedPlayers: removals.length,
-    });
-  };
-
-  // Post-traitement appelé après la sauvegarde d'un match
-  const postProcessAfterSave = async (updatedMatch) => {
-    console.log("[postProcessAfterSave] start", {
-      groupId: updatedMatch.group_id,
-      updatedMatch,
-    });
-    const groupId = updatedMatch.group_id;
-    // 1) Récupérer tous les matchs du groupe
-    const matches = await fetchGroupMatches(groupId);
-    console.log("[postProcessAfterSave] matches fetched", {
-      count: matches.length,
-      matches,
-    });
-    // 2) Chercher les groupes cibles qui référencent ce groupe (on sync **même** si incomplet)
-    const destGroups = findDestinationGroups(groupId);
-    console.log(
-      "[postProcessAfterSave] destination groups",
-      destGroups.map((g) => ({
-        id: g.id,
-        name: g.name,
-        group_former: g.group_former,
-      }))
-    );
-    if (!destGroups.length) return;
-
-    const complete = matchesAreComplete(matches);
-    console.log("[postProcessAfterSave] group completeness", complete);
-
-    // 3) Si complet: on peut calculer un ranking; sinon, on videra les attentes
-    const ranking = complete ? computeRankingFromMatches(matches) : [];
-    if (complete)
-      console.log("[postProcessAfterSave] ranking computed", ranking);
-
-    // 4) Pour chaque groupe destination, appliquer la synchro idempotente (écrase/retire/ajoute)
-    for (const g of destGroups) {
-      try {
-        await fillScheduledMatchesForGroup(g.id);
-      } catch (e) {
-        console.error(
-          "[postProcessAfterSave] sync error for dest group",
-          g?.id,
-          e
-        );
-      }
-    }
   };
 
   const formatTime = (t) => {
@@ -722,13 +273,7 @@ const MatchRowResult = ({
         table_number: editTable === "" ? null : Number(editTable),
       };
 
-      const updated = await apiFetch(
-        `/api/tournaments/${tournamentId}/matches/${match.id}`,
-        {
-          method: "PATCH",
-          body: JSON.stringify(payload),
-        }
-      );
+      const updated = await saveMatch(match.id, payload);
 
       const effective = updated || { ...match, ...payload };
 
@@ -738,6 +283,7 @@ const MatchRowResult = ({
       onMatchChange(match.id, "table_number", effective.table_number);
       onMatchChange(match.id, "referee1_id", effective.referee1_id);
       onMatchChange(match.id, "referee2_id", effective.referee2_id);
+      onMatchChange(match.id, "result", effective.result);
 
       // Mettre à jour immédiatement l'état local des arbitres pour refléter la sauvegarde
       setLocalReferee1Id(
@@ -752,7 +298,11 @@ const MatchRowResult = ({
       );
 
       onSave(effective);
-      window.location.reload();
+
+      // 👉 refresh léger côté parent si fourni (refetch des matches, re-tri, etc.)
+      if (typeof onRefresh === "function") {
+        onRefresh();
+      }
     } catch (err) {
       alert(err.message || err);
     } finally {

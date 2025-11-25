@@ -20,6 +20,7 @@ const ResultEdit = () => {
     error,
     handleMatchChange,
     handleSave,
+    refresh, // 👈 fonction de rafraîchissement exposée par le hook
   } = useMatchesResult(id);
 
   const [selectedDate, setSelectedDate] = React.useState(null);
@@ -153,6 +154,7 @@ const ResultEdit = () => {
                 onMatchChange={handleMatchChange}
                 onSave={handleSave}
                 tournamentId={tournamentIdNum}
+                onRefresh={refresh} // 👈 déclenche un refetch des données après un save
               />
             ))}
           </tbody>

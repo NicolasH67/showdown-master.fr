@@ -54,6 +54,7 @@ const useMatchesResult = (tournamentId) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [clubs, setClubs] = useState([]);
+  const API_BASE = import.meta.env.VITE_API_BASE || "";
 
   // données issues des hooks centralisés
   const {
@@ -133,8 +134,8 @@ const useMatchesResult = (tournamentId) => {
 
       try {
         const data = await firstOk([
-          `/api/tournaments/${idNum}/clubs`,
-          `/api/tournaments/clubs?id=${idNum}`,
+          `${API_BASE}/api/tournaments/${idNum}/clubs`,
+          `${API_BASE}/api/tournaments/clubs?id=${idNum}`,
         ]);
         if (!cancelled) {
           setClubs(Array.isArray(data) ? data : []);
@@ -203,8 +204,8 @@ const useMatchesResult = (tournamentId) => {
     };
 
     const urls = [
-      `/api/tournaments/${idNum}/matches/${matchId}`, // handler unifié
-      `/api/tournaments/matches/${matchId}?id=${idNum}`, // fallback
+      `${API_BASE}/api/tournaments/${idNum}/matches/${matchId}`, // handler unifié
+      `${API_BASE}/api/tournaments/matches/${matchId}?id=${idNum}`, // fallback
     ];
 
     await firstOk(urls, { method: "PATCH", body: payload });
@@ -247,8 +248,8 @@ const useMatchesResult = (tournamentId) => {
     const resultArray = buildResultArray(local);
 
     const urls = [
-      `/api/tournaments/${idNum}/matches/${matchId}`,
-      `/api/tournaments/matches/${matchId}?id=${idNum}`,
+      `${API_BASE}/api/tournaments/${idNum}/matches/${matchId}`,
+      `${API_BASE}/api/tournaments/matches/${matchId}?id=${idNum}`,
     ];
 
     await firstOk(urls, { method: "PATCH", body: { result: resultArray } });
@@ -281,8 +282,8 @@ const useMatchesResult = (tournamentId) => {
 
     // Récupère tous les matchs du tournoi puis filtre par groupe
     const allMatches = await firstOk([
-      `/api/tournaments/${tid}/matches`,
-      `/api/tournaments/matches?id=${tid}`,
+      `${API_BASE}/api/tournaments/${tid}/matches`,
+      `${API_BASE}/api/tournaments/matches?id=${tid}`,
     ]);
     const groupMatches = (Array.isArray(allMatches) ? allMatches : []).filter(
       (m) => Number(m.group_id) === Number(groupId)
@@ -295,8 +296,8 @@ const useMatchesResult = (tournamentId) => {
 
     // Récupère tous les joueurs du tournoi puis filtre par appartenance au groupe
     const allPlayers = await firstOk([
-      `/api/tournaments/${tid}/players`,
-      `/api/tournaments/players?id=${tid}`,
+      `${API_BASE}/api/tournaments/${tid}/players`,
+      `${API_BASE}/api/tournaments/players?id=${tid}`,
     ]);
     const playersInGroup = (Array.isArray(allPlayers) ? allPlayers : []).filter(
       (p) =>
@@ -325,8 +326,8 @@ const useMatchesResult = (tournamentId) => {
 
     // Lecture des groupes pour lire group_former
     const allGroups = await firstOk([
-      `/api/tournaments/${tid}/groups`,
-      `/api/tournaments/groups?id=${tid}`,
+      `${API_BASE}/api/tournaments/${tid}/groups`,
+      `${API_BASE}/api/tournaments/groups?id=${tid}`,
     ]);
 
     for (const g of Array.isArray(allGroups) ? allGroups : []) {
@@ -357,8 +358,8 @@ const useMatchesResult = (tournamentId) => {
         // PATCH joueur via /api
         await firstOk(
           [
-            `/api/tournaments/${tid}/players/${player.id}`,
-            `/api/tournaments/players/${player.id}?id=${tid}`,
+            `${API_BASE}/api/tournaments/${tid}/players/${player.id}`,
+            `${API_BASE}/api/tournaments/players/${player.id}?id=${tid}`,
           ],
           {
             method: "PATCH",
@@ -381,6 +382,8 @@ const useMatchesResult = (tournamentId) => {
     handleResultChange,
     handleSave,
     handleResultSubmit,
+    // expose refresh from useMatches so the UI can re-fetch after a save
+    refresh: refreshMatches,
   };
 };
 
