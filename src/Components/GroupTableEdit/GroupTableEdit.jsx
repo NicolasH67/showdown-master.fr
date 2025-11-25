@@ -2,6 +2,7 @@ import React, { useState } from "react";
 
 import { useTranslation } from "react-i18next";
 import { X, Plus, Trash2 } from "lucide-react";
+const API_BASE = import.meta.env.VITE_API_BASE || "";
 
 const GroupTableEdit = ({ groups, players, onEdit, onDelete, allGroups }) => {
   const { t } = useTranslation();
@@ -57,15 +58,18 @@ const GroupTableEdit = ({ groups, players, onEdit, onDelete, allGroups }) => {
             : null,
       };
 
-      const res = await fetch(`/api/admin/groups/${currentGroup.id}`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(updatedGroup),
-      });
+      const res = await fetch(
+        `${API_BASE}/api/admin/groups/${currentGroup.id}`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify(updatedGroup),
+        }
+      );
 
       if (!res.ok) {
         let errDetail = null;
@@ -102,13 +106,16 @@ const GroupTableEdit = ({ groups, players, onEdit, onDelete, allGroups }) => {
     if (!confirmDelete) return;
 
     try {
-      const res = await fetch(`/api/admin/groups/${currentGroup.id}`, {
-        method: "DELETE",
-        credentials: "include",
-        headers: {
-          Accept: "application/json",
-        },
-      });
+      const res = await fetch(
+        `${API_BASE}/api/admin/groups/${currentGroup.id}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+          headers: {
+            Accept: "application/json",
+          },
+        }
+      );
 
       if (!res.ok) {
         let errDetail = null;
