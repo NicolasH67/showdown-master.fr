@@ -33,7 +33,7 @@ function resolveBase() {
   }
 
   // Fallback dev local
-  return "http://localhost:3001/api";
+  return "http://localhost:3001";
 }
 
 const BASE = resolveBase();

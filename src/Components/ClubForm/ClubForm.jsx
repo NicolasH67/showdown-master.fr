@@ -1,14 +1,13 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 
-const API_BASE = import.meta.env.VITE_API_BASE || "";
-
 const ClubForm = ({ tournamentId, onAddSuccess }) => {
   const [name, setName] = useState("");
   const [abbreviation, setAbbreviation] = useState("");
   const [message, setMessage] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const { t } = useTranslation();
+  const API_BASE = import.meta.env.VITE_API_BASE || "";
 
   const handleSubmit = async (e) => {
     e.preventDefault();

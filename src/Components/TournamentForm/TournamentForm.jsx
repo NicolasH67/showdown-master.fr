@@ -13,7 +13,7 @@ const TournamentForm = ({
   const { t } = useTranslation();
 
   const location = useLocation();
-
+  const API_BASE = import.meta.env.VITE_API_BASE || "";
   const { id } = useParams();
 
   const [passwordModal, setPasswordModal] = useState({
@@ -92,17 +92,21 @@ const TournamentForm = ({
 
     setPwdLoading(true);
     try {
-      const res = await fetch(`/api/admin/tournaments/${idNum}/password`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          type,
-          oldPassword: pwdForm.oldPassword || "",
-          newPassword: pwdForm.newPassword || "",
-        }),
-      });
+      const res = await fetch(
+        `${API_BASE}/api/admin/tournaments/${idNum}/password`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            type,
+            oldPassword: pwdForm.oldPassword || "",
+            newPassword: pwdForm.newPassword || "",
+          }),
+        }
+      );
 
       if (!res.ok) {
         let message =
@@ -203,11 +207,12 @@ const TournamentForm = ({
     }
 
     try {
-      const res = await fetch(`/api/admin/tournaments/${idNum}`, {
+      const res = await fetch(`${API_BASE}/api/admin/tournaments/${idNum}`, {
         method: "DELETE",
         headers: {
           Accept: "application/json",
         },
+        credentials: "include",
       });
 
       if (!res.ok) {

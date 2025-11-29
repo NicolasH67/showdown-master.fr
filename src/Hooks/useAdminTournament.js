@@ -38,6 +38,7 @@ const useAdminTournament = (id) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+  const API_BASE = import.meta.env.VITE_API_BASE || "";
 
   useEffect(() => {
     let cancelled = false;
@@ -80,11 +81,10 @@ const useAdminTournament = (id) => {
       try {
         const resp = await firstOk([
           // Endpoints côté admin en priorité
-          `/api/admin/tournaments/${idNum}`,
-          `/api/admin/tournaments?id=${idNum}`,
-          // Fallback sur les endpoints génériques si besoin
-          `/api/tournaments/${idNum}`,
-          `/api/tournaments?id=${idNum}`,
+          `${API_BASE}/api/admin/tournaments/${idNum}`,
+          `${API_BASE}/api/admin/tournaments?id=${idNum}`,
+          `${API_BASE}/api/tournaments/${idNum}`,
+          `${API_BASE}/api/tournaments?id=${idNum}`,
         ]);
 
         let tournament = null;
@@ -185,7 +185,7 @@ const useAdminTournament = (id) => {
         // is_private : si tu veux le piloter ici, sinon on ne l’envoie pas
       };
 
-      const res = await fetch(`/api/admin/tournaments/${idNum}`, {
+      const res = await fetch(`${API_BASE}/api/admin/tournaments/${idNum}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",

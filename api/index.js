@@ -8,10 +8,23 @@
 //
 // --------- Utils bas niveau ---------
 function applyCors(req, res) {
-  const origin =
-    req.headers.origin ||
-    (req.headers.host ? `https://${req.headers.host}` : "*");
-  res.setHeader("Access-Control-Allow-Origin", origin);
+  const allowedOrigins = new Set([
+    "http://localhost:3000",
+    "https://showdown-master-fr.vercel.app",
+  ]);
+
+  const origin = req.headers.origin;
+
+  if (origin && allowedOrigins.has(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+  } else {
+    // fallback: même origine que l’API (utile pour les appels internes)
+    const host = req.headers.host ? `https://${req.headers.host}` : "";
+    if (host) {
+      res.setHeader("Access-Control-Allow-Origin", host);
+    }
+  }
+
   res.setHeader("Vary", "Origin");
   res.setHeader(
     "Access-Control-Allow-Headers",

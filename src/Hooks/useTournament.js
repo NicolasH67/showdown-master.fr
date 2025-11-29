@@ -14,6 +14,7 @@ export const useTournaments = (isPast) => {
   const [tournaments, setTournaments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const API_BASE = import.meta.env.VITE_API_BASE || "";
 
   useEffect(() => {
     /**
@@ -21,7 +22,9 @@ export const useTournaments = (isPast) => {
      */
     const fetchTournaments = async () => {
       try {
-        const list = await get(`/api/tournaments?past=${isPast ? 1 : 0}`);
+        const list = await get(
+          `${API_BASE}/api/tournaments?past=${isPast ? 1 : 0}`
+        );
         const data = Array.isArray(list) ? list : [];
         // Optionnel: re-trier côté client par startday croissant
         const sorted = data.sort(
