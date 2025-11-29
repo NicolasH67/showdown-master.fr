@@ -2,14 +2,28 @@ import React, { useState, useEffect } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import useMatches from "../../Hooks/useMatchs";
 import usePlayers from "../../Hooks/usePlayers";
-import MatchRow, {
-  sortMatchesByDayTimeTable,
-} from "../../Components/MatchRow/MatchRow";
+import MatchRow from "../../Components/MatchRow/MatchRow";
 import { useTranslation } from "react-i18next";
 import DateSelector from "../../Components/DateSelector/DateSelector";
 import supabase from "../../Helpers/supabaseClient";
 import TableSelector from "../../Components/TableSelector/TableSelector";
 import useGroupsData from "../../Hooks/useGroupsData";
+
+const sortMatchesByDayTimeTable = (matches) => {
+  return [...matches].sort((a, b) => {
+    const dateA = a.match_day
+      ? new Date(`${a.match_day}T${a.match_time || "00:00:00"}`)
+      : new Date(0);
+    const dateB = b.match_day
+      ? new Date(`${b.match_day}T${b.match_time || "00:00:00"}`)
+      : new Date(0);
+
+    if (dateA < dateB) return -1;
+    if (dateA > dateB) return 1;
+
+    return (a.table_number || 0) - (b.table_number || 0);
+  });
+};
 
 const Schedule = () => {
   const { id } = useParams();
