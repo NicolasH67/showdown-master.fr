@@ -2,7 +2,9 @@ import React, { useState, useEffect } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import useMatches from "../../Hooks/useMatchs";
 import usePlayers from "../../Hooks/usePlayers";
-import MatchRow from "../../Components/MatchRow/MatchRow";
+import MatchRow, {
+  sortMatchesByDayTimeTable,
+} from "../../Components/MatchRow/MatchRow";
 import { useTranslation } from "react-i18next";
 import DateSelector from "../../Components/DateSelector/DateSelector";
 import supabase from "../../Helpers/supabaseClient";
@@ -96,6 +98,8 @@ const Schedule = () => {
         : Number(match.table_number) === Number(selectedTable)
     );
 
+  const sortedMatches = sortMatchesByDayTimeTable(filteredMatches);
+
   return (
     <div className="container mt-4">
       <h1 className="text-center mb-4" id="page-title" tabIndex="-1">
@@ -114,7 +118,7 @@ const Schedule = () => {
         onSelectTable={setSelectedTable}
       />
 
-      {filteredMatches.length > 0 ? (
+      {sortedMatches.length > 0 ? (
         <div className="table-responsive">
           <table className="table table-striped table-bordered">
             <thead className="table-dark">
@@ -133,7 +137,7 @@ const Schedule = () => {
               </tr>
             </thead>
             <tbody>
-              {filteredMatches.map((match, index) => (
+              {sortedMatches.map((match, index) => (
                 <MatchRow
                   key={match.id}
                   match={match}
