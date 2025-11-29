@@ -5,7 +5,12 @@ import MatchRowResult from "../../Components/MatchRowResult/MatchRowResult";
 import DateSelector from "../../Components/DateSelector/DateSelector";
 import TableSelector from "../../Components/TableSelector/TableSelector";
 import { useTranslation } from "react-i18next";
-import { generate3SetSheetsBatch } from "../../Helpers/generateMatchSheetPdf";
+import {
+  generate3SetSheetsBatch,
+  generate1SetSheetsBatch,
+  generate5SetSheetsBatch,
+  generateTeamSetSheetsBatch,
+} from "../../Helpers/generateMatchSheetPdf";
 
 const ResultEdit = () => {
   const { t } = useTranslation();
@@ -73,12 +78,6 @@ const ResultEdit = () => {
       return;
     }
 
-    if (sheetType !== "3_set") {
-      // Pour l'instant seule la feuille 3 sets est implémentée
-      alert("Pour le moment, seule la feuille 3 sets est disponible.");
-      return;
-    }
-
     try {
       // Prépare une liste { match, mnr } pour la génération batch
       const items = selected.map((m) => ({
@@ -87,7 +86,15 @@ const ResultEdit = () => {
       }));
 
       // Génère un seul PDF multi-pages (une page par match)
-      await generate3SetSheetsBatch(items);
+      if (sheetType === "1_set") {
+        await generate1SetSheetsBatch(items);
+      } else if (sheetType === "3_set") {
+        await generate3SetSheetsBatch(items);
+      } else if (sheetType === "5_set") {
+        await generate5SetSheetsBatch(items);
+      } else if (sheetType === "team") {
+        await generateTeamSetSheetsBatch(items);
+      }
 
       setIsSheetModalOpen(false);
     } catch (err) {
