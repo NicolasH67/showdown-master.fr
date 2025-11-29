@@ -80,7 +80,7 @@ const MatchList = ({
                 </td>
                 <td>
                   <input
-                    type="text"
+                    type="number"
                     className="form-control"
                     placeholder={t("table")}
                     value={match.table_number ?? ""}
