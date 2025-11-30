@@ -38,6 +38,47 @@ const ResultEdit = () => {
   const [sheetToMnr, setSheetToMnr] = React.useState("");
   const [sheetType, setSheetType] = React.useState("3_set");
   const [sheetError, setSheetError] = React.useState("");
+  const [isBulkSaving, setIsBulkSaving] = React.useState(false);
+
+  // Gestion d'un bouton global "valider tous les changements"
+  const rowSaveHandlersRef = React.useRef(new Map());
+
+  const registerRowSaver = React.useCallback((matchId, saver) => {
+    if (!matchId || typeof saver !== "function") return () => {};
+    rowSaveHandlersRef.current.set(matchId, saver);
+    // On renvoie une fonction de nettoyage pour retirer le handler quand la ligne se démonte
+    return () => {
+      rowSaveHandlersRef.current.delete(matchId);
+    };
+  }, []);
+
+  const handleSaveAll = async () => {
+    const savers = Array.from(rowSaveHandlersRef.current.values());
+    if (!savers.length) return;
+
+    setIsBulkSaving(true);
+    try {
+      for (const saveFn of savers) {
+        try {
+          // On séquence pour éviter de spammer le backend
+          // eslint-disable-next-line no-await-in-loop
+          await saveFn();
+        } catch (e) {
+          console.error("Error while saving one match", e);
+        }
+      }
+
+      if (typeof refresh === "function") {
+        try {
+          await refresh();
+        } catch (e) {
+          console.error("Error while refreshing after bulk save", e);
+        }
+      }
+    } finally {
+      setIsBulkSaving(false);
+    }
+  };
 
   const handleOpenSheetModal = () => {
     setSheetError("");
@@ -129,35 +170,68 @@ const ResultEdit = () => {
     return Math.max(0, ...nums);
   }, [matches]);
 
-  // Build a stable global MNR ordering (by day, time, then table)
-  const globallySorted = React.useMemo(() => {
-    const safeTs = (m) => {
-      const s = `${m?.match_day || ""}T${m?.match_time || ""}`;
-      const ts = Date.parse(s);
-      return Number.isFinite(ts) ? ts : Number.MAX_SAFE_INTEGER;
-    };
-    const copy = [...(matches || [])];
-    copy.sort((a, b) => {
-      const ta = safeTs(a);
-      const tb = safeTs(b);
-      if (ta !== tb) return ta - tb;
-      const taNum = Number(a?.table_number || 0);
-      const tbNum = Number(b?.table_number || 0);
-      if (taNum !== tbNum) return taNum - tbNum;
-      return Number(a?.id || 0) - Number(b?.id || 0);
+  // Carte d'ordre MNR stable: calculée une fois par ensemble d'IDs de matchs
+  const [mnrOrderMap, setMnrOrderMap] = React.useState(null);
+
+  useEffect(() => {
+    if (!matches || matches.length === 0) return;
+
+    setMnrOrderMap((prev) => {
+      // Si nous avons déjà un ordre pour ce même ensemble d'IDs, on le conserve
+      if (prev && prev.size === matches.length) {
+        const allPresent = matches.every((m) => prev.has(m.id));
+        if (allPresent) {
+          return prev;
+        }
+      }
+
+      const safeTs = (m) => {
+        const s = `${m?.match_day || ""}T${m?.match_time || ""}`;
+        const ts = Date.parse(s);
+        return Number.isFinite(ts) ? ts : Number.MAX_SAFE_INTEGER;
+      };
+
+      const copy = [...matches];
+      copy.sort((a, b) => {
+        const ta = safeTs(a);
+        const tb = safeTs(b);
+        if (ta !== tb) return ta - tb;
+        const taNum = Number(a?.table_number || 0);
+        const tbNum = Number(b?.table_number || 0);
+        if (taNum !== tbNum) return taNum - tbNum;
+        return Number(a?.id || 0) - Number(b?.id || 0);
+      });
+
+      const map = new Map();
+      copy.forEach((m, idx) => {
+        map.set(m.id, idx + 1);
+      });
+      return map;
     });
-    return copy;
   }, [matches]);
 
-  const mnrMap = new Map();
-  globallySorted.forEach((m, idx) => mnrMap.set(m.id, idx + 1));
+  // Liste globalement triée selon l'ordre MNR stable
+  const globallySorted = React.useMemo(() => {
+    if (!matches) return [];
+    if (!mnrOrderMap) return [...matches];
+    const copy = [...matches];
+    copy.sort((a, b) => {
+      const na = mnrOrderMap.get(a.id) || 0;
+      const nb = mnrOrderMap.get(b.id) || 0;
+      return na - nb;
+    });
+    return copy;
+  }, [matches, mnrOrderMap]);
+
+  const mnrMap = React.useMemo(() => {
+    const map = new Map();
+    (globallySorted || []).forEach((m, idx) => {
+      map.set(m.id, idx + 1);
+    });
+    return map;
+  }, [globallySorted]);
 
   const sortedMatches = React.useMemo(() => {
-    const safeTs = (m) => {
-      const s = `${m?.match_day || ""}T${m?.match_time || ""}`;
-      const ts = Date.parse(s);
-      return Number.isFinite(ts) ? ts : Number.MAX_SAFE_INTEGER;
-    };
     const filtered = (matches || [])
       .filter((m) => !selectedDate || m.match_day === selectedDate)
       .filter((m) =>
@@ -165,16 +239,31 @@ const ResultEdit = () => {
           ? true
           : Number(m.table_number) === Number(selectedTable)
       );
+
+    if (!mnrOrderMap) {
+      // Fallback: tri chrono si on n'a pas encore de carte d'ordre
+      const safeTs = (m) => {
+        const s = `${m?.match_day || ""}T${m?.match_time || ""}`;
+        const ts = Date.parse(s);
+        return Number.isFinite(ts) ? ts : Number.MAX_SAFE_INTEGER;
+      };
+      return [...filtered].sort((a, b) => {
+        const ta = safeTs(a);
+        const tb = safeTs(b);
+        if (ta !== tb) return ta - tb;
+        const taNum = Number(a?.table_number || 0);
+        const tbNum = Number(b?.table_number || 0);
+        if (taNum !== tbNum) return taNum - tbNum;
+        return Number(a?.id || 0) - Number(b?.id || 0);
+      });
+    }
+
     return [...filtered].sort((a, b) => {
-      const ta = safeTs(a);
-      const tb = safeTs(b);
-      if (ta !== tb) return ta - tb;
-      const taNum = Number(a?.table_number || 0);
-      const tbNum = Number(b?.table_number || 0);
-      if (taNum !== tbNum) return taNum - tbNum;
-      return Number(a?.id || 0) - Number(b?.id || 0);
+      const na = mnrOrderMap.get(a.id) || 0;
+      const nb = mnrOrderMap.get(b.id) || 0;
+      return na - nb;
     });
-  }, [matches, selectedDate, selectedTable]);
+  }, [matches, selectedDate, selectedTable, mnrOrderMap]);
 
   if (loading) {
     return <div>{t("loadingMatchs")}</div>;
@@ -190,13 +279,15 @@ const ResultEdit = () => {
         <h1 id="page-title" tabIndex="-1" className="mb-0">
           {t("schedule")}
         </h1>
-        <button
-          type="button"
-          className="btn btn-sm btn-outline-primary"
-          onClick={handleOpenSheetModal}
-        >
-          {t("matchSheets", { defaultValue: "Feuilles de matchs" })}
-        </button>
+        <div className="d-flex gap-2">
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-primary"
+            onClick={handleOpenSheetModal}
+          >
+            {t("matchSheets", { defaultValue: "Feuilles de matchs" })}
+          </button>
+        </div>
       </div>
 
       <DateSelector
@@ -312,43 +403,94 @@ const ResultEdit = () => {
         </div>
       )}
 
-      <div className="table-responsive">
-        <table className="table table-bordered table-hover text-center">
-          <thead className="table-dark">
-            <tr>
-              <th className="text-center">MNR</th>
-              <th className="text-center">{t("date")}</th>
-              <th className="text-center">{t("time")}</th>
-              <th className="text-center">{t("table")}</th>
-              <th className="text-center">{t("group")}</th>
-              <th className="text-center">{t("pairing")}</th>
-              <th className="text-center">{t("point")}</th>
-              <th className="text-center">{t("set")}</th>
-              <th className="text-center">{t("goal")}</th>
-              <th className="text-center">{t("result")}</th>
-              <th className="text-center">{t("referees")}</th>
-              <th className="text-center">{t("action")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sortedMatches.map((match, index) => (
-              <MatchRowResult
-                key={match.id}
-                allgroups={groups}
-                allclubs={clubs}
-                match={match}
-                index={index}
-                mnr={mnrMap.get(match.id) || index + 1}
-                referees={referees}
-                onMatchChange={handleMatchChange}
-                onSave={handleSave}
-                tournamentId={tournamentIdNum}
-                onRefresh={refresh} // 👈 déclenche un refetch des données après un save
-              />
-            ))}
-          </tbody>
-        </table>
+      <div className="position-relative">
+        {isBulkSaving && (
+          <div
+            className="position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
+            style={{
+              backgroundColor: "rgba(255, 255, 255, 0.7)",
+              zIndex: 10,
+            }}
+          >
+            <div className="spinner-border" role="status">
+              <span className="visually-hidden">
+                {t("savingAllChanges", {
+                  defaultValue: "Enregistrement en cours...",
+                })}
+              </span>
+            </div>
+          </div>
+        )}
+        <div
+          className={
+            isBulkSaving ? "table-responsive opacity-50" : "table-responsive"
+          }
+        >
+          <table className="table table-bordered table-hover text-center">
+            <thead className="table-dark">
+              <tr>
+                <th className="text-center">MNR</th>
+                <th className="text-center">{t("date")}</th>
+                <th className="text-center">{t("time")}</th>
+                <th className="text-center">{t("table")}</th>
+                <th className="text-center">{t("group")}</th>
+                <th className="text-center">{t("pairing")}</th>
+                <th className="text-center">{t("point")}</th>
+                <th className="text-center">{t("set")}</th>
+                <th className="text-center">{t("goal")}</th>
+                <th className="text-center">{t("result")}</th>
+                <th className="text-center">{t("referees")}</th>
+                <th className="text-center">{t("action")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedMatches.map((match, index) => (
+                <MatchRowResult
+                  key={match.id}
+                  allgroups={groups}
+                  allclubs={clubs}
+                  match={match}
+                  index={index}
+                  mnr={mnrMap.get(match.id) || index + 1}
+                  referees={referees}
+                  onMatchChange={handleMatchChange}
+                  onSave={handleSave}
+                  tournamentId={tournamentIdNum}
+                  onRefresh={refresh}
+                  registerSaver={registerRowSaver}
+                  isBulkSaving={isBulkSaving}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
+      {/* Floating global save button (bottom-right) */}
+      <div
+        className="position-fixed"
+        style={{
+          right: "1.5rem",
+          bottom: "1.5rem",
+          zIndex: 1050,
+        }}
+      >
+        <button
+          type="button"
+          className="btn btn-success btn-lg shadow"
+          onClick={handleSaveAll}
+          disabled={isBulkSaving}
+        >
+          {isBulkSaving
+            ? t("savingAllChanges", {
+                defaultValue: "Enregistrement en cours...",
+              })
+            : t("saveAllChanges", {
+                defaultValue: "Valider tous les changements",
+              })}
+        </button>
+      </div>
+      {/* Spacer under table */}
+      <div style={{ height: "120px" }}></div>
     </div>
   );
 };

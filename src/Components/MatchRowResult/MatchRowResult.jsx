@@ -13,7 +13,9 @@ const MatchRowResult = ({
   onSave,
   allclubs,
   tournamentId,
-  onRefresh, // 👈 nouvelle prop optionnelle
+  onRefresh,
+  registerSaver,
+  isBulkSaving = false,
 }) => {
   const { t } = useTranslation();
   const { saveMatch, postProcessAfterSave } = useMatchRowApi(
@@ -118,6 +120,30 @@ const MatchRowResult = ({
     match.referee2_id,
     match.referee_1,
     match.referee_2,
+  ]);
+
+  // Enregistrer un "saver" pour ce match afin que le parent puisse déclencher un save global
+  useEffect(() => {
+    if (!registerSaver) return;
+
+    const saver = async () => {
+      await handleSave();
+      // Après un bulk save, repasser la ligne en mode non-édition
+      setIsEditing(false);
+    };
+
+    const unregister = registerSaver(match.id, saver);
+    return unregister;
+  }, [
+    registerSaver,
+    match.id,
+    resultText,
+    editDay,
+    editTime,
+    editTable,
+    localReferee1Id,
+    localReferee2Id,
+    isBulkSaving,
   ]);
 
   const calculateStats = (result) => {
@@ -299,9 +325,9 @@ const MatchRowResult = ({
 
       onSave(effective);
 
-      // 👉 refresh léger côté parent si fourni (refetch des matches, re-tri, etc.)
-      if (typeof onRefresh === "function") {
-        onRefresh();
+      // Pour une sauvegarde individuelle, on déclenche un refresh (en bulk, le parent le fera une seule fois)
+      if (!isBulkSaving && typeof onRefresh === "function") {
+        await onRefresh();
       }
     } catch (err) {
       alert(err.message || err);
