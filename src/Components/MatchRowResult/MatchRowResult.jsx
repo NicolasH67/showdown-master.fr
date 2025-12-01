@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import useMatchRowApi from "../../Hooks/useMatchRowApi";
@@ -71,6 +71,17 @@ const MatchRowResult = ({
   const [ref1Dirty, setRef1Dirty] = useState(false);
   const [ref2Dirty, setRef2Dirty] = useState(false);
 
+  // Dirty global pour savoir si la ligne a été modifiée (peu importe le champ)
+  const [isDirty, setIsDirty] = useState(false);
+  const isDirtyRef = useRef(false);
+
+  const markDirty = () => {
+    if (!isDirtyRef.current) {
+      isDirtyRef.current = true;
+      setIsDirty(true);
+    }
+  };
+
   const [errorMsg, setErrorMsg] = useState("");
 
   // Accepts 1 to 5 sets written as pairs: a-b-a-b-... (no trailing hyphen)
@@ -118,6 +129,8 @@ const MatchRowResult = ({
     // On considère que l'état venant du backend est "propre" → pas dirty
     setRef1Dirty(false);
     setRef2Dirty(false);
+    isDirtyRef.current = false;
+    setIsDirty(false);
   }, [
     match.id,
     match.match_day,
@@ -134,7 +147,13 @@ const MatchRowResult = ({
     if (!registerSaver) return;
 
     const saver = async () => {
+      // Ne sauvegarde que si la ligne a été modifiée
+      if (!isDirtyRef.current) {
+        return;
+      }
       await handleSave();
+      isDirtyRef.current = false;
+      setIsDirty(false);
       // Après un bulk save, repasser la ligne en mode non-édition
       setIsEditing(false);
     };
@@ -237,7 +256,7 @@ const MatchRowResult = ({
       if (!isNaN(d)) {
         return `${String(d.getHours()).padStart(2, "0")}:${String(
           d.getMinutes()
-        ).padStart(2, "0")}:00`;
+        )}:00`;
       }
     } catch (_) {}
     return null;
@@ -371,6 +390,8 @@ const MatchRowResult = ({
       // Les valeurs venant du backend redeviennent la "vérité" → plus dirty
       setRef1Dirty(false);
       setRef2Dirty(false);
+      isDirtyRef.current = false;
+      setIsDirty(false);
 
       onSave(effectiveWithGroup);
 
@@ -398,6 +419,7 @@ const MatchRowResult = ({
             if (onMatchChange) {
               onMatchChange(match.id, "match_day", val || null);
             }
+            markDirty();
           }}
         />
       </td>
@@ -413,6 +435,7 @@ const MatchRowResult = ({
             if (onMatchChange) {
               onMatchChange(match.id, "match_time", val || null);
             }
+            markDirty();
           }}
         />
       </td>
@@ -432,6 +455,7 @@ const MatchRowResult = ({
                 val === "" ? null : Number(val)
               );
             }
+            markDirty();
           }}
         />
       </td>
@@ -582,6 +606,7 @@ const MatchRowResult = ({
                 } else {
                   setErrorMsg("");
                 }
+                markDirty();
               }}
             />
             {errorMsg && (
@@ -646,7 +671,10 @@ const MatchRowResult = ({
             const val = e.target.value;
             setLocalReferee1Id(val === "" ? "" : val);
             setRef1Dirty(true); // l'utilisateur a modifié l'arbitre 1
-            onMatchChange(match.id, "referee1_id", val ? Number(val) : null);
+            if (onMatchChange) {
+              onMatchChange(match.id, "referee1_id", val ? Number(val) : null);
+            }
+            markDirty();
           }}
         >
           <option value="">{t("none")}</option>
@@ -666,7 +694,10 @@ const MatchRowResult = ({
             const val = e.target.value;
             setLocalReferee2Id(val === "" ? "" : val);
             setRef2Dirty(true); // l'utilisateur a modifié l'arbitre 2
-            onMatchChange(match.id, "referee2_id", val ? Number(val) : null);
+            if (onMatchChange) {
+              onMatchChange(match.id, "referee2_id", val ? Number(val) : null);
+            }
+            markDirty();
           }}
         >
           <option value="">{t("none")}</option>
