@@ -288,10 +288,40 @@ const useMatchRowApi = (tournamentId, allGroups = []) => {
   };
 
   const fetchPlayersHavingGroupId = async (groupId) => {
-    const data = await apiFetch(`/api/players?groupId=${Number(groupId)}`, {
-      method: "GET",
-    });
-    return data || [];
+    const gidNum = Number(groupId);
+    if (!Number.isFinite(gidNum)) {
+      console.warn("[fetchPlayersHavingGroupId] invalid groupId", groupId);
+      return [];
+    }
+
+    try {
+      // 1) Récupérer tous les joueurs du tournoi
+      const resp = await apiFetch(`/api/tournaments/${tournamentId}/players`, {
+        method: "GET",
+      });
+
+      const players = Array.isArray(resp)
+        ? resp
+        : Array.isArray(resp?.players)
+        ? resp.players
+        : [];
+
+      // 2) Garder uniquement ceux qui ont ce groupId dans leur tableau group_id
+      const filtered = players.filter((p) => {
+        const arr = Array.isArray(p.group_id) ? p.group_id : [];
+        return arr.some((gid) => Number(gid) === gidNum);
+      });
+
+      console.log("[fetchPlayersHavingGroupId] filtered players", {
+        groupId: gidNum,
+        count: filtered.length,
+      });
+
+      return filtered;
+    } catch (e) {
+      console.error("[fetchPlayersHavingGroupId] failed", e);
+      return [];
+    }
   };
 
   const addGroupToPlayerIfMissing = async (playerId, newGroupId) => {
@@ -363,17 +393,29 @@ const useMatchRowApi = (tournamentId, allGroups = []) => {
     for (const m of mlist || []) {
       const expectedP1 = computeExpectedPlayer(m.player1_group_position);
       const expectedP2 = computeExpectedPlayer(m.player2_group_position);
+
+      // On ne touche qu'aux joueurs (player1_id / player2_id)
+      // pour ne jamais écraser les arbitres existants lors de la synchro.
       const patch = {};
-      if (m.player1_group_position) patch.player1_id = expectedP1;
-      if (m.player2_group_position) patch.player2_id = expectedP2;
-      if (Object.keys(patch).length) {
-        matchUpdatePromises.push(
-          apiFetch(`/api/tournaments/${tournamentId}/matches/${m.id}`, {
-            method: "PATCH",
-            body: JSON.stringify(patch),
-          })
-        );
+
+      if (m.player1_group_position) {
+        patch.player1_id = expectedP1;
       }
+      if (m.player2_group_position) {
+        patch.player2_id = expectedP2;
+      }
+
+      // Si aucun joueur à mettre à jour, on évite l'appel API
+      if (Object.keys(patch).length === 0) {
+        continue;
+      }
+
+      matchUpdatePromises.push(
+        apiFetch(`/api/tournaments/${tournamentId}/matches/${m.id}`, {
+          method: "PATCH",
+          body: JSON.stringify(patch),
+        })
+      );
     }
 
     if (matchUpdatePromises.length) {
@@ -396,9 +438,39 @@ const useMatchRowApi = (tournamentId, allGroups = []) => {
   // ------- API PUBLIC DU HOOK -------
 
   const postProcessAfterSave = async (updatedMatch) => {
-    const groupId = updatedMatch.group_id;
-    const matches = await fetchGroupMatches(groupId);
-    const destGroups = findDestinationGroups(groupId);
+    console.log("[postProcessAfterSave] updatedMatch", updatedMatch);
+
+    // Essayer de récupérer un groupId valide à partir de plusieurs formes possibles
+    const rawGroupId =
+      (updatedMatch &&
+        (updatedMatch.group_id ??
+          updatedMatch.groupId ??
+          updatedMatch.group?.id)) ??
+      null;
+
+    console.log("[postProcessAfterSave] resolved groupId", rawGroupId);
+
+    if (rawGroupId === null || rawGroupId === undefined || rawGroupId === "") {
+      console.warn(
+        "[postProcessAfterSave] no valid groupId, skipping post-process",
+        {
+          updatedMatch,
+        }
+      );
+      return;
+    }
+
+    const groupIdNum = Number(rawGroupId);
+    if (!Number.isFinite(groupIdNum)) {
+      console.warn("[postProcessAfterSave] non numeric groupId, skipping", {
+        rawGroupId,
+        updatedMatch,
+      });
+      return;
+    }
+
+    const matches = await fetchGroupMatches(groupIdNum);
+    const destGroups = findDestinationGroups(groupIdNum);
     if (!destGroups.length) return;
 
     const complete = matchesAreComplete(matches);

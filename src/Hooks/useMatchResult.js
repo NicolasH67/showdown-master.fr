@@ -176,46 +176,6 @@ const useMatchesResult = (tournamentId) => {
     }));
   };
 
-  // Sauvegarde d'un match (métadonnées) — via PATCH /api
-  const handleSave = async (matchId) => {
-    const idNum = resolvedIdNum;
-    if (!Number.isFinite(idNum) || idNum <= 0) {
-      throw new Error("Invalid tournament id");
-    }
-
-    const matchToSave = matches.find((m) => m.id === matchId);
-    if (!matchToSave) return;
-
-    // Normalisation du payload
-    const payload = {
-      match_day: matchToSave.match_day || null,
-      match_time: matchToSave.match_time || null,
-      table_number: matchToSave.table_number
-        ? parseInt(matchToSave.table_number, 10)
-        : null,
-      referee1_id:
-        matchToSave.referee1_id != null
-          ? Number(matchToSave.referee1_id)
-          : null,
-      referee2_id:
-        matchToSave.referee2_id != null
-          ? Number(matchToSave.referee2_id)
-          : null,
-    };
-
-    const urls = [
-      `${API_BASE}/api/tournaments/${idNum}/matches/${matchId}`, // handler unifié
-      `${API_BASE}/api/tournaments/matches/${matchId}?id=${idNum}`, // fallback
-    ];
-
-    await firstOk(urls, { method: "PATCH", body: payload });
-
-    // maj locale pour refléter la sauvegarde
-    setMatches((prev) =>
-      prev.map((m) => (m.id === matchId ? { ...m, ...payload } : m))
-    );
-  };
-
   // Construction du tableau de scores [p1s1, p2s1, p1s2, p2s2, ...]
   function buildResultArray(local) {
     const p1 = local?.player1 ? Object.values(local.player1) : [];
@@ -235,17 +195,114 @@ const useMatchesResult = (tournamentId) => {
     return arr;
   }
 
+  // Helper to normalize matchId to a usable id value
+  const normalizeMatchId = (value) => {
+    if (Array.isArray(value)) {
+      if (value.length === 0) return null;
+      const first = value[0];
+      if (first && typeof first === "object" && "id" in first) {
+        return first.id;
+      }
+      return first;
+    }
+    if (value && typeof value === "object" && "id" in value) {
+      return value.id;
+    }
+    return value;
+  };
+
+  // Sauvegarde d'un match (métadonnées) — via PATCH /api
+  // ⚠️ Ici on ne touche PLUS aux arbitres : ils sont gérés dans MatchRowResult/useMatchRowApi
+  // Sauvegarde d'un match (métadonnées + arbitres) — via PATCH /api
+  // Sauvegarde d'un match (métadonnées + arbitres) — via PATCH /api
+  const handleSave = async (matchId) => {
+    const realId = normalizeMatchId(matchId);
+    console.log("[useMatchesResult] handleSave start", {
+      rawMatchId: matchId,
+      matchId: realId,
+    });
+
+    const idNum = resolvedIdNum;
+    if (!Number.isFinite(idNum) || idNum <= 0) {
+      throw new Error("Invalid tournament id");
+    }
+
+    if (realId == null) {
+      console.warn("[useMatchesResult] handleSave called with invalid id", {
+        rawMatchId: matchId,
+      });
+      return;
+    }
+
+    const matchToSave = matches.find((m) => String(m.id) === String(realId));
+    console.log("[useMatchesResult] handleSave matchToSave", matchToSave);
+    if (!matchToSave) return;
+
+    // Métadonnées de planning
+    const payload = {
+      match_day: matchToSave.match_day || null,
+      match_time: matchToSave.match_time || null,
+      table_number: matchToSave.table_number
+        ? parseInt(matchToSave.table_number, 10)
+        : null,
+    };
+
+    // 🔹 On ajoute les arbitres si on a l'info dans le match local
+    if (Object.prototype.hasOwnProperty.call(matchToSave, "referee1_id")) {
+      payload.referee1_id =
+        matchToSave.referee1_id === undefined ? null : matchToSave.referee1_id;
+    }
+    if (Object.prototype.hasOwnProperty.call(matchToSave, "referee2_id")) {
+      payload.referee2_id =
+        matchToSave.referee2_id === undefined ? null : matchToSave.referee2_id;
+    }
+
+    console.log("[useMatchesResult] handleSave payload", {
+      matchId: realId,
+      payload,
+    });
+
+    const urls = [
+      `${API_BASE}/api/tournaments/${idNum}/matches/${realId}`,
+      `${API_BASE}/api/tournaments/matches/${realId}?id=${idNum}`,
+    ];
+
+    await firstOk(urls, { method: "PATCH", body: payload });
+    console.log("[useMatchesResult] handleSave PATCH done", {
+      matchId: realId,
+    });
+
+    // Mise à jour locale
+    setMatches((prev) =>
+      prev.map((m) =>
+        String(m.id) === String(realId) ? { ...m, ...payload } : m
+      )
+    );
+    console.log("[useMatchesResult] handleSave local state updated", {
+      matchId: realId,
+    });
+  };
+
   // Soumission des résultats d'un match — via PATCH /api
   const handleResultSubmit = async (matchId) => {
+    console.log("[useMatchesResult] handleResultSubmit start", { matchId });
     const idNum = resolvedIdNum;
     if (!Number.isFinite(idNum) || idNum <= 0) {
       throw new Error("Invalid tournament id");
     }
 
     const local = results[matchId];
+    console.log("[useMatchesResult] handleResultSubmit local", {
+      matchId,
+      local,
+    });
     if (!local) return;
 
     const resultArray = buildResultArray(local);
+    console.log("[useMatchesResult] handleResultSubmit resultArray", {
+      matchId,
+      resultArray,
+    });
 
     const urls = [
       `${API_BASE}/api/tournaments/${idNum}/matches/${matchId}`,
@@ -253,20 +310,39 @@ const useMatchesResult = (tournamentId) => {
     ];
 
     await firstOk(urls, { method: "PATCH", body: { result: resultArray } });
+    console.log("[useMatchesResult] handleResultSubmit PATCH done", {
+      matchId,
+    });
 
     // maj locale pour que l'UI reflète la sauvegarde
     setMatches((prev) =>
       prev.map((m) => (m.id === matchId ? { ...m, result: resultArray } : m))
     );
+    console.log("[useMatchesResult] handleResultSubmit local state updated", {
+      matchId,
+    });
 
     if (typeof refreshMatches === "function") {
       try {
         await refreshMatches();
+        console.log(
+          "[useMatchesResult] handleResultSubmit refreshMatches done",
+          { matchId }
+        );
       } catch (_) {}
     }
 
     // Essaye d'enclencher la qualification si applicable
     const match = matches.find((m) => m.id === matchId);
+    console.log(
+      "[useMatchesResult] handleResultSubmit before processGroupQualification",
+      {
+        matchId,
+        groupId: match?.group?.id,
+        tournamentId: match?.group?.tournament_id,
+        match,
+      }
+    );
     if (match?.group?.id && match?.group?.tournament_id) {
       await processGroupQualification(
         match.group.id,
@@ -277,21 +353,45 @@ const useMatchesResult = (tournamentId) => {
 
   // Qualification automatique en fin de groupe — 100% via /api
   const processGroupQualification = async (groupId, tId) => {
+    console.log("[useMatchesResult] processGroupQualification start", {
+      groupId,
+      tId,
+    });
     const tid = Number(tId);
-    if (!Number.isFinite(tid) || tid <= 0) return;
+    if (!Number.isFinite(tid) || tid <= 0) {
+      console.warn("[useMatchesResult] processGroupQualification invalid tid", {
+        groupId,
+        tId,
+      });
+      return;
+    }
 
     // Récupère tous les matchs du tournoi puis filtre par groupe
     const allMatches = await firstOk([
       `${API_BASE}/api/tournaments/${tid}/matches`,
       `${API_BASE}/api/tournaments/matches?id=${tid}`,
     ]);
+    console.log("[useMatchesResult] processGroupQualification allMatches", {
+      groupId,
+      tId,
+      totalMatches: Array.isArray(allMatches) ? allMatches.length : null,
+    });
     const groupMatches = (Array.isArray(allMatches) ? allMatches : []).filter(
       (m) => Number(m.group_id) === Number(groupId)
     );
+    console.log("[useMatchesResult] processGroupQualification groupMatches", {
+      groupId,
+      count: groupMatches.length,
+      groupMatches,
+    });
 
     const groupFinished = groupMatches.every(
       (m) => Array.isArray(m.result) && m.result.length >= 2
     );
+    console.log("[useMatchesResult] processGroupQualification groupFinished", {
+      groupId,
+      groupFinished,
+    });
     if (!groupFinished) return;
 
     // Récupère tous les joueurs du tournoi puis filtre par appartenance au groupe
@@ -299,11 +399,20 @@ const useMatchesResult = (tournamentId) => {
       `${API_BASE}/api/tournaments/${tid}/players`,
       `${API_BASE}/api/tournaments/players?id=${tid}`,
     ]);
+    console.log("[useMatchesResult] processGroupQualification allPlayers", {
+      tournamentId: tid,
+      totalPlayers: Array.isArray(allPlayers) ? allPlayers.length : null,
+    });
     const playersInGroup = (Array.isArray(allPlayers) ? allPlayers : []).filter(
       (p) =>
         Array.isArray(p.group_id) &&
         p.group_id.some((gid) => Number(gid) === Number(groupId))
     );
+    console.log("[useMatchesResult] processGroupQualification playersInGroup", {
+      groupId,
+      count: playersInGroup.length,
+      playersInGroup,
+    });
 
     // calcul points (1 point/victoire)
     const points = Object.fromEntries(playersInGroup.map((p) => [p.id, 0]));
@@ -318,10 +427,15 @@ const useMatchesResult = (tournamentId) => {
       if (sum1 > sum2 && m.player1?.id) points[m.player1.id] += 1;
       else if (sum2 > sum1 && m.player2?.id) points[m.player2.id] += 1;
     });
+    console.log("[useMatchesResult] processGroupQualification points", points);
 
     const classement = [...playersInGroup].sort(
       (a, b) =>
         points[b.id] - points[a.id] || a.lastname.localeCompare(b.lastname)
+    );
+    console.log(
+      "[useMatchesResult] processGroupQualification classement",
+      classement
     );
 
     // Lecture des groupes pour lire group_former
@@ -329,6 +443,9 @@ const useMatchesResult = (tournamentId) => {
       `${API_BASE}/api/tournaments/${tid}/groups`,
       `${API_BASE}/api/tournaments/groups?id=${tid}`,
     ]);
+    console.log("[useMatchesResult] processGroupQualification allGroups", {
+      totalGroups: Array.isArray(allGroups) ? allGroups.length : null,
+    });
 
     for (const g of Array.isArray(allGroups) ? allGroups : []) {
       if (!g.group_former) continue;
@@ -339,11 +456,20 @@ const useMatchesResult = (tournamentId) => {
       } catch {
         continue;
       }
+      console.log("[useMatchesResult] processGroupQualification group_former", {
+        targetGroupId: g.id,
+        former,
+      });
 
       // former: [[place, fromGroupId], ...]
       const targets = former
         .map((e) => ({ place: e?.[0], from: e?.[1] }))
         .filter((e) => e.place != null && e.from === groupId);
+      console.log("[useMatchesResult] processGroupQualification targets", {
+        targetGroupId: g.id,
+        fromGroupId: groupId,
+        targets,
+      });
 
       for (const { place } of targets) {
         const player = classement[Number(place) - 1];
@@ -354,6 +480,17 @@ const useMatchesResult = (tournamentId) => {
         const updated = current.includes(newGroupId)
           ? current
           : [...current, newGroupId];
+
+        console.log(
+          "[useMatchesResult] processGroupQualification assign player",
+          {
+            fromGroupId: groupId,
+            targetGroupId: newGroupId,
+            place,
+            playerId: player.id,
+            updatedGroupIds: updated,
+          }
+        );
 
         // PATCH joueur via /api
         await firstOk(

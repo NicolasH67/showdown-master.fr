@@ -48,11 +48,12 @@ const MatchRowResult = ({
   const [loading, setLoading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
-  // Local edit buffers to avoid re-filtering/remount while typing
+  // Local edit buffers
   const [editDay, setEditDay] = useState(match.match_day || "");
   const [editTime, setEditTime] = useState("");
   const [editTable, setEditTable] = useState(match.table_number ?? "");
-  // Local referee selection state
+
+  // Local referee selection + "dirty" flags (pour savoir si l'utilisateur a vraiment modifié quelque chose)
   const [localReferee1Id, setLocalReferee1Id] = useState(
     match.referee1_id !== undefined
       ? match.referee1_id
@@ -67,6 +68,8 @@ const MatchRowResult = ({
       ? match.referee_2.id
       : ""
   );
+  const [ref1Dirty, setRef1Dirty] = useState(false);
+  const [ref2Dirty, setRef2Dirty] = useState(false);
 
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -97,20 +100,24 @@ const MatchRowResult = ({
     setEditTable(match.table_number ?? "");
 
     // Initialiser les arbitres locaux à partir des props existantes
-    setLocalReferee1Id(
+    const r1 =
       match.referee1_id !== undefined
         ? match.referee1_id
         : match.referee_1
         ? match.referee_1.id
-        : ""
-    );
-    setLocalReferee2Id(
+        : "";
+    const r2 =
       match.referee2_id !== undefined
         ? match.referee2_id
         : match.referee_2
         ? match.referee_2.id
-        : ""
-    );
+        : "";
+
+    setLocalReferee1Id(r1);
+    setLocalReferee2Id(r2);
+    // On considère que l'état venant du backend est "propre" → pas dirty
+    setRef1Dirty(false);
+    setRef2Dirty(false);
   }, [
     match.id,
     match.match_day,
@@ -143,6 +150,8 @@ const MatchRowResult = ({
     editTable,
     localReferee1Id,
     localReferee2Id,
+    ref1Dirty,
+    ref2Dirty,
     isBulkSaving,
   ]);
 
@@ -163,7 +172,6 @@ const MatchRowResult = ({
     let points = [0, 0];
     if (sets[0] > sets[1]) points = [1, 0];
     else if (sets[1] > sets[0]) points = [0, 1];
-    // Sinon (égalité), on garde [0, 0]
 
     return { points, sets, goals };
   };
@@ -171,7 +179,6 @@ const MatchRowResult = ({
   const formatTime = (t) => {
     if (!t) return "";
     if (typeof t === "string") {
-      // Expecting formats like "08:00:00" or "8:0:0"; take HH and MM only
       const parts = t.split(":");
       if (parts.length >= 2) {
         const hh = parts[0].padStart(2, "0");
@@ -179,7 +186,6 @@ const MatchRowResult = ({
         return `${hh}:${mm}`;
       }
     }
-    // Fallback: try parsing as Date
     try {
       const d = new Date(t);
       if (!isNaN(d)) {
@@ -192,7 +198,6 @@ const MatchRowResult = ({
   };
 
   const toHHMM = (t) => {
-    // Ensure a clean HH:MM string for <input type="time">
     if (!t) return "";
     if (typeof t === "string") {
       const parts = t.split(":");
@@ -212,7 +217,6 @@ const MatchRowResult = ({
   };
 
   const toHHMMSS = (t) => {
-    // Convert HH:MM or HH:MM:SS to HH:MM:SS for DB
     if (!t) return null;
     if (typeof t === "string") {
       const parts = t.split(":");
@@ -246,7 +250,6 @@ const MatchRowResult = ({
   const { points, sets, goals } = calculateStats(parsedResults);
 
   const handleSave = async () => {
-    // Validate before saving. Allow empty string to clear the result.
     const inputText = (resultText || "").trim();
 
     let cleanedResults = [];
@@ -259,7 +262,7 @@ const MatchRowResult = ({
             "Format invalide. Utilisez des paires a-b séparées par des tirets (ex: 11-1 ou 11-1-11-1), maximum 5 sets."
         );
         setIsEditing(true);
-        return; // stop here, do not save
+        return;
       }
 
       cleanedResults = inputText
@@ -283,49 +286,94 @@ const MatchRowResult = ({
 
     setLoading(true);
     try {
+      // On prépare le payload de base (résultat + date/heure/table)
       const payload = {
         result: cleanedResults,
-        // Utiliser la sélection locale des arbitres (selects) plutôt que les props match.*
-        referee1_id:
-          localReferee1Id === "" || localReferee1Id === null
-            ? null
-            : Number(localReferee1Id),
-        referee2_id:
-          localReferee2Id === "" || localReferee2Id === null
-            ? null
-            : Number(localReferee2Id),
         match_day: editDay || null,
         match_time: toHHMMSS(editTime) || null,
         table_number: editTable === "" ? null : Number(editTable),
       };
 
+      // ⚠️ On n'envoie les arbitres QUE si l'utilisateur a vraiment modifié le select
+      if (ref1Dirty) {
+        payload.referee1_id =
+          localReferee1Id === "" || localReferee1Id === null
+            ? null
+            : Number(localReferee1Id);
+      }
+      if (ref2Dirty) {
+        payload.referee2_id =
+          localReferee2Id === "" || localReferee2Id === null
+            ? null
+            : Number(localReferee2Id);
+      }
+
       const updated = await saveMatch(match.id, payload);
 
-      const effective = updated || { ...match, ...payload };
+      // Normaliser la réponse de saveMatch
+      let effective;
+      if (Array.isArray(updated)) {
+        if (
+          updated.length > 0 &&
+          updated[0] &&
+          typeof updated[0] === "object"
+        ) {
+          effective = { ...match, ...updated[0] };
+        } else {
+          effective = { ...match, ...payload };
+        }
+      } else if (updated && typeof updated === "object") {
+        effective = { ...match, ...updated };
+      } else {
+        effective = { ...match, ...payload };
+      }
 
-      await postProcessAfterSave(effective);
-      onMatchChange(match.id, "match_day", effective.match_day);
-      onMatchChange(match.id, "match_time", effective.match_time);
-      onMatchChange(match.id, "table_number", effective.table_number);
-      onMatchChange(match.id, "referee1_id", effective.referee1_id);
-      onMatchChange(match.id, "referee2_id", effective.referee2_id);
-      onMatchChange(match.id, "result", effective.result);
+      const effectiveWithGroup = {
+        ...effective,
+        group_id:
+          effective.group_id ?? match.group_id ?? match.group?.id ?? null,
+      };
 
-      // Mettre à jour immédiatement l'état local des arbitres pour refléter la sauvegarde
-      setLocalReferee1Id(
-        effective.referee1_id !== undefined && effective.referee1_id !== null
-          ? effective.referee1_id
-          : ""
-      );
-      setLocalReferee2Id(
-        effective.referee2_id !== undefined && effective.referee2_id !== null
-          ? effective.referee2_id
-          : ""
-      );
+      console.log("[MatchRowResult] postProcessAfterSave payload", {
+        matchId: match.id,
+        effectiveWithGroup,
+      });
 
-      onSave(effective);
+      await postProcessAfterSave(effectiveWithGroup);
+      onMatchChange(match.id, "match_day", effectiveWithGroup.match_day);
+      onMatchChange(match.id, "match_time", effectiveWithGroup.match_time);
+      onMatchChange(match.id, "table_number", effectiveWithGroup.table_number);
+      if ("referee1_id" in effectiveWithGroup) {
+        onMatchChange(match.id, "referee1_id", effectiveWithGroup.referee1_id);
+      }
+      if ("referee2_id" in effectiveWithGroup) {
+        onMatchChange(match.id, "referee2_id", effectiveWithGroup.referee2_id);
+      }
+      onMatchChange(match.id, "result", effectiveWithGroup.result);
 
-      // Pour une sauvegarde individuelle, on déclenche un refresh (en bulk, le parent le fera une seule fois)
+      // Mettre à jour immédiatement l'état local des arbitres
+      if ("referee1_id" in effectiveWithGroup) {
+        setLocalReferee1Id(
+          effectiveWithGroup.referee1_id !== undefined &&
+            effectiveWithGroup.referee1_id !== null
+            ? effectiveWithGroup.referee1_id
+            : ""
+        );
+      }
+      if ("referee2_id" in effectiveWithGroup) {
+        setLocalReferee2Id(
+          effectiveWithGroup.referee2_id !== undefined &&
+            effectiveWithGroup.referee2_id !== null
+            ? effectiveWithGroup.referee2_id
+            : ""
+        );
+      }
+      // Les valeurs venant du backend redeviennent la "vérité" → plus dirty
+      setRef1Dirty(false);
+      setRef2Dirty(false);
+
+      onSave(effectiveWithGroup);
+
       if (!isBulkSaving && typeof onRefresh === "function") {
         await onRefresh();
       }
@@ -490,10 +538,9 @@ const MatchRowResult = ({
               placeholder="11-1-11-1"
               value={resultText}
               onChange={(e) => {
-                const text = e.target.value.replace(/\s+/g, ""); // remove spaces
+                const text = e.target.value.replace(/\s+/g, "");
                 setResultText(text);
 
-                // Update local array for preview while typing
                 const parts = text
                   .split("-")
                   .map((v) => {
@@ -503,7 +550,6 @@ const MatchRowResult = ({
                   .filter((v) => v !== "");
                 setLocalResults(parts);
 
-                // Live validation message (optional while typing)
                 if (text.length === 0) {
                   setErrorMsg("");
                 } else if (!isValidResultText(text)) {
@@ -577,6 +623,7 @@ const MatchRowResult = ({
           onChange={(e) => {
             const val = e.target.value;
             setLocalReferee1Id(val === "" ? "" : val);
+            setRef1Dirty(true); // l'utilisateur a modifié l'arbitre 1
             onMatchChange(match.id, "referee1_id", val ? Number(val) : null);
           }}
         >
@@ -596,6 +643,7 @@ const MatchRowResult = ({
           onChange={(e) => {
             const val = e.target.value;
             setLocalReferee2Id(val === "" ? "" : val);
+            setRef2Dirty(true); // l'utilisateur a modifié l'arbitre 2
             onMatchChange(match.id, "referee2_id", val ? Number(val) : null);
           }}
         >
@@ -627,7 +675,6 @@ const MatchRowResult = ({
             }
             onClick={() => {
               handleSave();
-              // keep editing open only if invalid; handleSave returns early on invalid
               if (!resultText || isValidResultText(resultText))
                 setIsEditing(false);
             }}

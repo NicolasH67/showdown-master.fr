@@ -60,8 +60,6 @@ const ResultEdit = () => {
     try {
       for (const saveFn of savers) {
         try {
-          // On séquence pour éviter de spammer le backend
-          // eslint-disable-next-line no-await-in-loop
           await saveFn();
         } catch (e) {
           console.error("Error while saving one match", e);
@@ -210,7 +208,6 @@ const ResultEdit = () => {
     });
   }, [matches]);
 
-  // Liste globalement triée selon l'ordre MNR stable
   const globallySorted = React.useMemo(() => {
     if (!matches) return [];
     if (!mnrOrderMap) return [...matches];
