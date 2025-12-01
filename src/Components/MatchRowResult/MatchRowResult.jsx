@@ -392,7 +392,13 @@ const MatchRowResult = ({
           type="date"
           className="form-control form-control-sm text-center"
           value={editDay}
-          onChange={(e) => setEditDay(e.target.value)}
+          onChange={(e) => {
+            const val = e.target.value;
+            setEditDay(val);
+            if (onMatchChange) {
+              onMatchChange(match.id, "match_day", val || null);
+            }
+          }}
         />
       </td>
       <td className="text-center">
@@ -401,7 +407,13 @@ const MatchRowResult = ({
           step="60"
           className="form-control form-control-sm text-center"
           value={editTime}
-          onChange={(e) => setEditTime(e.target.value)}
+          onChange={(e) => {
+            const val = e.target.value;
+            setEditTime(val);
+            if (onMatchChange) {
+              onMatchChange(match.id, "match_time", val || null);
+            }
+          }}
         />
       </td>
       <td className="text-center">
@@ -410,7 +422,17 @@ const MatchRowResult = ({
           min="1"
           className="form-control form-control-sm text-center"
           value={editTable}
-          onChange={(e) => setEditTable(e.target.value)}
+          onChange={(e) => {
+            const val = e.target.value;
+            setEditTable(val);
+            if (onMatchChange) {
+              onMatchChange(
+                match.id,
+                "table_number",
+                val === "" ? null : Number(val)
+              );
+            }
+          }}
         />
       </td>
       <td className="text-center">

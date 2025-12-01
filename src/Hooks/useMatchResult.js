@@ -284,8 +284,10 @@ const useMatchesResult = (tournamentId) => {
   };
 
   // Soumission des résultats d'un match — via PATCH /api
+  // Soumission des résultats d'un match — via PATCH /api
   const handleResultSubmit = async (matchId) => {
     console.log("[useMatchesResult] handleResultSubmit start", { matchId });
+
     const idNum = resolvedIdNum;
     if (!Number.isFinite(idNum) || idNum <= 0) {
       throw new Error("Invalid tournament id");
@@ -304,19 +306,56 @@ const useMatchesResult = (tournamentId) => {
       resultArray,
     });
 
+    // On récupère le match courant pour lire date/heure/table/arbitres
+    const match = matches.find((m) => String(m.id) === String(matchId));
+    console.log(
+      "[useMatchesResult] handleResultSubmit found match for meta fields",
+      {
+        matchId,
+        match,
+      }
+    );
+
+    // Payload complet : résultat + métadonnées (date, heure, table, arbitres)
+    const payload = { result: resultArray };
+
+    if (match) {
+      payload.match_day = match.match_day || null;
+      payload.match_time = match.match_time || null;
+      payload.table_number = match.table_number
+        ? parseInt(match.table_number, 10)
+        : null;
+
+      if (Object.prototype.hasOwnProperty.call(match, "referee1_id")) {
+        payload.referee1_id =
+          match.referee1_id === undefined ? null : match.referee1_id;
+      }
+      if (Object.prototype.hasOwnProperty.call(match, "referee2_id")) {
+        payload.referee2_id =
+          match.referee2_id === undefined ? null : match.referee2_id;
+      }
+    }
+
+    console.log("[useMatchesResult] handleResultSubmit payload", {
+      matchId,
+      payload,
+    });
+
     const urls = [
       `${API_BASE}/api/tournaments/${idNum}/matches/${matchId}`,
       `${API_BASE}/api/tournaments/matches/${matchId}?id=${idNum}`,
     ];
 
-    await firstOk(urls, { method: "PATCH", body: { result: resultArray } });
+    await firstOk(urls, { method: "PATCH", body: payload });
     console.log("[useMatchesResult] handleResultSubmit PATCH done", {
       matchId,
     });
 
     // maj locale pour que l'UI reflète la sauvegarde
     setMatches((prev) =>
-      prev.map((m) => (m.id === matchId ? { ...m, result: resultArray } : m))
+      prev.map((m) =>
+        String(m.id) === String(matchId) ? { ...m, ...payload } : m
+      )
     );
     console.log("[useMatchesResult] handleResultSubmit local state updated", {
       matchId,
@@ -333,20 +372,22 @@ const useMatchesResult = (tournamentId) => {
     }
 
     // Essaye d'enclencher la qualification si applicable
-    const match = matches.find((m) => m.id === matchId);
+    const refreshedMatch =
+      match || matches.find((m) => String(m.id) === String(matchId)); // fallback
+
     console.log(
       "[useMatchesResult] handleResultSubmit before processGroupQualification",
       {
         matchId,
-        groupId: match?.group?.id,
-        tournamentId: match?.group?.tournament_id,
-        match,
+        groupId: refreshedMatch?.group?.id,
+        tournamentId: refreshedMatch?.group?.tournament_id,
+        match: refreshedMatch,
       }
     );
-    if (match?.group?.id && match?.group?.tournament_id) {
+    if (refreshedMatch?.group?.id && refreshedMatch?.group?.tournament_id) {
       await processGroupQualification(
-        match.group.id,
-        match.group.tournament_id
+        refreshedMatch.group.id,
+        refreshedMatch.group.tournament_id
       );
     }
   };
