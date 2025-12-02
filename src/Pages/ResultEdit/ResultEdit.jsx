@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useCallback } from "react";
 import { useParams, useLocation } from "react-router-dom";
 import useMatchesResult from "../../Hooks/useMatchResult";
 import MatchRowResult from "../../Components/MatchRowResult/MatchRowResult";
@@ -26,34 +26,52 @@ const ResultEdit = () => {
     error,
     handleMatchChange,
     handleSave,
-    refresh, // 👈 fonction de rafraîchissement exposée par le hook
+    refresh,
   } = useMatchesResult(id);
 
   const [selectedDate, setSelectedDate] = React.useState(null);
   const [selectedTable, setSelectedTable] = React.useState(null);
 
-  // État pour le modal de génération de feuilles de matchs (plage de MNR)
+  // 🔹 matches “dirty” = ceux qui ont été modifiés (date, heure, table, arbitres, résultat…)
+  const [dirtyMatchIds, setDirtyMatchIds] = React.useState(() => new Set());
+
+  // Modal pour les feuilles de matchs
   const [isSheetModalOpen, setIsSheetModalOpen] = React.useState(false);
   const [sheetFromMnr, setSheetFromMnr] = React.useState("");
   const [sheetToMnr, setSheetToMnr] = React.useState("");
   const [sheetType, setSheetType] = React.useState("3_set");
   const [sheetError, setSheetError] = React.useState("");
-  const [isBulkSaving, setIsBulkSaving] = React.useState(false);
 
-  // Gestion d'un bouton global "valider tous les changements"
+  // Bulk save
+  const [isBulkSaving, setIsBulkSaving] = React.useState(false);
   const rowSaveHandlersRef = React.useRef(new Map());
+
+  // 👉 appelé par chaque MatchRowResult quand un match devient dirty / clean
+  const handleDirtyChange = useCallback((matchId, isDirty) => {
+    setDirtyMatchIds((prev) => {
+      const next = new Set(prev);
+      if (isDirty) {
+        next.add(matchId);
+      } else {
+        next.delete(matchId);
+      }
+      return next;
+    });
+  }, []);
 
   const registerRowSaver = React.useCallback((matchId, saver) => {
     if (!matchId || typeof saver !== "function") return () => {};
     rowSaveHandlersRef.current.set(matchId, saver);
-    // On renvoie une fonction de nettoyage pour retirer le handler quand la ligne se démonte
     return () => {
       rowSaveHandlersRef.current.delete(matchId);
     };
   }, []);
 
   const handleSaveAll = async () => {
-    const savers = Array.from(rowSaveHandlersRef.current.values());
+    const savers = Array.from(rowSaveHandlersRef.current.entries())
+      .filter(([matchId]) => dirtyMatchIds.has(matchId)) // 🔹 on ne sauvegarde que les matches dirty
+      .map(([, saver]) => saver);
+
     if (!savers.length) return;
 
     setIsBulkSaving(true);
@@ -73,6 +91,9 @@ const ResultEdit = () => {
           console.error("Error while refreshing after bulk save", e);
         }
       }
+
+      // Après un bulk save réussi on considère tout clean
+      setDirtyMatchIds(new Set());
     } finally {
       setIsBulkSaving(false);
     }
@@ -90,6 +111,17 @@ const ResultEdit = () => {
     setIsSheetModalOpen(false);
   };
 
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const title = document.getElementById("page-title");
+      if (title && document.body.contains(title)) {
+        title.focus();
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [location.pathname, matches?.length || 0]);
+
   const handleGenerateSheetsRange = async (e) => {
     e.preventDefault();
     setSheetError("");
@@ -106,8 +138,25 @@ const ResultEdit = () => {
       return;
     }
 
-    // Filtrer les matchs dans la plage de MNR selon l'ordre global
-    const selected = globallySorted.filter((m) => {
+    // On a besoin de l’ordre global stable par MNR
+    const safeTs = (m) => {
+      const s = `${m?.match_day || ""}T${m?.match_time || ""}`;
+      const ts = Date.parse(s);
+      return Number.isFinite(ts) ? ts : Number.MAX_SAFE_INTEGER;
+    };
+    const sortedForMnr = [...(matches || [])].sort((a, b) => {
+      const ta = safeTs(a);
+      const tb = safeTs(b);
+      if (ta !== tb) return ta - tb;
+      const taNum = Number(a?.table_number || 0);
+      const tbNum = Number(b?.table_number || 0);
+      if (taNum !== tbNum) return taNum - tbNum;
+      return Number(a?.id || 0) - Number(b?.id || 0);
+    });
+    const mnrMap = new Map();
+    sortedForMnr.forEach((m, idx) => mnrMap.set(m.id, idx + 1));
+
+    const selected = sortedForMnr.filter((m) => {
       const n = mnrMap.get(m.id);
       return n && n >= from && n <= to;
     });
@@ -118,13 +167,11 @@ const ResultEdit = () => {
     }
 
     try {
-      // Prépare une liste { match, mnr } pour la génération batch
       const items = selected.map((m) => ({
         match: m,
         mnr: mnrMap.get(m.id),
       }));
 
-      // Génère un seul PDF multi-pages (une page par match)
       if (sheetType === "1_set") {
         await generate1SetSheetsBatch(items);
       } else if (sheetType === "3_set") {
@@ -142,17 +189,6 @@ const ResultEdit = () => {
     }
   };
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const title = document.getElementById("page-title");
-      if (title && document.body.contains(title)) {
-        title.focus();
-      }
-    }, 100);
-
-    return () => clearTimeout(timer);
-  }, [location.pathname, matches.length]);
-
   const uniqueDates = React.useMemo(() => {
     const set = new Set(
       (matches || [])
@@ -168,14 +204,13 @@ const ResultEdit = () => {
     return Math.max(0, ...nums);
   }, [matches]);
 
-  // Carte d'ordre MNR stable: calculée une fois par ensemble d'IDs de matchs
+  // ordre MNR stable
   const [mnrOrderMap, setMnrOrderMap] = React.useState(null);
 
   useEffect(() => {
     if (!matches || matches.length === 0) return;
 
     setMnrOrderMap((prev) => {
-      // Si nous avons déjà un ordre pour ce même ensemble d'IDs, on le conserve
       if (prev && prev.size === matches.length) {
         const allPresent = matches.every((m) => prev.has(m.id));
         if (allPresent) {
@@ -238,7 +273,6 @@ const ResultEdit = () => {
       );
 
     if (!mnrOrderMap) {
-      // Fallback: tri chrono si on n'a pas encore de carte d'ordre
       const safeTs = (m) => {
         const s = `${m?.match_day || ""}T${m?.match_time || ""}`;
         const ts = Date.parse(s);
@@ -272,6 +306,7 @@ const ResultEdit = () => {
 
   return (
     <div className="container">
+      {/* header + bouton feuilles */}
       <div className="d-flex justify-content-between align-items-center mb-3">
         <h1 id="page-title" tabIndex="-1" className="mb-0">
           {t("schedule")}
@@ -298,6 +333,8 @@ const ResultEdit = () => {
         selectedTable={selectedTable}
         onSelectTable={setSelectedTable}
       />
+
+      {/* modal feuilles de match */}
       {isSheetModalOpen && (
         <div
           className="modal d-block"
@@ -319,6 +356,7 @@ const ResultEdit = () => {
               </div>
               <form onSubmit={handleGenerateSheetsRange}>
                 <div className="modal-body">
+                  {/* ... (tout ton contenu de modal, inchangé) ... */}
                   <div className="row g-2">
                     <div className="col-6">
                       <label className="form-label">
@@ -400,6 +438,7 @@ const ResultEdit = () => {
         </div>
       )}
 
+      {/* tableau + overlay de loading bulk */}
       <div className="position-relative">
         {isBulkSaving && (
           <div
@@ -456,13 +495,15 @@ const ResultEdit = () => {
                   onRefresh={refresh}
                   registerSaver={registerRowSaver}
                   isBulkSaving={isBulkSaving}
+                  onDirtyChange={handleDirtyChange} // 🔹 très important
                 />
               ))}
             </tbody>
           </table>
         </div>
       </div>
-      {/* Floating global save button (bottom-right) */}
+
+      {/* bouton flottant en bas à droite */}
       <div
         className="position-fixed"
         style={{
@@ -475,7 +516,7 @@ const ResultEdit = () => {
           type="button"
           className="btn btn-success btn-lg shadow"
           onClick={handleSaveAll}
-          disabled={isBulkSaving}
+          disabled={isBulkSaving || dirtyMatchIds.size === 0} // 🔹 activé seulement s'il y a des matches dirty
         >
           {isBulkSaving
             ? t("savingAllChanges", {
@@ -486,7 +527,8 @@ const ResultEdit = () => {
               })}
         </button>
       </div>
-      {/* Spacer under table */}
+
+      {/* espace en bas pour laisser respirer la page */}
       <div style={{ height: "120px" }}></div>
     </div>
   );

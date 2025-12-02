@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import useMatchRowApi from "../../Hooks/useMatchRowApi";
@@ -16,6 +16,7 @@ const MatchRowResult = ({
   onRefresh,
   registerSaver,
   isBulkSaving = false,
+  onDirtyChange, // 👈 nouveau: le parent peut être notifié qu'une ligne est “dirty”
 }) => {
   const { t } = useTranslation();
   const { saveMatch, postProcessAfterSave } = useMatchRowApi(
@@ -53,7 +54,7 @@ const MatchRowResult = ({
   const [editTime, setEditTime] = useState("");
   const [editTable, setEditTable] = useState(match.table_number ?? "");
 
-  // Local referee selection + "dirty" flags (pour savoir si l'utilisateur a vraiment modifié quelque chose)
+  // Local referee selection + "dirty" flags
   const [localReferee1Id, setLocalReferee1Id] = useState(
     match.referee1_id !== undefined
       ? match.referee1_id
@@ -71,18 +72,20 @@ const MatchRowResult = ({
   const [ref1Dirty, setRef1Dirty] = useState(false);
   const [ref2Dirty, setRef2Dirty] = useState(false);
 
-  // Dirty global pour savoir si la ligne a été modifiée (peu importe le champ)
-  const [isDirty, setIsDirty] = useState(false);
-  const isDirtyRef = useRef(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
+  // 👉 état pour savoir si cette ligne a été modifiée (peu importe le champ)
+  const [hasLocalChanges, setHasLocalChanges] = useState(false);
+
+  // helper pour marquer la ligne comme “dirty” une seule fois
   const markDirty = () => {
-    if (!isDirtyRef.current) {
-      isDirtyRef.current = true;
-      setIsDirty(true);
+    if (!hasLocalChanges) {
+      setHasLocalChanges(true);
+      if (typeof onDirtyChange === "function") {
+        onDirtyChange(match.id, true);
+      }
     }
   };
-
-  const [errorMsg, setErrorMsg] = useState("");
 
   // Accepts 1 to 5 sets written as pairs: a-b-a-b-... (no trailing hyphen)
   const RESULT_REGEX = /^\d{1,2}-\d{1,2}(?:-\d{1,2}-\d{1,2}){0,4}$/;
@@ -110,7 +113,6 @@ const MatchRowResult = ({
     setEditTime(match.match_time ? toHHMM(match.match_time) : "");
     setEditTable(match.table_number ?? "");
 
-    // Initialiser les arbitres locaux à partir des props existantes
     const r1 =
       match.referee1_id !== undefined
         ? match.referee1_id
@@ -126,11 +128,11 @@ const MatchRowResult = ({
 
     setLocalReferee1Id(r1);
     setLocalReferee2Id(r2);
-    // On considère que l'état venant du backend est "propre" → pas dirty
     setRef1Dirty(false);
     setRef2Dirty(false);
-    isDirtyRef.current = false;
-    setIsDirty(false);
+
+    // Les données venant du backend sont “propres”
+    setHasLocalChanges(false);
   }, [
     match.id,
     match.match_day,
@@ -142,24 +144,18 @@ const MatchRowResult = ({
     match.referee_2,
   ]);
 
-  // Enregistrer un "saver" pour ce match afin que le parent puisse déclencher un save global
+  // Enregistrer un "saver" pour le bulk save
   useEffect(() => {
     if (!registerSaver) return;
 
     const saver = async () => {
-      // Ne sauvegarde que si la ligne a été modifiée
-      if (!isDirtyRef.current) {
-        return;
-      }
       await handleSave();
-      isDirtyRef.current = false;
-      setIsDirty(false);
-      // Après un bulk save, repasser la ligne en mode non-édition
       setIsEditing(false);
     };
 
     const unregister = registerSaver(match.id, saver);
     return unregister;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     registerSaver,
     match.id,
@@ -256,7 +252,7 @@ const MatchRowResult = ({
       if (!isNaN(d)) {
         return `${String(d.getHours()).padStart(2, "0")}:${String(
           d.getMinutes()
-        )}:00`;
+        ).padStart(2, "0")}:00`;
       }
     } catch (_) {}
     return null;
@@ -305,7 +301,6 @@ const MatchRowResult = ({
 
     setLoading(true);
     try {
-      // On prépare le payload de base (résultat + date/heure/table)
       const payload = {
         result: cleanedResults,
         match_day: editDay || null,
@@ -313,7 +308,6 @@ const MatchRowResult = ({
         table_number: editTable === "" ? null : Number(editTable),
       };
 
-      // ⚠️ On n'envoie les arbitres QUE si l'utilisateur a vraiment modifié le select
       if (ref1Dirty) {
         payload.referee1_id =
           localReferee1Id === "" || localReferee1Id === null
@@ -329,7 +323,6 @@ const MatchRowResult = ({
 
       const updated = await saveMatch(match.id, payload);
 
-      // Normaliser la réponse de saveMatch
       let effective;
       if (Array.isArray(updated)) {
         if (
@@ -370,7 +363,6 @@ const MatchRowResult = ({
       }
       onMatchChange(match.id, "result", effectiveWithGroup.result);
 
-      // Mettre à jour immédiatement l'état local des arbitres
       if ("referee1_id" in effectiveWithGroup) {
         setLocalReferee1Id(
           effectiveWithGroup.referee1_id !== undefined &&
@@ -387,11 +379,14 @@ const MatchRowResult = ({
             : ""
         );
       }
-      // Les valeurs venant du backend redeviennent la "vérité" → plus dirty
       setRef1Dirty(false);
       setRef2Dirty(false);
-      isDirtyRef.current = false;
-      setIsDirty(false);
+
+      // ✅ après un save réussi, cette ligne n'est plus dirty
+      if (hasLocalChanges && typeof onDirtyChange === "function") {
+        onDirtyChange(match.id, false);
+      }
+      setHasLocalChanges(false);
 
       onSave(effectiveWithGroup);
 
@@ -416,10 +411,10 @@ const MatchRowResult = ({
           onChange={(e) => {
             const val = e.target.value;
             setEditDay(val);
+            markDirty(); // 👈 date modifiée → dirty
             if (onMatchChange) {
               onMatchChange(match.id, "match_day", val || null);
             }
-            markDirty();
           }}
         />
       </td>
@@ -432,10 +427,10 @@ const MatchRowResult = ({
           onChange={(e) => {
             const val = e.target.value;
             setEditTime(val);
+            markDirty(); // 👈 heure modifiée → dirty
             if (onMatchChange) {
               onMatchChange(match.id, "match_time", val || null);
             }
-            markDirty();
           }}
         />
       </td>
@@ -448,6 +443,7 @@ const MatchRowResult = ({
           onChange={(e) => {
             const val = e.target.value;
             setEditTable(val);
+            markDirty(); // 👈 table modifiée → dirty
             if (onMatchChange) {
               onMatchChange(
                 match.id,
@@ -455,7 +451,6 @@ const MatchRowResult = ({
                 val === "" ? null : Number(val)
               );
             }
-            markDirty();
           }}
         />
       </td>
@@ -586,6 +581,7 @@ const MatchRowResult = ({
               onChange={(e) => {
                 const text = e.target.value.replace(/\s+/g, "");
                 setResultText(text);
+                markDirty(); // 👈 résultat modifié → dirty
 
                 const parts = text
                   .split("-")
@@ -606,7 +602,6 @@ const MatchRowResult = ({
                 } else {
                   setErrorMsg("");
                 }
-                markDirty();
               }}
             />
             {errorMsg && (
@@ -670,11 +665,9 @@ const MatchRowResult = ({
           onChange={(e) => {
             const val = e.target.value;
             setLocalReferee1Id(val === "" ? "" : val);
-            setRef1Dirty(true); // l'utilisateur a modifié l'arbitre 1
-            if (onMatchChange) {
-              onMatchChange(match.id, "referee1_id", val ? Number(val) : null);
-            }
-            markDirty();
+            setRef1Dirty(true);
+            markDirty(); // 👈 arbitre 1 modifié → dirty
+            onMatchChange(match.id, "referee1_id", val ? Number(val) : null);
           }}
         >
           <option value="">{t("none")}</option>
@@ -693,11 +686,9 @@ const MatchRowResult = ({
           onChange={(e) => {
             const val = e.target.value;
             setLocalReferee2Id(val === "" ? "" : val);
-            setRef2Dirty(true); // l'utilisateur a modifié l'arbitre 2
-            if (onMatchChange) {
-              onMatchChange(match.id, "referee2_id", val ? Number(val) : null);
-            }
-            markDirty();
+            setRef2Dirty(true);
+            markDirty(); // 👈 arbitre 2 modifié → dirty
+            onMatchChange(match.id, "referee2_id", val ? Number(val) : null);
           }}
         >
           <option value="">{t("none")}</option>
