@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from "react";
 import useMatchData from "../../Hooks/useMatchData";
 import GroupList from "../../Components/GroupList/GroupList";
+import MatchList from "../../Components/MatchList/MatchList";
 import matchOrder from "../../Helpers/matchOrder.json";
 import RoundSelector from "../../Components/RoundSelector/RoundSelector";
-import supabase from "../../Helpers/supabaseClient";
 import { useParams, useLocation } from "react-router-dom";
 import useTournamentStartDate from "../../Hooks/useTournamentStartDate";
 import { useTranslation } from "react-i18next";
@@ -34,6 +34,14 @@ const ScheduleEdit = () => {
   });
   const [matchToDelete, setMatchToDelete] = useState(null);
   const API_BASE = import.meta.env.VITE_API_BASE || "";
+  const [tableCount, setTableCount] = useState(null);
+  const [matchDurationMinutes, setMatchDurationMinutes] = useState(null);
+
+  // 👉 mode auto / manuel
+  const [isAutoMode, setIsAutoMode] = useState(true);
+
+  // 👉 lignes de création manuelle
+  const [manualMatches, setManualMatches] = useState([]);
 
   useEffect(() => {
     if (groups.length > 0) {
@@ -49,12 +57,74 @@ const ScheduleEdit = () => {
   }, [matches]);
 
   useEffect(() => {
-    // Initialise ou réinitialise la date par défaut quand
-    // la date de début du tournoi change.
     if (tournamentStartDate) {
       setDefaultMatchDate((prev) => prev || tournamentStartDate);
     }
   }, [tournamentStartDate]);
+
+  useEffect(() => {
+    const fetchTournamentConfig = async () => {
+      try {
+        const tournamentId = Number(id);
+        if (!Number.isFinite(tournamentId) || tournamentId <= 0) return;
+
+        // On privilégie l'endpoint admin pour récupérer toutes les infos
+        const urls = [
+          `${API_BASE}/api/admin/tournaments/${tournamentId}`,
+          `${API_BASE}/api/tournaments/${tournamentId}`,
+        ];
+
+        for (const url of urls) {
+          try {
+            const resp = await fetch(url, {
+              method: "GET",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+            });
+            if (!resp.ok) {
+              if (resp.status === 404 || resp.status === 405) continue;
+              continue;
+            }
+            const data = await resp.json().catch(() => null);
+            if (!data) continue;
+
+            const rawTableCount =
+              data.table_count ?? data.tableCount ?? data.tables ?? null;
+            const rawMatchDuration =
+              data.match_duration ??
+              data.matchDuration ??
+              data.matchDurationMinutes ??
+              null;
+
+            if (rawTableCount != null) {
+              const n = Number(rawTableCount);
+              if (Number.isFinite(n) && n > 0) {
+                setTableCount(n);
+              }
+            }
+
+            if (rawMatchDuration != null) {
+              const m = Number(rawMatchDuration);
+              if (Number.isFinite(m) && m > 0) {
+                setMatchDurationMinutes(m);
+              }
+            }
+            break;
+          } catch (e) {
+            console.warn(
+              "[ScheduleEdit] fetchTournamentConfig failed for",
+              url,
+              e
+            );
+          }
+        }
+      } catch (e) {
+        console.warn("[ScheduleEdit] fetchTournamentConfig error", e);
+      }
+    };
+
+    fetchTournamentConfig();
+  }, [API_BASE, id]);
 
   const showFeedback = (title, message, variant = "info") => {
     setFeedbackModal({
@@ -69,12 +139,10 @@ const ScheduleEdit = () => {
     setFeedbackModal((prev) => ({ ...prev, open: false }));
   };
 
-  // Normaliser les joueurs en dictionnaire { group_id: Player[] }
+  // ---- Players par groupe ----------------------------------------------------
   const playersByGroup = useMemo(() => {
     if (!players) return {};
-    // Si c'est déjà un objet {groupId: [...]} on le retourne tel quel
     if (!Array.isArray(players) && typeof players === "object") return players;
-    // Si c'est un tableau, on groupe par group_id
     if (Array.isArray(players)) {
       return players.reduce((acc, p) => {
         const gid = Array.isArray(p.group_id) ? p.group_id[0] : p.group_id;
@@ -100,7 +168,6 @@ const ScheduleEdit = () => {
     const group = groups.find((g) => g.id === groupId);
     const groupPlayers = sortedPlayers[groupId] || [];
 
-    // sécuriser le parsing de group_former
     let groupFormer = [];
     if (group && group.group_former) {
       if (Array.isArray(group.group_former)) {
@@ -126,7 +193,6 @@ const ScheduleEdit = () => {
       return;
     }
 
-    // Choix de l'ordre en fonction du nombre total de participants (réels + placeholders)
     const order = matchOrder?.["Match Order"]?.[total];
     if (!order) {
       showFeedback(
@@ -158,8 +224,6 @@ const ScheduleEdit = () => {
   };
 
   const updateGeneratedMatch = (groupId, matchIndex, field, value) => {
-    // Si l'utilisateur change la date d'un match généré,
-    // on met à jour la "date par défaut" pour les prochains matches.
     if (field === "match_date" && value) {
       setDefaultMatchDate(value);
     }
@@ -198,7 +262,6 @@ const ScheduleEdit = () => {
         return;
       }
 
-      // Valide les identifiants de contexte uniquement côté client
       const tournamentId = Number(id);
       if (!Number.isFinite(tournamentId) || tournamentId <= 0) {
         throw new Error(
@@ -212,7 +275,6 @@ const ScheduleEdit = () => {
         );
       }
 
-      // Validation et normalisation des matches
       const validMatches = matches.map((m, idx) => {
         const p1Id = m?.player1_id ?? null;
         const p2Id = m?.player2_id ?? null;
@@ -244,8 +306,8 @@ const ScheduleEdit = () => {
           player1_group_position: p1Pos,
           player2_group_position: p2Pos,
           result: Array.isArray(m?.result) ? m.result : [],
-          match_day: day, // YYYY-MM-DD
-          match_time: time, // HH:mm
+          match_day: day,
+          match_time: time,
           table_number: tableNum,
           tournament_id: tournamentId,
           group_id: gId,
@@ -255,7 +317,6 @@ const ScheduleEdit = () => {
       });
 
       let createdMatches = [];
-      // 1) Tente d'abord les routes backend (bypass RLS). Deux variantes possibles.
       let backendOk = false;
       const backends = [
         `${API_BASE}/api/tournaments/${tournamentId}/matches`,
@@ -281,12 +342,11 @@ const ScheduleEdit = () => {
                 createdMatches = json.matches;
               }
             } catch {
-              // si la route ne renvoie rien ou pas de JSON, on laissera createdMatches vide
+              // ignore
             }
             break;
           }
 
-          // Si la route existe mais renvoie autre chose que 404/405, on arrête et on surface l'erreur
           if (resp.status !== 404 && resp.status !== 405) {
             const msg = await resp.text().catch(() => "");
             throw new Error(
@@ -296,7 +356,6 @@ const ScheduleEdit = () => {
             );
           }
         } catch (e) {
-          // continue vers le backend suivant, puis fallback Supabase
           console.warn(
             `[saveMatches] backend '${url}' failed:`,
             e?.message || e
@@ -304,7 +363,6 @@ const ScheduleEdit = () => {
         }
       }
 
-      // Mise à jour locale des matchs existants pour ce groupe sans recharger la page
       if (createdMatches && createdMatches.length > 0) {
         setMatchesState((prev) => {
           const next = { ...(prev || {}) };
@@ -339,10 +397,83 @@ const ScheduleEdit = () => {
       .sort((a, b) => (a?.id ?? 0) - (b?.id ?? 0));
   }, [groups, selectedRound]);
 
+  const renderGeneratedMatchesSection = () => {
+    if (!filteredSortedGroups.length) return null;
+
+    return filteredSortedGroups
+      .map((g) => {
+        const gm = generatedMatches[g.id] || [];
+        if (!gm.length) return null;
+
+        const playersForGroup = sortedPlayers[g.id] || [];
+
+        return (
+          <div key={g.id} className="mt-3">
+            <h3 className="h5">
+              {g.name} ({t(g.group_type)})
+            </h3>
+            <MatchList
+              matches={gm}
+              players={playersForGroup}
+              groupId={g.id}
+              updateGeneratedMatch={updateGeneratedMatch}
+              saveMatches={saveMatches}
+              tournamentStartDate={tournamentStartDate}
+            />
+          </div>
+        );
+      })
+      .filter(Boolean);
+  };
+
+  // ⚠️ NOUVEAU useMemo GLOBAL (pas conditionnel) :
+  // Matches existants pour le round sélectionné, aplatis (sans regroupement par groupe)
+  const existingMatchesForRound = useMemo(() => {
+    if (!matchesState || !filteredSortedGroups.length) return [];
+
+    const safeTs = (m) => {
+      const s = `${m?.match_day || ""}T${m?.match_time || ""}`;
+      const ts = Date.parse(s);
+      return Number.isFinite(ts) ? ts : Number.MAX_SAFE_INTEGER;
+    };
+
+    const groupById = new Map(
+      filteredSortedGroups.map((g) => [Number(g.id), g])
+    );
+
+    const all = [];
+    for (const [gidStr, arr] of Object.entries(matchesState || {})) {
+      const gid = Number(gidStr);
+      if (!groupById.has(gid)) continue; // seulement les groupes du round courant
+      const group = groupById.get(gid);
+      if (Array.isArray(arr)) {
+        for (const m of arr) {
+          all.push({
+            ...m,
+            group,
+          });
+        }
+      }
+    }
+
+    all.sort((a, b) => {
+      const ta = safeTs(a);
+      const tb = safeTs(b);
+      if (ta !== tb) return ta - tb;
+      const taNum = Number(a?.table_number || 0);
+      const tbNum = Number(b?.table_number || 0);
+      if (taNum !== tbNum) return taNum - tbNum;
+      return Number(a?.id || 0) - Number(b?.id || 0);
+    });
+
+    return all;
+  }, [matchesState, filteredSortedGroups]);
+
+  // ---------- MODE EDITION / SUPPRESSION EXISTANT (pour les matchs déjà créés) ----------
+
   if (loading) return <div>{t("loading")}</div>;
   if (error) return <div>{error}</div>;
 
-  // Handlers for editing and deleting matches
   const handleEditMatch = (match) => {
     const currentDate = match.match_day || tournamentStartDate || "";
     const currentTime = match.match_time || "";
@@ -355,11 +486,10 @@ const ScheduleEdit = () => {
       table_number: String(currentTable || ""),
     });
   };
+
   const handleEditFormChange = (e) => {
     const { name, value } = e.target;
     if (name === "match_day" && value) {
-      // si on change la date dans le popup d'édition,
-      // on met à jour la date par défaut pour les futurs matchs générés
       setDefaultMatchDate(value);
     }
     setEditForm((prev) => ({ ...prev, [name]: value }));
@@ -418,7 +548,6 @@ const ScheduleEdit = () => {
         return;
       }
 
-      // Mise à jour locale du match sans recharger la page
       setMatchesState((prev) => {
         if (!prev) return prev;
         const next = { ...prev };
@@ -471,7 +600,6 @@ const ScheduleEdit = () => {
     }
   };
 
-  // Ouverture du modal de confirmation de suppression
   const handleDeleteMatch = (match) => {
     setMatchToDelete(match);
   };
@@ -500,7 +628,6 @@ const ScheduleEdit = () => {
         return;
       }
 
-      // Mise à jour locale: on enlève le match supprimé sans recharger
       setMatchesState((prev) => {
         if (!prev) return prev;
         const next = { ...prev };
@@ -707,6 +834,569 @@ const ScheduleEdit = () => {
     );
   };
 
+  // ------------ MODE MANUEL : gestion des lignes de création de match ------------
+
+  const handleAddManualRow = () => {
+    const firstGroupId =
+      filteredSortedGroups.length > 0 ? filteredSortedGroups[0].id : "";
+
+    setManualMatches((prev) => {
+      // Point de départ : la dernière ligne manuelle si elle existe,
+      // sinon le dernier match existant du tour sélectionné.
+      const lastManual = prev.length > 0 ? prev[prev.length - 1] : null;
+      const lastExisting =
+        !lastManual && existingMatchesForRound.length > 0
+          ? existingMatchesForRound[existingMatchesForRound.length - 1]
+          : null;
+
+      const baseDate =
+        (lastManual && lastManual.match_day) ||
+        (lastExisting && lastExisting.match_day) ||
+        defaultMatchDate ||
+        tournamentStartDate ||
+        "";
+
+      // match_time peut être "HH:MM" (manuel) ou "HH:MM:SS" (BDD),
+      // on normalise en "HH:MM" pour le champ <input type="time" />
+      const rawTime =
+        (lastManual && lastManual.match_time) ||
+        (lastExisting && lastExisting.match_time) ||
+        "";
+      let baseTime = "";
+      if (typeof rawTime === "string" && rawTime.length > 0) {
+        const parts = rawTime.split(":");
+        if (parts.length >= 2) {
+          baseTime = `${parts[0].padStart(2, "0")}:${parts[1].padStart(
+            2,
+            "0"
+          )}`;
+        }
+      }
+
+      const rawTable =
+        (lastManual && lastManual.table_number) ||
+        (lastExisting && lastExisting.table_number) ||
+        "";
+      const baseTableNum = Number.parseInt(rawTable, 10);
+      const currentTable =
+        Number.isFinite(baseTableNum) && baseTableNum > 0 ? baseTableNum : 1;
+
+      let nextTable = currentTable;
+      let nextTime = baseTime;
+
+      const hasTableCount =
+        tableCount != null && Number.isFinite(Number(tableCount));
+      const hasDuration =
+        matchDurationMinutes != null &&
+        Number.isFinite(Number(matchDurationMinutes)) &&
+        Number(matchDurationMinutes) > 0;
+
+      if (hasTableCount) {
+        const tc = Number(tableCount);
+        if (currentTable >= tc) {
+          // On revient à la table 1
+          nextTable = 1;
+          // Et on ajoute la durée du match à l'horaire si possible
+          if (hasDuration && baseTime) {
+            const [hStr, mStr] = baseTime.split(":");
+            const h = Number.parseInt(hStr, 10) || 0;
+            const m = Number.parseInt(mStr, 10) || 0;
+            const totalMinutes = h * 60 + m + Number(matchDurationMinutes);
+            const newH = Math.floor(totalMinutes / 60) % 24;
+            const newM = totalMinutes % 60;
+            nextTime = `${String(newH).padStart(2, "0")}:${String(
+              newM
+            ).padStart(2, "0")}`;
+          }
+        } else {
+          // On passe à la table suivante sur le même créneau horaire
+          nextTable = currentTable + 1;
+        }
+      }
+
+      const newRow = {
+        match_day: baseDate,
+        match_time: nextTime,
+        table_number: nextTable || "",
+        group_id: firstGroupId || "",
+        player1_id: "",
+        player2_id: "",
+      };
+
+      return [...prev, newRow];
+    });
+  };
+
+  const handleManualChange = (index, field, value) => {
+    setManualMatches((prev) => {
+      const copy = [...prev];
+      const row = { ...copy[index] };
+
+      if (field === "group_id") {
+        row.group_id = value;
+        row.player1_id = "";
+        row.player2_id = "";
+      } else {
+        row[field] = value;
+      }
+
+      copy[index] = row;
+      return copy;
+    });
+  };
+
+  const handleRemoveManualRow = (index) => {
+    setManualMatches((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const saveManualMatches = async () => {
+    try {
+      if (!manualMatches.length) {
+        showFeedback(
+          t("info", "Info"),
+          t("matchesNoValidToSave", {
+            defaultValue: "Aucun match manuel à enregistrer.",
+          }),
+          "info"
+        );
+        return;
+      }
+
+      const tournamentId = Number(id);
+      if (!Number.isFinite(tournamentId) || tournamentId <= 0) {
+        throw new Error(
+          t("tournamentNotFound", { defaultValue: "Tournoi introuvable." })
+        );
+      }
+
+      const validMatches = manualMatches.map((m, idx) => {
+        const day = String(m.match_day || "").trim();
+        const time = String(m.match_time || "").trim();
+        const tableNum = Number.parseInt(m.table_number, 10);
+        const groupIdNum = Number.parseInt(m.group_id, 10);
+        const p1Id = Number.parseInt(m.player1_id, 10);
+        const p2Id = Number.parseInt(m.player2_id, 10);
+
+        if (
+          !day ||
+          !time ||
+          !Number.isFinite(tableNum) ||
+          !Number.isFinite(groupIdNum) ||
+          !Number.isFinite(p1Id) ||
+          !Number.isFinite(p2Id)
+        ) {
+          throw new Error(
+            t("matchesIncompleteData", {
+              defaultValue: `Ligne ${
+                idx + 1
+              } : données incomplètes (date, heure, table, groupe, joueurs).`,
+            })
+          );
+        }
+
+        return {
+          player1_id: p1Id,
+          player2_id: p2Id,
+          player1_group_position: null,
+          player2_group_position: null,
+          result: [],
+          match_day: day,
+          match_time: time,
+          table_number: tableNum,
+          tournament_id: tournamentId,
+          group_id: groupIdNum,
+          referee1_id: null,
+          referee2_id: null,
+        };
+      });
+
+      let createdMatches = [];
+      const backends = [
+        `${API_BASE}/api/tournaments/${tournamentId}/matches`,
+        `${API_BASE}/api/tournaments/matches?id=${tournamentId}`,
+      ];
+
+      for (const url of backends) {
+        try {
+          const resp = await fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ matches: validMatches }),
+          });
+
+          if (resp.ok) {
+            try {
+              const json = await resp.json().catch(() => null);
+              if (Array.isArray(json)) {
+                createdMatches = json;
+              } else if (json && Array.isArray(json.matches)) {
+                createdMatches = json.matches;
+              }
+            } catch {
+              // ignore
+            }
+            break;
+          }
+
+          if (resp.status !== 404 && resp.status !== 405) {
+            const msg = await resp.text().catch(() => "");
+            throw new Error(
+              t("backendInsertFailed", {
+                defaultValue: `Insertion backend échouée (${resp.status}). ${msg}`,
+              })
+            );
+          }
+        } catch (e) {
+          console.warn(
+            "[saveManualMatches] backend",
+            url,
+            "failed:",
+            e?.message || e
+          );
+        }
+      }
+
+      if (createdMatches && createdMatches.length > 0) {
+        setMatchesState((prev) => {
+          const next = { ...(prev || {}) };
+          for (const m of createdMatches) {
+            const gid = m.group_id;
+            if (gid == null) continue;
+            const existing = Array.isArray(next[gid]) ? next[gid] : [];
+            next[gid] = [...existing, m];
+          }
+          return next;
+        });
+      }
+
+      showFeedback(
+        t("success", "Succès"),
+        t("matchesSavedSuccess", {
+          defaultValue: "Matchs manuels enregistrés.",
+        }),
+        "success"
+      );
+      setManualMatches([]);
+    } catch (err) {
+      console.error(err);
+      showFeedback(
+        t("error", "Erreur"),
+        err?.message || t("unknownError", { defaultValue: "Erreur inconnue." }),
+        "danger"
+      );
+    }
+  };
+
+  const renderManualTable = () => {
+    return (
+      <div className="mt-3">
+        <div className="d-flex justify-content-between align-items-center mb-2">
+          <h2 className="h5 mb-0">
+            {t("manualSchedule", "Création manuelle des matchs")}
+          </h2>
+        </div>
+
+        {manualMatches.length === 0 ? (
+          <p className="text-muted">
+            {t(
+              "manualMatchesEmpty",
+              'Aucune ligne. Cliquez sur "Ajouter une ligne" pour créer des matchs.'
+            )}
+          </p>
+        ) : (
+          <div className="table-responsive mb-4">
+            <table className="table table-bordered table-sm align-middle">
+              <thead className="table-light">
+                <tr>
+                  <th>{t("date", "Date")}</th>
+                  <th>{t("time", "Heure")}</th>
+                  <th>{t("table", "Table")}</th>
+                  <th>{t("group", "Groupe")}</th>
+                  <th>{t("player1", "Joueur 1")}</th>
+                  <th>{t("player2", "Joueur 2")}</th>
+                  <th>{t("action", "Action")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {manualMatches.map((row, idx) => {
+                  const groupId = row.group_id;
+                  const playersInGroup =
+                    groupId && sortedPlayers[groupId]
+                      ? sortedPlayers[groupId]
+                      : [];
+
+                  return (
+                    <tr key={idx}>
+                      <td>
+                        <input
+                          type="date"
+                          className="form-control form-control-sm"
+                          value={row.match_day}
+                          onChange={(e) =>
+                            handleManualChange(idx, "match_day", e.target.value)
+                          }
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="time"
+                          className="form-control form-control-sm"
+                          value={row.match_time}
+                          onChange={(e) =>
+                            handleManualChange(
+                              idx,
+                              "match_time",
+                              e.target.value
+                            )
+                          }
+                        />
+                      </td>
+                      <td>
+                        <input
+                          type="number"
+                          min="1"
+                          className="form-control form-control-sm"
+                          value={row.table_number}
+                          onChange={(e) =>
+                            handleManualChange(
+                              idx,
+                              "table_number",
+                              e.target.value
+                            )
+                          }
+                        />
+                      </td>
+                      <td>
+                        <select
+                          className="form-select form-select-sm"
+                          value={row.group_id}
+                          onChange={(e) =>
+                            handleManualChange(idx, "group_id", e.target.value)
+                          }
+                        >
+                          <option value="">
+                            {t("selectGroup", "Choisir un groupe")}
+                          </option>
+                          {filteredSortedGroups.map((g) => (
+                            <option key={g.id} value={g.id}>
+                              {g.name} ({t(g.group_type)})
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>
+                        <select
+                          className="form-select form-select-sm"
+                          value={row.player1_id}
+                          onChange={(e) =>
+                            handleManualChange(
+                              idx,
+                              "player1_id",
+                              e.target.value
+                            )
+                          }
+                          disabled={!row.group_id}
+                        >
+                          <option value="">
+                            {t("selectPlayer", "Choisir un joueur")}
+                          </option>
+                          {playersInGroup.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.lastname} {p.firstname}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td>
+                        <select
+                          className="form-select form-select-sm"
+                          value={row.player2_id}
+                          onChange={(e) =>
+                            handleManualChange(
+                              idx,
+                              "player2_id",
+                              e.target.value
+                            )
+                          }
+                          disabled={!row.group_id}
+                        >
+                          <option value="">
+                            {t("selectPlayer", "Choisir un joueur")}
+                          </option>
+                          {playersInGroup.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.lastname} {p.firstname}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="text-center">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-danger"
+                          onClick={() => handleRemoveManualRow(idx)}
+                        >
+                          {t("delete", "Supprimer")}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <div className="d-flex gap-2">
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-primary"
+            onClick={handleAddManualRow}
+          >
+            {t("addRow", "Ajouter une ligne")}
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm btn-success"
+            onClick={saveManualMatches}
+            disabled={!manualMatches.length}
+          >
+            {t("saveManualMatches", "Enregistrer les matchs manuels")}
+          </button>
+        </div>
+
+        {/* Matchs existants du round sélectionné affichés dans un tableau unique */}
+        <h3 className="h6 mb-2">
+          {t("existingMatches", "Matchs existants pour ce tour")}
+        </h3>
+        {existingMatchesForRound.length === 0 ? (
+          <p className="text-muted">
+            {t(
+              "noExistingMatches",
+              "Aucun match existant pour ce tour pour le moment."
+            )}
+          </p>
+        ) : (
+          <div className="table-responsive mb-4">
+            <table className="table table-bordered">
+              <thead>
+                <tr>
+                  <th className="text-center">{t("date")}</th>
+                  <th className="text-center">{t("time")}</th>
+                  <th className="text-center">{t("table")}</th>
+                  <th className="text-center">{t("group")}</th>
+                  <th className="text-center">{t("player1")}</th>
+                  <th className="text-center">{t("player2")}</th>
+                  <th className="text-center">{t("action")}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {existingMatchesForRound.map((match) => {
+                  // Trouver le groupe de ce match (dans les groupes du tour courant, sinon dans tous les groupes)
+                  const group =
+                    (filteredSortedGroups || []).find(
+                      (g) =>
+                        Number(g.id) === Number(match.group_id) ||
+                        Number(g.id) === Number(match.group?.id)
+                    ) ||
+                    (groups || []).find(
+                      (g) =>
+                        Number(g.id) === Number(match.group_id) ||
+                        Number(g.id) === Number(match.group?.id)
+                    ) ||
+                    null;
+
+                  const groupName = group ? group.name : t("group");
+
+                  // Joueurs pour ce groupe
+                  const groupPlayers = group
+                    ? sortedPlayers[group.id] || []
+                    : [];
+
+                  const p1Id = match?.player1_id ?? match?.player1?.id ?? null;
+                  const p2Id = match?.player2_id ?? match?.player2?.id ?? null;
+
+                  const player1 = groupPlayers.find((p) => p.id === p1Id);
+                  const player2 = groupPlayers.find((p) => p.id === p2Id);
+
+                  const fallbackFromFormer = (pos) => {
+                    if (!group || !group.group_former) return t("notAssigned");
+                    let parsed;
+                    if (Array.isArray(group.group_former)) {
+                      parsed = group.group_former;
+                    } else {
+                      try {
+                        parsed = JSON.parse(group.group_former);
+                      } catch {
+                        return t("notAssigned");
+                      }
+                    }
+                    if (!Array.isArray(parsed)) return t("notAssigned");
+                    const entry = parsed[(Number(pos) || 0) - 1];
+                    if (!entry) return t("notAssigned");
+                    const [position, refGroupId] = entry;
+                    const ref =
+                      (groups || []).find(
+                        (gg) => Number(gg.id) === Number(refGroupId)
+                      ) || null;
+                    return ref
+                      ? `${ref.name}(${position})`
+                      : `${t("group")} ${refGroupId}(${position})`;
+                  };
+
+                  const displayTime =
+                    match.match_time && match.match_day
+                      ? new Date(
+                          `${match.match_day}T${match.match_time}`
+                        ).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : "--:--";
+
+                  return (
+                    <tr key={match.id}>
+                      <td className="text-center">{match.match_day}</td>
+                      <td className="text-center">{displayTime}</td>
+                      <td className="text-center">{match.table_number}</td>
+                      <td className="text-center">{groupName}</td>
+                      <td className="text-center">
+                        {player1
+                          ? `${player1.lastname} ${player1.firstname}`
+                          : fallbackFromFormer(match.player1_group_position)}
+                      </td>
+                      <td className="text-center">
+                        {player2
+                          ? `${player2.lastname} ${player2.firstname}`
+                          : fallbackFromFormer(match.player2_group_position)}
+                      </td>
+                      <td className="text-center">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-primary me-2"
+                          onClick={() => handleEditMatch(match)}
+                        >
+                          {t("edit")}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-outline-danger"
+                          onClick={() => handleDeleteMatch(match)}
+                        >
+                          {t("delete")}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <>
       {renderFeedbackModal()}
@@ -716,25 +1406,50 @@ const ScheduleEdit = () => {
         <h1 id="page-title" tabIndex="-1">
           {t("scheduleEdit")}
         </h1>
+
+        {/* Switch Auto / Manuel */}
+        <div className="form-check form-switch mb-3">
+          <input
+            className="form-check-input"
+            type="checkbox"
+            id="scheduleModeSwitch"
+            checked={isAutoMode}
+            onChange={(e) => setIsAutoMode(e.target.checked)}
+          />
+          <label className="form-check-label" htmlFor="scheduleModeSwitch">
+            {isAutoMode
+              ? t("autoSchedule", "Création automatique des matchs")
+              : t("manualSchedule", "Création manuelle des matchs")}
+          </label>
+        </div>
+
         <RoundSelector
           selectedRound={selectedRound}
           setSelectedRound={setSelectedRound}
         />
-        <GroupList
-          groups={filteredSortedGroups}
-          players={sortedPlayers}
-          clubs={clubs}
-          matches={matchesState}
-          generateMatches={generateMatches}
-          generatedMatches={generatedMatches}
-          updateGeneratedMatch={updateGeneratedMatch}
-          saveMatches={saveMatches}
-          allGroups={groups}
-          onEditMatch={handleEditMatch}
-          onDeleteMatch={handleDeleteMatch}
-          getFakePlayerLabel={getFakePlayerLabel}
-          tournamentStartDate={tournamentStartDate}
-        />
+
+        {isAutoMode ? (
+          <>
+            <GroupList
+              groups={filteredSortedGroups}
+              players={sortedPlayers}
+              clubs={clubs}
+              matches={matchesState}
+              generateMatches={generateMatches}
+              generatedMatches={generatedMatches}
+              updateGeneratedMatch={updateGeneratedMatch}
+              saveMatches={saveMatches}
+              allGroups={groups}
+              onEditMatch={handleEditMatch}
+              onDeleteMatch={handleDeleteMatch}
+              getFakePlayerLabel={getFakePlayerLabel}
+              tournamentStartDate={tournamentStartDate}
+            />
+            {renderGeneratedMatchesSection()}
+          </>
+        ) : (
+          renderManualTable()
+        )}
       </div>
     </>
   );
