@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useLocation, useParams } from "react-router-dom";
 import useMatches from "../../Hooks/useMatchs";
 import usePlayers from "../../Hooks/usePlayers";
@@ -27,12 +27,19 @@ const sortMatchesByDayTimeTable = (matches) => {
 
 const Schedule = () => {
   const { id } = useParams();
+  const tournamentIdNum = Number(id);
   const { matches, loading, error } = useMatches();
   const { groups, players, lowading, errorGroups } = useGroupsData();
   const { t } = useTranslation();
   const location = useLocation();
   const [allClubs, setAllClubs] = useState([]);
   const [selectedTable, setSelectedTable] = useState(null);
+
+  const tournamentMatches = useMemo(() => {
+    const all = Array.isArray(matches) ? matches : [];
+    if (!Number.isFinite(tournamentIdNum)) return all;
+    return all.filter((m) => Number(m.tournament_id) === tournamentIdNum);
+  }, [matches, tournamentIdNum]);
 
   useEffect(() => {
     const fetchClubs = async () => {
@@ -55,26 +62,30 @@ const Schedule = () => {
     return [...new Set(dates)].sort();
   };
 
-  const uniqueDates = getUniqueDates(matches);
+  const uniqueDates = getUniqueDates(tournamentMatches);
   const today = new Date().toISOString().split("T")[0];
 
   // Derive table count from current matches (max table_number)
   const tableCount = Math.max(
     0,
-    ...matches.map((m) => Number(m.table_number || 0))
+    ...tournamentMatches.map((m) => Number(m.table_number || 0))
   );
 
   const [selectedDate, setSelectedDate] = useState(null);
   const [isFirstLoad, setIsFirstLoad] = useState(true);
 
+  // Flag pour ne scroller qu'une seule fois automatiquement
+  const [hasAutoScrolledToLastResult, setHasAutoScrolledToLastResult] =
+    useState(false);
+
   useEffect(() => {
-    if (matches.length > 0) {
+    if (tournamentMatches.length > 0) {
       const title = document.getElementById("page-title");
       if (title) {
         title.focus();
       }
     }
-  }, [location.pathname, matches.length]);
+  }, [location.pathname, tournamentMatches.length]);
 
   useEffect(() => {
     if (isFirstLoad && uniqueDates.includes(today)) {
@@ -96,15 +107,7 @@ const Schedule = () => {
     return sets.join(" ; ");
   };
 
-  if (loading) {
-    return <div>{t("loadingMatchs")}</div>;
-  }
-
-  if (error) {
-    return <div>{error.message}</div>;
-  }
-
-  const filteredMatches = matches
+  const filteredMatches = tournamentMatches
     .filter((match) => !selectedDate || match.match_day === selectedDate)
     .filter((match) =>
       selectedTable === null || selectedTable === undefined
@@ -113,6 +116,51 @@ const Schedule = () => {
     );
 
   const sortedMatches = sortMatchesByDayTimeTable(filteredMatches);
+
+  // Index (dans sortedMatches) du dernier match ayant un résultat parmi les matches triés visibles
+  const lastResultRowIndex = useMemo(() => {
+    if (!sortedMatches || sortedMatches.length === 0) return null;
+
+    for (let i = sortedMatches.length - 1; i >= 0; i--) {
+      const m = sortedMatches[i];
+      if (Array.isArray(m.result) && m.result.some((v) => v != null)) {
+        return i;
+      }
+    }
+    return null;
+  }, [sortedMatches]);
+
+  // Scroll automatique vers la ligne du dernier match avec résultat (une seule fois)
+  useEffect(() => {
+    console.log("[Schedule] auto-scroll effect", {
+      lastResultRowIndex,
+      hasAutoScrolledToLastResult,
+      count: sortedMatches.length,
+    });
+
+    if (hasAutoScrolledToLastResult) return;
+    if (lastResultRowIndex == null) return;
+
+    const tbody = document.getElementById("schedule-tbody");
+    const rowEl = tbody && tbody.children[lastResultRowIndex];
+    console.log(
+      "[Schedule] trying to scroll to index",
+      lastResultRowIndex,
+      !!rowEl
+    );
+    if (rowEl) {
+      rowEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      setHasAutoScrolledToLastResult(true);
+    }
+  }, [lastResultRowIndex, hasAutoScrolledToLastResult, sortedMatches]);
+
+  if (loading) {
+    return <div>{t("loadingMatchs")}</div>;
+  }
+
+  if (error) {
+    return <div>{error.message}</div>;
+  }
 
   return (
     <div className="container mt-4">
@@ -150,10 +198,11 @@ const Schedule = () => {
                 <th className="text-center">{t("referees")}</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody id="schedule-tbody">
               {sortedMatches.map((match, index) => (
                 <MatchRow
                   key={match.id}
+                  rowId={`match-row-${match.id}`}
                   match={match}
                   index={index}
                   formatResult={formatResult}

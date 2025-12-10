@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 
@@ -11,6 +11,16 @@ import { Link } from "react-router-dom";
  * @param {Function} props.formatResult - Function to format match results.
  * @returns {JSX.Element} A table row displaying a match's details.
  */
+const safeParseJSON = (val) => {
+  if (!val) return null;
+  if (Array.isArray(val)) return val;
+  try {
+    return JSON.parse(val);
+  } catch {
+    return null;
+  }
+};
+
 const MatchRow = ({
   match,
   index,
@@ -18,8 +28,28 @@ const MatchRow = ({
   allgroups,
   allclubs,
   tournamentId,
+  isLastWithResult = false,
 }) => {
   const { t } = useTranslation();
+
+  // Ref used to scroll to the last match that has a result
+  const rowRef = useRef(null);
+
+  useEffect(() => {
+    if (!isLastWithResult || !rowRef.current) return;
+
+    const timer = setTimeout(() => {
+      if (rowRef.current) {
+        rowRef.current.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
+      }
+    }, 250); // delay to let other layout/scroll effects finish
+
+    return () => clearTimeout(timer);
+  }, [isLastWithResult]);
+
   const getClubAbbr = (clubId) => {
     if (!clubId || !Array.isArray(allclubs)) return "";
     const club = allclubs.find((c) => Number(c.id) === Number(clubId));
@@ -81,16 +111,17 @@ const MatchRow = ({
   );
 
   return (
-    <tr>
+    <tr ref={rowRef}>
       <td className="text-center">{match.match_day}</td>
       <td className="text-center">
-        {new Date(`${match.match_day}T${match.match_time}`).toLocaleTimeString(
-          [],
-          {
-            hour: "2-digit",
-            minute: "2-digit",
-          }
-        )}
+        {match.match_time
+          ? new Date(
+              `${match.match_day}T${match.match_time}`
+            ).toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            })
+          : "--:--"}
       </td>
       <td className="text-center">{match.table_number}</td>
       <td className="text-center">
@@ -123,8 +154,10 @@ const MatchRow = ({
               })()
             : match.group?.group_former && match.player1_group_position
             ? (() => {
-                const former = JSON.parse(match.group.group_former);
-                const entry = former[Number(match.player1_group_position) - 1];
+                const former = safeParseJSON(match.group.group_former) || [];
+                const entry = Array.isArray(former)
+                  ? former[Number(match.player1_group_position) - 1]
+                  : null;
                 if (!entry) return match.player1_group_position;
                 const group = allgroups?.find(
                   (g) => Number(g.id) === Number(entry[1])
@@ -156,8 +189,10 @@ const MatchRow = ({
               })()
             : match.group?.group_former && match.player2_group_position
             ? (() => {
-                const former = JSON.parse(match.group.group_former);
-                const entry = former[Number(match.player2_group_position) - 1];
+                const former = safeParseJSON(match.group.group_former) || [];
+                const entry = Array.isArray(former)
+                  ? former[Number(match.player2_group_position) - 1]
+                  : null;
                 if (!entry) return match.player2_group_position;
                 const group = allgroups?.find(
                   (g) => Number(g.id) === Number(entry[1])
