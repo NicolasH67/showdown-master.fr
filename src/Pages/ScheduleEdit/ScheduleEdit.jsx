@@ -1445,7 +1445,6 @@ const ScheduleEdit = () => {
               getFakePlayerLabel={getFakePlayerLabel}
               tournamentStartDate={tournamentStartDate}
             />
-            {renderGeneratedMatchesSection()}
           </>
         ) : (
           renderManualTable()
