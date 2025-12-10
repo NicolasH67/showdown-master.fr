@@ -35,6 +35,9 @@ const ResultEdit = () => {
   // 🔹 matches “dirty” = ceux qui ont été modifiés (date, heure, table, arbitres, résultat…)
   const [dirtyMatchIds, setDirtyMatchIds] = React.useState(() => new Set());
 
+  // 🔹 id du match vers lequel on doit scroller (dernier match avec un résultat)
+  const [autoScrollTargetId, setAutoScrollTargetId] = React.useState(null);
+
   // Modal pour les feuilles de matchs
   const [isSheetModalOpen, setIsSheetModalOpen] = React.useState(false);
   const [sheetFromMnr, setSheetFromMnr] = React.useState("");
@@ -296,6 +299,27 @@ const ResultEdit = () => {
     });
   }, [matches, selectedDate, selectedTable, mnrOrderMap]);
 
+  // 🔹 calcul de la ligne à scroller : dernier match avec un résultat non vide
+  useEffect(() => {
+    if (!sortedMatches || sortedMatches.length === 0) {
+      setAutoScrollTargetId(null);
+      return;
+    }
+
+    let targetId = null;
+    for (let i = sortedMatches.length - 1; i >= 0; i--) {
+      const m = sortedMatches[i];
+      if (
+        Array.isArray(m.result) &&
+        m.result.some((v) => v !== null && v !== undefined)
+      ) {
+        targetId = m.id;
+        break;
+      }
+    }
+    setAutoScrollTargetId(targetId);
+  }, [sortedMatches]);
+
   if (loading) {
     return <div>{t("loadingMatchs")}</div>;
   }
@@ -356,7 +380,6 @@ const ResultEdit = () => {
               </div>
               <form onSubmit={handleGenerateSheetsRange}>
                 <div className="modal-body">
-                  {/* ... (tout ton contenu de modal, inchangé) ... */}
                   <div className="row g-2">
                     <div className="col-6">
                       <label className="form-label">
@@ -495,7 +518,8 @@ const ResultEdit = () => {
                   onRefresh={refresh}
                   registerSaver={registerRowSaver}
                   isBulkSaving={isBulkSaving}
-                  onDirtyChange={handleDirtyChange} // 🔹 très important
+                  onDirtyChange={handleDirtyChange}
+                  shouldScrollIntoView={autoScrollTargetId === match.id} // 🔹 pour le scroll auto
                 />
               ))}
             </tbody>
@@ -516,7 +540,7 @@ const ResultEdit = () => {
           type="button"
           className="btn btn-success btn-lg shadow"
           onClick={handleSaveAll}
-          disabled={isBulkSaving || dirtyMatchIds.size === 0} // 🔹 activé seulement s'il y a des matches dirty
+          disabled={isBulkSaving || dirtyMatchIds.size === 0}
         >
           {isBulkSaving
             ? t("savingAllChanges", {

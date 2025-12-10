@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import useMatchRowApi from "../../Hooks/useMatchRowApi";
@@ -17,12 +17,25 @@ const MatchRowResult = ({
   registerSaver,
   isBulkSaving = false,
   onDirtyChange, // 👈 nouveau: le parent peut être notifié qu'une ligne est “dirty”
+  shouldScrollIntoView = false,
 }) => {
   const { t } = useTranslation();
   const { saveMatch, postProcessAfterSave } = useMatchRowApi(
     tournamentId,
     allgroups
   );
+
+  const rowRef = useRef(null);
+
+  useEffect(() => {
+    if (shouldScrollIntoView && rowRef.current) {
+      try {
+        rowRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      } catch (e) {
+        rowRef.current.scrollIntoView();
+      }
+    }
+  }, [shouldScrollIntoView]);
 
   const getClubAbbr = (clubId) => {
     if (!clubId || !Array.isArray(allclubs)) return "";
@@ -401,7 +414,7 @@ const MatchRowResult = ({
   };
 
   return (
-    <tr>
+    <tr ref={rowRef}>
       <td className="text-center">{mnr ?? index + 1}</td>
       <td className="text-center">
         <input
